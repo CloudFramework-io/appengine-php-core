@@ -1,2 +1,10 @@
-# Google App Engine generated folder
-appengine-generated/
+.project
+**/app.yaml
+README.md
+.git/*
+.idea/*
+local_config.php
+**/composer.phar
+**/composer.lock
+php.ini
+\.DS\_Store
