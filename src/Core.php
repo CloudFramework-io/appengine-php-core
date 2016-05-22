@@ -227,18 +227,22 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
 
         }
 
+        /**
+         * @param $url path for destination ($dest is empty) or for source ($dest if not empty)
+         * @param string $dest Optional destination. If empty, destination will be $url
+         */
         function urlRedirect($url, $dest = '') {
             if (!strlen($dest)) {
-                if ($url != $this->_url) {
+                if ($url != $this->url['url']) {
                     Header("Location: $url");
                     exit;
                 }
-            } else if ($url == $this->_url && $url != $dest) {
-                if (strlen($this->_urlParams)) {
+            } else if ($url == $this->url['url'] && $url != $dest) {
+                if (strlen($this->url['params'])) {
                     if (strpos($dest, '?') === false)
-                        $dest .= "?" . $this->_urlParams;
+                        $dest .= "?" . $this->url['params'];
                     else
-                        $dest .= "&" . $this->_urlParams;
+                        $dest .= "&" . $this->url['params'];
                 }
                 Header("Location: $dest");
                 exit;
@@ -475,7 +479,7 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
     {
         public $obj = [];
         public $__p,$session,$system,$logs,$errors,$is,$cache,$security,$user,$config,$localization;
-        var $_version = '20160410';
+        var $_version = '20160522';
         function __construct($root_path='') {
             $this->__p  = new Performance();
             $this->session  = new Session();
@@ -535,15 +539,21 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
                     if($apifile[0]=='_' || $apifile=='queue')
                         $pathfile = __DIR__ . "/api/h/{$apifile}.php";
                     else {
-                        if(strlen($this->config->get('pathAPI')))
-                            $pathfile = $this->config->get('pathAPI') . "/{$apifile}.php";
-                        else
-                            $pathfile = $this->system->app_path . "/api/h/{$apifile}.php";
+                        // Every End-point inside the app has priority over the apiPaths
+                        $pathfile = $this->system->app_path . "/api/{$apifile}.php";
+                        if (!file_exists($pathfile)) {
+                            $pathfile = '';
+                            // pathAPI is deprecated..
+                            if(strlen($this->config->get('apiPath')))
+                                $pathfile = $this->config->get('apiPath') . "/{$apifile}.php";
+                            elseif(strlen($this->config->get('pathAPI')))
+                                $pathfile = $this->config->get('pathAPI') . "/{$apifile}.php";
+                        }
                     }
 
                     // IF NOT EXIST
                     include_once __DIR__ . '/class/RESTful.php';
-                    if (!file_exists($pathfile)) {
+                    if (!strlen($pathfile) || !file_exists($pathfile)) {
                         $api = new RESTful($this);
                         $api->setError("api $apifile does not exist",503);
                         $api->send();
@@ -986,7 +996,7 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
                                 if (is_array($vars)) {
                                     foreach ($vars as $ind => $urls)
                                         if (!is_array($urls)) {
-                                            $this->setError('Wrong redirect format. It has to be an array of redirect elements: [{prog:dest},{..}..]');
+                                            $this->core->errors->add('Wrong redirect format. It has to be an array of redirect elements: [{orig:dest},{..}..]');
                                         } else {
                                             foreach ($urls as $urlOrig => $urlDest) {
                                                 if ($urlOrig == '*' || !strlen($urlOrig))
@@ -997,7 +1007,7 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
                                         }
 
                                 } else {
-                                    $this->setError('Wrong redirect format. It has to be an array of redirect elements: [{prog:dest},{..}..]');
+                                    $this->core->system->urlRedirect($vars);
                                 }
                             }
                             break;

@@ -5,6 +5,7 @@ class API extends RESTful
     {
         $data['method'] = $this->method;
         $data['headers'] = $this->getHeaders();
+        $data['params'] = $this->params;
         $data['formParams'] = $this->formParams;
         $this->addReturnData($data);
     }
