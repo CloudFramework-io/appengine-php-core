@@ -506,7 +506,7 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
                 $this->system->app_path = $this->system->root_path.$dir;
                 $this->system->app_url = $dir;
             } else {
-                $this->errors->add($dir . " doesn't exist. The path has to begin with /");
+                $this->errors->add($this->system->root_path.$dir . " doesn't exist. The path has to begin with /");
             }
         }
 
@@ -553,14 +553,10 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
 
                     // IF NOT EXIST
                     include_once __DIR__ . '/class/RESTful.php';
-                    if (!strlen($pathfile) || !file_exists($pathfile)) {
-                        $api = new RESTful($this);
-                        $api->setError("api $apifile does not exist",503);
-                        $api->send();
-
-                    } elseif(!$this->errors->lines){
+                    if(!$this->errors->lines){
                         try {
-                            include_once $pathfile;
+                            if(strlen($pathfile))
+                                include_once $pathfile;
                             if (class_exists('API')) {
                                 $api = new API($this);
                                 $api->main();
@@ -568,7 +564,9 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
                                 $api->send();
 
                             } else {
-                                $this->errors->add("api $apifile does not include a API class extended from RESTFul with method ->main()");
+                                $api = new RESTful($this);
+                                $api->setError("api $apifile does not include a API class extended from RESTFul with method ->main()",404);
+                                $api->send();
                             }
                         } catch (Exception $e) {
                             $this->errors->add(error_get_last());
