@@ -185,11 +185,11 @@ if (!defined("_RESTfull_CLASS_")) {
 
         function setReturnFormat($method)
         {
-            switch ($method) {
+            switch (strtoupper($method)) {
                 case 'JSON':
                 case 'TEXT':
                 case 'HTML':
-                    $this->contentTypeReturn = $method;
+                    $this->contentTypeReturn = strtoupper($method);
                     break;
                 default:
                     $this->contentTypeReturn = 'JSON';
@@ -220,19 +220,19 @@ if (!defined("_RESTfull_CLASS_")) {
             if (strlen($header)) header($header);
             switch ($this->contentTypeReturn) {
                 case 'JSON':
-                    header("Content-type: application/json");
+                    header("Content-Type: application/json");
 
                     break;
                 case 'TEXT':
-                    header("Content-type: text/plain");
+                    header("Content-Type: text/plain");
 
                     break;
                 case 'HTML':
-                    header("Content-type: text/html");
+                    header("Content-Type: text/html");
 
                     break;
                 default:
-                    header("Content-type: text/html");
+                    header("Content-Type: text/html");
                     break;
             }
 
