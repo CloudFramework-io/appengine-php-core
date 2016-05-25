@@ -1719,7 +1719,15 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
                     if (is_array($data)) {
                         if (strpos($rute, '?') === false) $rute .= '?';
                         else $rute .= '&';
-                        foreach ($data as $key => $value) $rute .= $key . '=' . rawurlencode($value) . '&';
+                        foreach ($data as $key => $value) {
+                            if(is_array($value)) {
+                                foreach ($value as $item) {
+                                    $rute .= $key . '=' . rawurlencode($item) . '&';
+                                }
+                            } else {
+                                $rute .= $key . '=' . rawurlencode($value) . '&';
+                            }
+                        }
                     }
                 } else {
                     if ($raw) {
