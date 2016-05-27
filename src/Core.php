@@ -1385,45 +1385,77 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
         function get($locFile, $code, $config=[]) {
             // Check syntax of $locFile & $code
             if(!$this->checkLocFileAndCode($locFile,$code)) return 'Err in: ['.$locFile."{{$code}}".']';
-
+            $lang = $this->core->config->getLang();
+            if(isset($config['lang']) && strlen($config['lang'])==2) $lang = strtoupper($config['lang']);
             // The $locFile does not exist
             if(!isset($_GET['_debugDics'])) {
 
                 // Trying read from file
-                if (!isset($this->data[$locFile][$this->core->config->getLang()]) && !isset($_GET['_reloadDics']))
-                    $this->readFromFile($locFile);
+                $file_readed = false;
+                if (!isset($this->data[$locFile][$lang]) && !isset($_GET['_reloadDics'])) {
+                    $file_readed = true;
+                    $this->readFromFile($locFile,$lang);
+                }
 
                 // Trying read from CloudServe
-                if (!isset($this->data[$locFile][$this->core->config->getLang()])) {
-                    if($this->readFromWAPPLOCA($locFile, $code) &&  isset($this->data[$locFile][$this->core->config->getLang()][$code])) {
-                        $this->writeLocalization($locFile);
+                $wapploca_readed = false;
+                if (!isset($this->data[$locFile][$lang])) {
+
+                    if($this->readFromWAPPLOCA($locFile, $code,$lang) &&  isset($this->data[$locFile][$lang][$code])) {
+                        // Writting Local file.
+                        $file_readed = true;
+                        $wapploca_readed = true;
+                        $this->writeLocalization($locFile,$lang);
                     }
+                }
+                // If this localization file exists but the $code does not exist because the cache
+                if(isset($this->data[$locFile][$lang]) && !isset($this->data[$locFile][$lang][$code])) {
+                    // Rewrite Cache.
+                    if(!$file_readed) {
+                        $this->readFromFile($locFile,$lang);
+                    }
+
+                    // If still does not exist
+                    if(!$wapploca_readed && !isset($this->data[$locFile][$lang][$code])) {
+                        // Reload from WAPPLOCA the code.
+                        if($this->readFromWAPPLOCA($locFile, $code,$lang) &&  isset($this->data[$locFile][$lang][$code])) {
+                            $this->writeLocalization($locFile,$lang);
+                        }
+                    }
+
                 }
             }
 
-            if(!isset($_GET['_debugDics']) && isset($this->data[$locFile][$this->core->config->getLang()][$code]))
-                $ret = $this->data[$locFile][$this->core->config->getLang()][$code];
-            else
-                $ret = $this->core->config->getLang().'_'.$locFile.":({$code})";
+            if(isset($_GET['_debugDics'])){
+                $ret = $lang.'_'.$locFile.":({$code})";
+            } else if(isset($this->data[$locFile][$lang][$code])) {
+                $ret = $this->data[$locFile][$lang][$code];
+            } else {
+                $this->core->logs->add('Missing configuration for Localizations');
+                $this->core->logs->add('WAPPLOCA: '.((empty($this->core->config->get('WAPPLOCA')))?'empty':'***'));
+                $this->core->logs->add('LocalizePath: '.((empty($this->core->config->get('LocalizePath')))?'empty':'***'));
+            }
+
             return $ret;
         }
 
         /**
-         * Read from a file the localizations and store the content into: $this->data[$locFile][$this->core->config->getLang()]
+         * Read from a file the localizations and store the content into: $this->data[$locFile][$lang]
          * @param $locFile
          * @return bool
          */
-        private function readFromFile($locFile) {
+        private function readFromFile($locFile,$lang='') {
             if(!strlen($this->core->config->get('LocalizePath'))) return false;
+            if(!strlen($lang)) $lang = $this->core->config->getLang();
             $ok = true;
             $this->core->__p->add('Localization->readFromFile: ', $locFile, 'note');
             // First read from local directory if {{LocalizePath}} is defined.
             if(strlen($this->core->config->get('LocalizePath'))) {
-                $filename = $this->core->config->get('LocalizePath').'/'.$this->core->config->getLang().'_Core_'.$locFile.'.json';
+                $filename = $this->core->config->get('LocalizePath').'/'.$lang.'_Core_'.$locFile.'.json';
                 try {
                     $ret = @file_get_contents($filename);
                     if ($ret !== false) {
-                        $this->data[$locFile][$this->core->config->getLang()] = json_decode($ret,true);
+                        $this->data[$locFile][$lang] = json_decode($ret,true);
                         $this->core->cache->set('Core:Localization:Data',$this->data);
                     } else {
                         $this->core->logs->add('Error reading ' . $filename);
@@ -1440,15 +1472,16 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
             return $ok;
         }
 
-        private function  writeLocalization($locFile) {
+        private function  writeLocalization($locFile,$lang='') {
             if(!strlen($this->core->config->get('LocalizePath'))) return false;
             if(!isset($this->data[$locFile])) return false;
+            if(!strlen($lang)) $lang = $this->core->config->getLang();
             $ok = true;
-            $this->core->__p->add('Localization->writeLocalization: ', $this->core->config->getLang().'_Core_'.$locFile.'.json', 'note');
+            $this->core->__p->add('Localization->writeLocalization: ', $lang.'_Core_'.$locFile.'.json', 'note');
 
-            $filename = $this->core->config->get('LocalizePath').'/'.$this->core->config->getLang().'_Core_'.$locFile.'.json';
+            $filename = $this->core->config->get('LocalizePath').'/'.$lang.'_Core_'.$locFile.'.json';
             try {
-                $ret = @file_put_contents($filename,json_encode($this->data[$locFile][$this->core->config->getLang()],JSON_PRETTY_PRINT));
+                $ret = @file_put_contents($filename,json_encode($this->data[$locFile][$lang],JSON_PRETTY_PRINT));
                 if ($ret === false) {
                     $ok = false;
                     $this->core->logs->add('Error writting ' . $filename);
@@ -1470,8 +1503,9 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
          * @param $code
          * @return bool
          */
-        private function readFromWAPPLOCA($locFile,$code) {
+        private function readFromWAPPLOCA($locFile,$code,$lang='') {
             if(empty($this->core->config->get('WAPPLOCA'))) return false;
+            if(!strlen($lang)) $lang = $this->core->config->getLang();
 
             list($org,$app,$cat,$loc_code) = explode(';',$code,4);
             if(!strlen($loc_code) || preg_match('/[^a-z0-9_-]/',$loc_code)) {
@@ -1480,7 +1514,7 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
             }
             $ok = true;
 
-            $key = "$org/$app/$cat?lang=".$this->core->config->getLang();
+            $key = "$org/$app/$cat?lang=".$lang;
             // Read From CloudService the info and put the cats into $this->wapploca
             $url = $this->core->config->get('wapploca_api_url');
             if(!isset($this->wapploca[$key])) {
@@ -1505,27 +1539,12 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
 
             // Return the code required
             if(isset($this->wapploca[$key][$code]))
-                $this->data[$locFile][$this->core->config->getLang()][$code] =  $this->wapploca[$key][$code];
+                $this->data[$locFile][$lang][$code] =  $this->wapploca[$key][$code];
             else
-                $this->data[$locFile][$this->core->config->getLang()][$code] = $code;
+                $this->data[$locFile][$lang][$code] = $code;
             return $ok;
         }
 
-        /**
-         * Set manually a code into a Localization file
-         * @param $locFile
-         * @param $code
-         * @param $value
-         * @param string $lang
-         * @return bool
-         */
-        function set($locFile, $code, $value, $lang='') {
-
-            // Controling $lang value.
-            if(strlen($lang)) $lang = preg_replace('/[^a-z]/','',strtolower($lang));
-            if(strlen($lang) < 2) $lang = $this->core->config->getLang();
-
-        }
 
         /**
          * Check the formats for locaLizationFile and codes

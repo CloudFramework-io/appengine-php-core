@@ -65,6 +65,7 @@ class API extends RESTful
 				// Test set a dictionary
 				if(!count($errMsg)) {
 					$notes[] = ['test'=>['$this->core->localization->get(\'Test\',\'universe;earth;salutations;hello\')'=>$this->core->localization->get("Test","universe;earth;salutations;hello")]];
+					$notes[] = ['test'=>['$this->core->localization->get(\'Test\',\'universe;earth;salutations;good_bye\')'=>$this->core->localization->get("Test","universe;earth;salutations;good_bye")]];
 				}
 				// Testing $core->localization->set
 				// if($this->core->localization->set('Test','test;hello'));
