@@ -53,7 +53,7 @@ class API extends RESTful
 					'dbPassword' => ($this->core->config->get("dbPassword")) ? "**Require explore the Code**" : false,
 				],
 				'Localization' => [
-					'CloudServiceLocalization' => ($this->core->config->get("CloudServiceLocalization")) ? true : false,
+					'WAPPLOCA' => ($this->core->config->get("WAPPLOCA")) ?  (($showConfig) ? $this->core->config->get("WAPPLOCA") : '**Require a right SystemPassword**') : false,
 					'LocalizePath' => ($this->core->config->get("LocalizePath")) ? (($showConfig) ? $this->core->config->get("LocalizePath") : '**Require a right SystemPassword**') : false,
 					'LocalizatonDefaultLang' => ($this->core->config->get("LocalizatonDefaultLang")) ? $this->core->config->get("LocalizatonDefaultLang") : 'does not exist. $core->config->lang will be \'en\'',
 					'LocalizatonAllowedLangs' => ($this->core->config->get("LocalizatonAllowedLangs")) ? $this->core->config->get("LocalizatonAllowedLangs") : 'does not exist. You can put the languages you want separated by , (en,es)',

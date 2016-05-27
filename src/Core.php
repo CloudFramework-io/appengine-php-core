@@ -434,7 +434,13 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
             return true;
         }
 
-        function get($str,$expireTime=-1) {
+        /**
+         * Return an object from Cache.
+         * @param $str
+         * @param int $expireTime The default value es -1. If you want to expire, you can use a value in seconds.
+         * @return bool|mixed|null
+         */
+        function get($str, $expireTime=-1) {
             if(null === $this->cache) $this->init();
             if(null === $this->cache) return false;
 
@@ -544,8 +550,8 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
                         if (!file_exists($pathfile)) {
                             $pathfile = '';
                             // pathAPI is deprecated..
-                            if(strlen($this->config->get('apiPath')))
-                                $pathfile = $this->config->get('apiPath') . "/{$apifile}.php";
+                            if(strlen($this->config->get('ApiPath')))
+                                $pathfile = $this->config->get('ApiPath') . "/{$apifile}.php";
                             elseif(strlen($this->config->get('pathAPI')))
                                 $pathfile = $this->config->get('pathAPI') . "/{$apifile}.php";
                         }
@@ -1360,8 +1366,11 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
             if(!isset($_GET['_reloadDics']) && !isset($_GET['_nocacheDics'])) {
                 $this->data = $this->core->cache->get('Core:Localization:Data');
                 if (!is_array($this->data)) $this->data = [];
+            }
 
-                $this->wapploca = $this->core->cache->get('Core:Localization:WAPPLOCA');
+            // $this->core->config->get('wapploca_cache_expiration_time') default 3600
+            if( !isset($_GET['_nocacheDics'])) {
+                $this->wapploca = $this->core->cache->get('Core:Localization:WAPPLOCA', $this->core->config->get('wapploca_cache_expiration_time'));
                 if (!is_array($this->wapploca)) $this->wapploca = [];
             }
         }
@@ -1374,14 +1383,19 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
          * @return mixed|string
          */
         function get($locFile, $code, $config=[]) {
+            // Check syntax of $locFile & $code
             if(!$this->checkLocFileAndCode($locFile,$code)) return 'Err in: ['.$locFile."{{$code}}".']';
 
             // The $locFile does not exist
             if(!isset($_GET['_debugDics'])) {
 
-                if (!isset($this->data[$locFile][$this->core->config->getLang()]) && !isset($_GET['_reloadDics'])) $this->readFromFile($locFile);
+                // Trying read from file
+                if (!isset($this->data[$locFile][$this->core->config->getLang()]) && !isset($_GET['_reloadDics']))
+                    $this->readFromFile($locFile);
+
+                // Trying read from CloudServe
                 if (!isset($this->data[$locFile][$this->core->config->getLang()])) {
-                    if($this->readFromCloudService($locFile, $code) &&  isset($this->data[$locFile][$this->core->config->getLang()][$code])) {
+                    if($this->readFromWAPPLOCA($locFile, $code) &&  isset($this->data[$locFile][$this->core->config->getLang()][$code])) {
                         $this->writeLocalization($locFile);
                     }
                 }
@@ -1390,12 +1404,12 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
             if(!isset($_GET['_debugDics']) && isset($this->data[$locFile][$this->core->config->getLang()][$code]))
                 $ret = $this->data[$locFile][$this->core->config->getLang()][$code];
             else
-                $ret = $this->core->config->getLang().'_'.$locFile."{{$code}}";
+                $ret = $this->core->config->getLang().'_'.$locFile.":({$code})";
             return $ret;
         }
 
         /**
-         * Read from a file the localizations
+         * Read from a file the localizations and store the content into: $this->data[$locFile][$this->core->config->getLang()]
          * @param $locFile
          * @return bool
          */
@@ -1456,28 +1470,34 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
          * @param $code
          * @return bool
          */
-        private function readFromCloudService($locFile,$code) {
-            if(empty($this->core->config->get('CloudServiceLocalization'))) return false;
+        private function readFromWAPPLOCA($locFile,$code) {
+            if(empty($this->core->config->get('WAPPLOCA'))) return false;
 
             list($org,$app,$cat,$loc_code) = explode(';',$code,4);
             if(!strlen($loc_code) || preg_match('/[^a-z0-9_-]/',$loc_code)) {
-                $this->core->logs->add('Localization->readFromCloudService: has a wrong value for $code: '.$code);
+                $this->core->logs->add('Localization->readFromWAPPLOCA: has a wrong value for $code: '.$code);
                 return false;
             }
             $ok = true;
 
-            $key = "$org/$app/$cat/".$this->core->config->getLang();
+            $key = "$org/$app/$cat?lang=".$this->core->config->getLang();
             // Read From CloudService the info and put the cats into $this->wapploca
+            $url = $this->core->config->get('wapploca_api_url');
             if(!isset($this->wapploca[$key])) {
-                $ret = $this->core->request->get('wapploca/dics/' . $key);
+                $ret = $this->core->request->get($url.'/dics/' . $key);
                 if (!$this->core->request->error) {
                     $ret = json_decode($ret, true);
                     if (!$ret['success']) {
                         $this->core->logs->add($ret);
                         $ok = false;
                     } else {
-                        $this->wapploca[$key] = $ret['data'];
-                        $this->core->cache->set('Core:Localization:WAPPLOCA',$this->wapploca);
+                        if(is_array($ret['data'])) {
+                            $this->wapploca[$key] = $ret['data'];
+                            $this->core->cache->set('Core:Localization:WAPPLOCA', $this->wapploca);
+                        } else {
+                            $this->core->logs->add('WAPPLOCA return data is not an array');
+                            $this->core->logs->add($ret);
+                        }
                     }
                 }
                 else $ok = false;
@@ -1516,12 +1536,12 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
         private function checkLocFileAndCode(&$locFile, &$code) {
             $locFile = preg_replace('/[^A-z_\-]/','',$locFile);
             if(!strlen($locFile)) {
-                $this->core->errors->set('Localization->set has received a wrong spacename: '.$dic);
+                $this->core->errors->set('Localization has received a wrong spacename: ');
                 return false;
             }
             $code = preg_replace('/[^a-z_\-;]/','',strtolower($code));
             if(!strlen($code)) {
-                $this->core->errors->set('Localization->set has received a wrong code: '.$code);
+                $this->core->errors->set('Localization has received a wrong code: ');
                 return false;
             }
             return true;

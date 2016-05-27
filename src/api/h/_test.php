@@ -51,7 +51,7 @@ class API extends RESTful
 				$notes[] = '{{LocalizatonDefaultLang}}='.$this->core->config->get("LocalizatonDefaultLang");
 				$notes[] = '{{LocalizatonAllowedLangs}}='.$this->core->config->get("LocalizatonAllowedLangs");
 				$notes[] = '$this->core->config->getLang()='.$this->core->config->getLang();
-				$notes[] = '{{CloudServiceLocalization}}='. $this->core->config->get("CloudServiceLocalization");
+				$notes[] = '{{WAPPLOCA}}='. (strlen($this->core->config->get("WAPPLOCA"))?'****':false);
 
 				// Testing Localize var
 				if (!strlen($this->core->config->get("LocalizePath"))) {
