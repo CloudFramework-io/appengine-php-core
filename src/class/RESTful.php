@@ -148,12 +148,13 @@ if (!defined("_RESTfull_CLASS_")) {
         function checkMandatoryFormParam($keys, $msg = '', $min_length = 1)
         {
             if (!is_array($keys) && strlen($keys)) $keys = array($keys);
-
             if (is_array($keys))
                 foreach ($keys as $i => $key) {
-                    if(isset($this->formParams[$key]))
+                    if(isset($this->formParams[$key]) && is_string($this->formParams[$key]))
                         $this->formParams[$key] = trim($this->formParams[$key]);
-                    if (!isset($this->formParams[$key]) || strlen($this->formParams[$key]) < $min_length) {
+                    if (!isset($this->formParams[$key]) 
+                        || (is_string($this->formParams[$key]) && strlen($this->formParams[$key]) < $min_length)
+                        || (is_array($this->formParams[$key]) && !count($this->formParams[$key]))) {
                         if (!strlen($msg))
                             $msg = "{{$key}}" . ((!isset($this->formParams[$key]))?' form-param missing ':' form-params\' length is less than: '.$min_length);
                         $this->setError($msg);
@@ -367,6 +368,7 @@ if (!defined("_RESTfull_CLASS_")) {
             $ret['status'] = $this->getReturnCode();
             $ret['url'] = (($_SERVER['HTTPS'] == 'on') ? 'https://' : 'http://') . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
             $ret['method'] = $this->method;
+            $ret['ip'] = $this->core->system->ip;
 
             // Debug params
             if (isset($this->formParams['debug'])) {

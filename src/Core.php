@@ -535,10 +535,12 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
         }
 
         function dispatch() {
-            // API end points
-            if(strpos($this->system->url['url'],'/h/api')===0 ) {
+
+            // API end points. By default $this->config->get('core_api_url') is '/h/api'
+            if(strpos($this->system->url['url'],$this->config->get('core_api_url'))===0 ) {
                 if(!strlen($this->system->url['parts'][2])) $this->errors->add('missing api end point');
                 else {
+
                     $apifile = $this->system->url['parts'][2];
 
                     // path to file
@@ -559,31 +561,61 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
 
                     // IF NOT EXIST
                     include_once __DIR__ . '/class/RESTful.php';
-                    if(!$this->errors->lines){
-                        try {
-                            if(strlen($pathfile))
-                                include_once $pathfile;
-                            if (class_exists('API')) {
-                                $api = new API($this);
-                                $api->main();
-                                $this->__p->add("Executed RESTfull->main()", "/api/{$apifile}.php");
-                                $api->send();
 
-                            } else {
-                                $api = new RESTful($this);
-                                $api->setError("api $apifile does not include a API class extended from RESTFul with method ->main()",404);
-                                $api->send();
-                            }
-                        } catch (Exception $e) {
-                            $this->errors->add(error_get_last());
-                            $this->errors->add($e->getMessage());
+                    try {
+                        if(strlen($pathfile))
+                            include_once $pathfile;
+                        if (class_exists('API')) {
+                            $api = new API($this);
+                            $api->main();
+                            $this->__p->add("Executed RESTfull->main()", "/api/{$apifile}.php");
+                            $api->send();
+
+                        } else {
+                            $api = new RESTful($this);
+                            $api->setError("api $apifile does not include a API class extended from RESTFul with method ->main()",404);
+                            $api->send();
                         }
-                        $this->__p->add("API including RESTfull.php and {$apifile}.php: ",'There are ERRORS');
+                    } catch (Exception $e) {
+                        $this->errors->add(error_get_last());
+                        $this->errors->add($e->getMessage());
                     }
+                    $this->__p->add("API including RESTfull.php and {$apifile}.php: ",'There are ERRORS');
+
                     return false;
                 }
             }
+            // Take a LOOK in the menu
+            elseif($this->config->inMenuPath()){
+                if(!empty($this->config->get('logic'))) {
+                    try {
+                        include_once $this->system->app_path . '/logic/' . $this->config->get('logic');
+                        if (class_exists('Logic')) {
+                            $logic = new Logic($this);
+                            $logic->main();
+                            $this->__p->add("Executed Logic->main()", "/logic/{$this->config->get('logic')}");
+
+                        } else {
+                            $logic = new CoreLogic($this);
+                            $logic->addError("api {$this->config->get('logic')} does not include a Logic class extended from CoreLogic with method ->main()",404);
+                        }
+
+                    }catch (Exception $e) {
+                        $this->errors->add(error_get_last());
+                        $this->errors->add($e->getMessage());
+                    }
+                } else {
+                    $logic = new CoreLogic($this);
+                }
+
+                // Templates
+                if(!empty($this->config->get('template'))) {
+                    $logic->render($this->config->get('template'));
+
+                }
+            }
         }
+
         function jsonDecode($string,$as_array=false) {
             $ret = json_decode($string,$as_array);
             if(json_last_error() != JSON_ERROR_NONE) {
@@ -879,6 +911,25 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
                 }
         }
 
+        private function convertTags($data) {
+            $_array = is_array($data);
+
+            // Convert into string if we received an array
+            if($_array) $data = json_encode($data);
+            // Tags Conversions
+            $data = str_replace('{{rootPath}}', $this->core->system->root_path, $data);
+            $data = str_replace('{{appPath}}', $this->core->system->app_path, $data);
+            $data = str_replace('{{lang}}', $this->lang, $data);
+            while(strpos($data,'{{confVar:')!==false) {
+                list($foo,$var) = explode("{{confVar:",$data,2);
+                list($var,$foo) = explode("}}",$var,2);
+                $data = str_replace('{{confVar:'.$var.'}}',$this->get(trim($var)),$data);
+            }
+            // Convert into array if we received an array
+            if($_array) $data = json_decode($data,true);
+            return $data;
+        }
+
         /*
          * ABOUT CONFIG LANGUAGE
          */
@@ -912,32 +963,39 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
             $this->data[$var] = $data;
         }
         function pushMenu($var) {
-            $this->menu[] = $var;
+            if(!key_exists('menupath',$this->data)) {
+                $this->menu[] = $var;
+                if(!isset($var['path'])) {
+                    $this->core->logs->add('Missing path in menu line');
+                    $this->core->logs->add($var);
+                } else {
+                    // Trying to match the URLs
+                    if (strpos($var['path'], "{*}"))
+                        $_found = strpos($this->core->system->url['url'], str_replace("{*}", '', $var['path'])) === 0;
+                    else
+                        $_found =$this->core->system->url['url'] == $var['path'];
+
+                    if($_found) {
+                        $this->set('menupath',$var['path']);
+                        foreach ($var as $key =>$value) {
+                            $value = $this->convertTags($value);
+                            $this->set($key,$value);
+                        }
+                    }
+                }
+            }
         }
+
+        function inMenuPath() {
+            return key_exists('menupath',$this->data);
+        }
+
 
 
 
         function processConfigData($data)
         {
-            // Tags convertion
-            $convertTags = function ($data) {
-                $_array = is_array($data);
 
-                // Convert into string if we received an array
-                if($_array) $data = json_encode($data);
-                // Tags Conversions
-                $data = str_replace('{{rootPath}}', $this->core->system->root_path, $data);
-                $data = str_replace('{{appPath}}', $this->core->system->app_path, $data);
-                while(strpos($data,'{{confVar:')!==false) {
-                    list($foo,$var) = explode("{{confVar:",$data,2);
-                    list($var,$foo) = explode("}}",$var,2);
-                    $data = str_replace('{{confVar:'.$var.'}}',$this->get(trim($var)),$data);
-                }
-                // Convert into array if we received an array
-                if($_array) $data = json_decode($data,true);
-                return $data;
-
-            };
             // going through $data
             foreach ($data as $cond => $vars) {
                 if ($cond == '--') continue; // comment
@@ -951,7 +1009,7 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
                 }
 
                 // Substitute tags for strings
-                $vars = $convertTags($vars);
+                $vars = $this->convertTags($vars);
                 // If there is a condition tag
                 if(!$include) {
                     switch (trim(strtolower($tagcode))) {
@@ -1047,6 +1105,22 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
                         case "interminal":
                                 $include = $this->core->is->terminal();
                             break;
+                        case "url":
+                        case "noturl":
+                            $urls = explode(",", $tagvalue);
+
+                            // If noturl the condition is upsidedown
+                            if (trim(strtolower($tagcode)) == "noturl") $include = true;
+                            foreach ($urls as $ind => $url) if (strlen(trim($url))) {
+                                if (trim(strtolower($tagcode)) == "url") {
+                                    if (($this->core->system->url['url'] == trim($url)))
+                                        $include = true;
+                                } else {
+                                    if (($this->core->system->url['url'] == trim($url)))
+                                        $include = false;
+                                }
+                            }
+                            break;
                         case "inurl":
                         case "notinurl":
                             $urls = explode(",", $tagvalue);
@@ -1063,15 +1137,42 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
                                 }
                             }
                             break;
+                        case "beginurl":
+                        case "notbeginurl":
+                            $urls = explode(",", $tagvalue);
+                            // If notinurl the condition is upsidedown
+                            if (trim(strtolower($tagcode)) == "notbeginurl") $include = true;
+                            foreach ($urls as $ind => $inurl) if (strlen(trim($inurl))) {
+                                if (trim(strtolower($tagcode)) == "beginurl") {
+                                    if ((strpos($this->core->system->url['url'], trim($inurl)) === 0))
+                                        $include = true;
+                                } else {
+                                    if ((strpos($this->core->system->url['url'], trim($inurl)) === 0))
+                                        $include = false;
+                                }
+                            }
+                            break;
 
                         case "menu":
                             if (is_array($vars)) {
                                 foreach ($vars as $key => $value) {
-                                    $this->pushMenu($value);
+                                    if(!empty($value['path']))
+                                        $this->pushMenu($value);
+                                    else {
+                                        $this->core->logs->add('wrong menu format. Missing path element');
+                                        $this->core->logs->add($value);
+                                    }
+
                                 }
                             } else {
                                 $this->core->errors->add("menu: tag does not contain an array");
                             }
+                            break;
+                        case "inmenupath":
+                            $include = $this->inMenuPath();
+                            break;
+                        case "notinmenupath":
+                            $include = !$this->inMenuPath();
                             break;
                         case "isversion":
                             if (trim(strtolower($tagvalue)) == 'core')
@@ -1096,7 +1197,7 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
                             }
                             else {
                                 // Assign conf var values converting {} tags
-                                $this->set($key, $convertTags($value));
+                                $this->set($key, $this->convertTags($value));
                             }
                         }
                     }
@@ -1113,6 +1214,7 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
             $this->_configPaths[$path] = 1; // Control witch config paths are beeing loaded.
             try {
                 $data = json_decode(@file_get_contents($path),true);
+
                 if(!is_array($data)) {
                     if(json_last_error())
                         $this->core->errors->add("Wrong format of json: ".$path);
@@ -1891,5 +1993,71 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
             }
             return $ret;
         }
+    }
+}
+
+Class CoreLogic
+{
+    protected $core;
+    var $method = '';
+    var $formParams = array();
+    var $params = array();
+    public $error = false;
+    public $errorMsg = [];
+
+    function __construct(Core &$core)
+    {
+        $this->core = $core;
+        $this->method = (strlen($_SERVER['REQUEST_METHOD'])) ? $_SERVER['REQUEST_METHOD'] : 'GET';
+        if ($this->method == 'GET') {
+            $this->formParams = &$_GET;
+            if (isset($_GET['_raw_input_']) && strlen($_GET['_raw_input_'])) $this->formParams = (count($this->formParams)) ? array_merge($this->formParams, json_decode($_GET['_raw_input_'], true)) : json_decode($_GET['_raw_input_'], true);
+        } else {
+            if (count($_GET)) $this->formParams = (count($this->formParams)) ? array_merge($this->formParam, $_GET) : $_GET;
+            if (count($_POST)) $this->formParams = (count($this->formParams)) ? array_merge($this->formParams, $_POST) : $_POST;
+            if (isset($_POST['_raw_input_']) && strlen($_POST['_raw_input_'])) $this->formParams = (count($this->formParams)) ? array_merge($this->formParams, json_decode($_POST['_raw_input_'], true)) : json_decode($_POST['_raw_input_'], true);
+            if (isset($_GET['_raw_input_']) && strlen($_GET['_raw_input_'])) $this->formParams = (count($this->formParams)) ? array_merge($this->formParams, json_decode($_GET['_raw_input_'], true)) : json_decode($_GET['_raw_input_'], true);
+
+            // raw data.
+            $input = file_get_contents("php://input");
+            if (strlen($input)) {
+                $this->formParams['_raw_input_'] = $input;
+
+                if (is_object(json_decode($input))) {
+                    $input_array = json_decode($input, true);
+                } else {
+                    parse_str($input, $input_array);
+                }
+                if (is_array($input_array))
+                    $this->formParams = array_merge($this->formParams, $input_array);
+                else {
+                    $this->setError('Wrong JSON: ' . $input, 400);
+                }
+                unset($input_array);
+                /*
+               if(strpos($this->requestHeaders['Content-Type'], 'json')) {
+               }
+                 *
+                 */
+            }
+        }
+        $this->params = &$this->core->system->url['parts'];
+
+    }
+
+    function render($template) {
+        try {
+            include $this->core->system->app_path . '/templates/' . $template;
+        }
+        catch (Exception $e) {
+            $this->addError(error_get_last());
+            $this->addError($e->getMessage());
+        }
+    }
+    function addError($value)
+    {
+        $this->error = true;
+        $this->core->errors->add($value);
+        $this->errorMsg[] = $value;
     }
 }
