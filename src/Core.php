@@ -1682,7 +1682,7 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
         {
             $this->core = $core;
             if (!$this->core->config->get("CloudServiceUrl"))
-                $this->core->config->set("CloudServiceUrl", 'https://cloud.adnbp.com/h/api');
+                $this->core->config->set("CloudServiceUrl", 'https://cloudframework.io/h/api');
 
         }
 
