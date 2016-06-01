@@ -35,6 +35,7 @@ if (!defined("_RESTfull_CLASS_")) {
 
             $this->core = $core;
 
+
             // FORCE Ask to the browser the basic Authetication
             if (isset($_REQUEST['_forceBasicAuth'])) {
                 if (($_REQUEST['_forceBasicAuth'] !== '0' && !$this->core->security->existBasicAuth())
@@ -152,7 +153,7 @@ if (!defined("_RESTfull_CLASS_")) {
                 foreach ($keys as $i => $key) {
                     if(isset($this->formParams[$key]) && is_string($this->formParams[$key]))
                         $this->formParams[$key] = trim($this->formParams[$key]);
-                    if (!isset($this->formParams[$key]) 
+                    if (!isset($this->formParams[$key])
                         || (is_string($this->formParams[$key]) && strlen($this->formParams[$key]) < $min_length)
                         || (is_array($this->formParams[$key]) && !count($this->formParams[$key]))) {
                         if (!strlen($msg))

@@ -256,8 +256,8 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                                 // GeoData Transformation
                                 foreach ($record->getData() as $key=>$value) if($value instanceof Geopoint)
                                     $record->{$key} = $value->getLatitude().','.$value->getLongitude();
-
-                                $ret[] = array_merge(['KeyId' => $record->getKeyId(),'KeyName' => $record->getKeyName()], $record->getData());
+                                $subret = (null !== $record->getKeyId())?['KeyId' => $record->getKeyId()]:['KeyName' => $record->getKeyName()];
+                                $ret[] = array_merge($subret, $record->getData());
                                 $tr++;
                                 if ($limit > 0 && $tr == $limit) break;
                             }
@@ -276,7 +276,7 @@ if (!defined ("_DATASTORE_CLASS_") ) {
             return $ret;
         }
         function fetchKeys($keys) {
-            return $this->fetchByKeys();
+            return $this->fetchByKeys($keys);
         }
         function fetchByKeys($keys)
         {
@@ -322,6 +322,37 @@ if (!defined ("_DATASTORE_CLASS_") ) {
             return(count($data));
         }
 
+        function delete($where){
+            $_q = 'SELECT __key__ FROM ' . $this->entity_name;
+
+            // Where construction
+            if (is_array($where)) {
+                $i = 0;
+                foreach ($where as $key => $value) {
+                    if ($i == 0) $_q .= " WHERE $key = @{$key}";
+                    else $_q .= " AND $key = @{$key}";
+                    $i++;
+                }
+            } elseif (strlen($where)) {
+                $_q .= " WHERE $where";
+                $where = null;
+            }
+            $this->store->query($_q, $where);
+            $this->lastQuery = $this->store->str_last_query;
+            
+            $data = $this->store->fetchAll($_q, $where);
+            if(!count($data)) return [];
+            if($this->store->delete($data)) {
+                return($this->transformEntities($data));
+            } else {
+                return false;
+            }
+        }
+
+        function deleteByKeys($keys) {
+
+        }
+
         function query($q, $data)
         {
             $ret = [];
@@ -343,8 +374,8 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                 foreach ($record->getData() as $key=>$value)
                     if($value instanceof Geopoint)
                         $record->{$key} = $value->getLatitude().','.$value->getLongitude();
-
-                $ret[] = array_merge(['KeyId' => $record->getKeyId(),'KeyName' => $record->getKeyName()], $record->getData());
+                $subret = (null !== $record->getKeyId())?['KeyId' => $record->getKeyId()]:['KeyName' => $record->getKeyName()];
+                $ret[] = array_merge($subret, $record->getData());
             }
             return $ret;
 
