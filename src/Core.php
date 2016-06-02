@@ -1397,11 +1397,11 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
                 } else {
                     $date = new DateTime(null, new DateTimeZone($_zone));
                     $secs = microtime(true) + $date->getOffset() - $_time;
-
                     if (!strlen($secret)) {
                         $secArr = $this->core->config->get('CLOUDFRAMEWORK-ID-' . $_id);
                         if (isset($secArr['secret'])) $secret = $secArr['secret'];
                     }
+
 
                     if (!strlen($secret)) {
                         $this->core->logs->add('conf-var CLOUDFRAMEWORK-ID-' . $_id . ' missing or it is not a righ CLOUDFRAMEWORK array.');
@@ -1436,8 +1436,28 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
         }
 
         // time, has to to be microtime().
-        function generateCloudFrameWorkSecurityString($id, $time = '', $secret = '')
+        function generateCloudFrameWorkSecurityString($id='', $time = '', $secret = '')
         {
+            if(!strlen($id)) {
+                $id = $this->core->config->get('CloudServiceId');
+                if(!strlen($id)) {
+                    $this->core->errors->add('generateCloudFrameWorkSecurityString has not received $id and CloudServiceId config var does not exist');
+                    return false;
+                }
+            }
+
+            if(!strlen($secret)) {
+                $secret = $this->core->config->get('CloudServiceSecret');
+                if(!strlen($secret)) {
+                    $secArr = $this->core->config->get('CLOUDFRAMEWORK-ID-' . $id);
+                    if (isset($secArr['secret'])) $secret = $secArr['secret'];
+                    if(!strlen($secret)) {
+                        $this->core->errors->add('generateCloudFrameWorkSecurityString has not received $secret and CloudServiceSecret and CLOUDFRAMEWORK-ID-XXX   config vars don\'t not exist');
+                        return false;
+                    }
+                }
+            }
+
             $ret = null;
             if (!strlen($secret)) {
                 $secArr = $this->core->config->get('CLOUDFRAMEWORK-ID-' . $id);

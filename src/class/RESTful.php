@@ -319,7 +319,7 @@ if (!defined("_RESTfull_CLASS_")) {
         function checkCloudFrameWorkSecurity($time = 0, $id = '')
         {
             $ret = false;
-            $info = $this->core->security->checkCloudFrameWorkSecurity($time); // Max. 10 min for the Security Token and return $this->getConf('CLOUDFRAMEWORK-ID-'.$id);
+            $info = $this->core->security->checkCloudFrameWorkSecurity($time,$id); // Max. 10 min for the Security Token and return $this->getConf('CLOUDFRAMEWORK-ID-'.$id);
             if (false === $info) $this->setError($this->core->logs->get(), 401);
             else {
                 $ret = true;
@@ -336,13 +336,15 @@ if (!defined("_RESTfull_CLASS_")) {
             return ($this->core->security->existBasicAuth() && $this->core->security->existBasicAuthConfig());
         }
 
-        function checkBasicAuthSecurity()
+        function checkBasicAuthSecurity($id='')
         {
             $ret = false;
             if (false === ($basic_info = $this->core->security->checkBasicAuthWithConfig())) {
                 $this->setError($this->core->logs->get(), 401);
             } elseif (!isset($basic_info['id'])) {
                 $this->setError('Missing "id" parameter in authorizations config file', 401);
+            } elseif (strlen($id)>0 && $id != $basic_info['id']) {
+                $this->setError('This "id" parameter in authorizations is not allowed', 401);
             } elseif (!is_array($info = $this->core->config->get('CLOUDFRAMEWORK-ID-' . $basic_info['id']))) {
                 $this->setError('Missing config CLOUDFRAMEWORK-ID-{id} specified in "authorizations" config paramater', 503);
             } else {
