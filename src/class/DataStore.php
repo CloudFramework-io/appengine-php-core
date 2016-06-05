@@ -61,7 +61,6 @@ if (!defined ("_DATASTORE_CLASS_") ) {
             $ret = [];
             if (!is_array($data)) $this->setError('No data received');
             else {
-
                 $this->core->__p->add('createEntities: ', $this->entity_name, 'note');
 
                 // converting $data into n,n dimmensions
@@ -82,7 +81,9 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                         }
                         // if the field is key or keyname feed $schema_key or $schema_keyname
                         if ($this->schema['props'][$i][1] == 'key') {
-                            $schema_key =  $value;
+                            $schema_key =  preg_replace('/[^0-9]/','' ,$value );
+                            if(!strlen($schema_key)) $this->setError('wrong Key value');
+
                         } elseif ($this->schema['props'][$i][1] == 'keyname') {
                             $schema_keyname = $value;
 
@@ -112,7 +113,9 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                         }
                     }
 
-                    //Complete info in the rest of info
+
+                    //Complete info in the rest of inf
+                    if(!$this->error)
                     if (count($record)) {
                         try {
                             $entity = $this->store->createEntity($record);
@@ -135,6 +138,8 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                             $this->setError($e->getMessage());
                             $ret = false;
                         }
+                    } else {
+                        $this->setError('Structure of the data does not match with schema');
                     }
                 }
             }
@@ -280,10 +285,15 @@ if (!defined ("_DATASTORE_CLASS_") ) {
         }
         function fetchByKeys($keys)
         {
+            $keyType = 'key';
+
+            if((is_array($this->schema) && strpos(json_encode($this->schema),'keyname' )!==false) || preg_match('/[^0-9,]/',$keys )) {
+                $keyType='keyname';
+            }
             // Are keys or names
             $ret = [];
             try {
-                if(strpos($keys,'"')===false && strpos($keys,"'")===false) {
+                if($keyType=='key') {
                     $data = $this->store->fetchByIds(explode(',',$keys));
                 } else {
                     // DOES NOT SUPPORT keys with ',' as values.

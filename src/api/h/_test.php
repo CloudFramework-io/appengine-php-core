@@ -15,6 +15,58 @@ class API extends RESTful
 		$check = [];
 		if(!$this->error ) {
 
+
+			if (isset($_GET['all']) || isset($_GET['DataStore']))
+				if ($this->core->config->get("DataStoreSpaceName")) {
+					$this->core->__p->init('Test', 'DataStore connect');
+
+					/* @var $ds DataStore */
+					$schema = '{
+								"id": ["key","index"],
+								"title": ["string","index"],
+								"author": ["string","index"],
+								"published": ["date","index"],
+								"geolocation":["geo"],
+								"cat":["list","index"],
+								"description": ["string"]
+							  }';
+					$data ='[
+							  [1,"title1","author1","2014-01-01","53.4723272,-2.2936314",["cat1","cat2"],"this is a description for 1"],
+							  [2,"title2","author2","2014-01-02","53.4723272,-2.2936314",["cat1","cat2"],"this is a description for 2"],
+							  [3,"title2","author3","2014-01-02","53.4723272,-2.2936314",["cat1","cat2"],"this is a description for 2"]
+							  ]';
+					$ds = $this->core->loadClass("DataStore",['CloudFrameWorkTest',$this->core->config->get("DataStoreSpaceName"),json_decode($schema, true)]);
+					$arr = ['{spacename} = $this->core->config->get("DataStoreSpaceName")' => substr($this->core->config->get("DataStoreSpaceName"), 0, 2) . '***'];
+					$arr['{schema} '] = preg_replace('/(\t|\n)/','' , $schema);
+					$arr['$ds = $this->core->loadClass("DataStore",[\'CloudFrameWorkTest\',{spacename},{schema}]);'] = !$ds->error;
+					$notes[] = $arr;
+
+					if (!$ds->error) {
+						$ds->createEntities(json_decode($data, true));
+						$arr = ['{data}' => preg_replace('/(\t|\n)/','' , $data)];
+						$arr['$ds->createEntities({data})'] = !$ds->error;
+						if(!$ds->error) {
+							$ds->fetchAll();
+							$arr['$ds->fetchAll()'] = $ds->fetchAll();
+						}
+						$notes[] = $arr;
+					} else {
+						$notes = array($ds->errorMsg);
+					}
+
+					/*
+                    $notes[] = ['dbServer'=>(strlen($this->core->config->get("dbServer")))?substr($this->core->config->get("dbServer"),0,4).'***':'None'];
+                    $notes[] = ['dbSocket'=>(strlen($this->core->config->get("dbSocket")))?'***':'None'];
+                    $notes[] = ['dbUser'=>(strlen($this->core->config->get("dbUser")))?'***':'None'];
+                    $notes[] = ['dbPassword'=>(strlen($this->core->config->get("dbPassword")))?'***':'None'];
+                    $notes[] = ['dbName'=>(strlen($this->core->config->get("dbName")))?'***':'None'];
+                    $notes[] = ['dbPort'=>(strlen($this->core->config->get("dbPort")))?'***':'None'];
+                    */
+					$this->core->__p->end('Test', 'DataStore connect', !$ds->error, $notes);
+				} else {
+					$this->addReturnData(array('DataStore connect' => 'no DataStoreSpaceName config-var is configuredconfigured'));
+				}
+
 			if (isset($_GET['all']) || isset($_GET['CloudSQL']))
 				if ($this->core->config->get("dbName")) {
 					$this->core->__p->init('Test', 'CloudSQL connect');
@@ -76,7 +128,7 @@ class API extends RESTful
 			}
 
 			// Cloud Service Connections
-			if (isset($_GET['all']) || $_GET['Localization'] == 'cloud')
+			if (isset($_GET['all']) || isset($_GET['CloudService']))
 				if ($this->core->request->getServiceUrl()) {
 					$url = '/_version';
 					$retErr = '';

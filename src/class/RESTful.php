@@ -146,29 +146,48 @@ if (!defined("_RESTfull_CLASS_")) {
             return ($this->error === 0);
         }
 
-        function checkMandatoryFormParam($keys, $msg = '', $min_length = 1)
+        function checkMandatoryFormParam($key, $msg = '', $values=[],$min_length = 1)
         {
+            if (isset($this->formParams[$key]) && is_string($this->formParams[$key]))
+                $this->formParams[$key] = trim($this->formParams[$key]);
+
+            if (!isset($this->formParams[$key])
+                || (is_string($this->formParams[$key]) && strlen($this->formParams[$key]) < $min_length)
+                || (is_array($this->formParams[$key]) && count($this->formParams[$key]) < $min_length)
+                || (is_array($values) && count($values) && !in_array($this->formParams[$key], $values))
+            ) {
+                if (!strlen($msg))
+                    $msg = "{{$key}}" . ((!isset($this->formParams[$key])) ? ' form-param missing ' : ' form-params\' length is less than: ' . $min_length);
+                $this->setError($msg);
+            }
+            return ($this->error === 0);
+
+        }
+
+        function checkMandatoryFormParams($keys)
+        {
+
             if (!is_array($keys) && strlen($keys)) $keys = array($keys);
-            if (is_array($keys))
-                foreach ($keys as $i => $key) {
-                    if(isset($this->formParams[$key]) && is_string($this->formParams[$key]))
-                        $this->formParams[$key] = trim($this->formParams[$key]);
-                    if (!isset($this->formParams[$key])
-                        || (is_string($this->formParams[$key]) && strlen($this->formParams[$key]) < $min_length)
-                        || (is_array($this->formParams[$key]) && !count($this->formParams[$key]))) {
-                        if (!strlen($msg))
-                            $msg = "{{$key}}" . ((!isset($this->formParams[$key]))?' form-param missing ':' form-params\' length is less than: '.$min_length);
-                        $this->setError($msg);
-                        break;
-                    }
-                }
+            foreach ($keys as $i=>$item) if(!is_array($item)) $keys[$i] = array($item);
+
+            foreach ($keys as $key)if(is_string($key[0])) {
+                $fkey = $key[0];
+                $fmsg = (isset($key[1]))?$key[1]:'';
+                $fvalues = (is_array($key[2]))?$key[2]:[];
+                $fmin = (isset($key[3]))?$key[3]:1;
+                $this->checkMandatoryFormParam($fkey,$fmsg,$fvalues,$fmin);
+            }
             return ($this->error === 0);
         }
 
-        function checkMandatoryParam($pos, $msg = '')
+        function checkMandatoryParam($pos, $msg = '',$values = [])
         {
             if (!isset($this->params[$pos]) || !strlen($this->params[$pos])) {
                 $this->setError(($msg == '') ? 'param ' . $pos . ' is mandatory' : $msg);
+            } else if(is_array($values) && count($values)){
+                if(!in_array($this->params[$pos], $values)) {
+                    $this->setError(($msg == '') ? 'param ' . $pos . ' is mandatory' : $msg);
+                }
             }
             return ($this->error === 0);
         }

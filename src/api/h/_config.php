@@ -52,6 +52,9 @@ class API extends RESTful
 					'dbUser' => ($this->core->config->get("dbUser")) ? (($showConfig) ? $this->core->config->get("dbUser") : '**Require a right SystemPassword**') : false,
 					'dbPassword' => ($this->core->config->get("dbPassword")) ? "**Require explore the Code**" : false,
 				],
+				'DataStore' => [
+					'DataStoreSpaceName' => ($this->core->config->get("DataStoreSpaceName")) ? (($showConfig) ? $this->core->config->get("DataStoreSpaceName") : '**Require a right SystemPassword**') : false
+				],
 				'Localization' => [
 					'WAPPLOCA' => ($this->core->config->get("WAPPLOCA")) ?  (($showConfig) ? $this->core->config->get("WAPPLOCA") : '**Require a right SystemPassword**') : false,
 					'LocalizePath' => ($this->core->config->get("LocalizePath")) ? (($showConfig) ? $this->core->config->get("LocalizePath") : '**Require a right SystemPassword**') : false,

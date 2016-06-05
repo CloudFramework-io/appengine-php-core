@@ -563,8 +563,9 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
                     include_once __DIR__ . '/class/RESTful.php';
 
                     try {
-                        if(strlen($pathfile))
+                        if(strlen($pathfile)) {
                             include_once $pathfile;
+                        }
                         if (class_exists('API')) {
                             $api = new API($this);
                             $api->main();
@@ -611,7 +612,8 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
                 // Templates
                 if(!empty($this->config->get('template'))) {
                     $logic->render($this->config->get('template'));
-
+                } else {
+                    echo 'no template tag';
                 }
             }
         }
