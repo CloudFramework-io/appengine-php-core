@@ -1316,7 +1316,15 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
             else return '';
         }
 
-        function checkWebKey($keys) {
+        function checkWebKey($keys=null) {
+
+            // If I don't have the credentials in keys I try to check if CLOUDFRAMEWORK-WEB-KEYS is defined.
+            if(null === $keys) {
+                $keys = $this->core->config->get('CLOUDFRAMEWORK-WEB-KEYS');
+                if(!is_array($keys)) return false;
+            }
+
+            // Analyzing $keys
             if(!is_array($keys)) $keys = [[$keys,'*']];
             else if(!is_array($keys[0])) $keys = [$keys];
             $web_key = $this->getWebKey();
