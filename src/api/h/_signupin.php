@@ -9,6 +9,34 @@ class API extends RESTful
     var $dsAuths = null;
 
     function main() {
+
+        $schema = '[{ "entity":"CloudFrameWorkUsers",
+                     "user": {"field":"User"},
+                     "auths":{"field":"AuthTypes"},
+                     "fingerprint": {"field":"Fingerprint"},
+                     "signup": {
+                         "date": {"field":"DateUpdating","oninsertvalue":"now","hidden":true},
+                         "name": {"field":"FullName"},
+                         "email": {"field":"Email"},
+                         "active":{"field":"Active","oninsertvalue":true,"optional":true}
+                     }
+                    },
+                    { "entity":"CloudFrameWorkUserAuths",
+                      "type": {"field":"Type"},
+                      "user": {"field":"User","minlength":8},
+                      "token_id": {"field":"TokenId","minlength":8},
+                      "token_secret": {"field":"TokenSecret"},
+                      "fingerprint": {"field":"Fingerprint"},
+                      "dateinsertion": {"field":"DateInsertion"},
+                       "signup": {
+                         "name": {"field":"FullName","index":true},
+                         "active": {"field":"Active","type":"boolean","oninsertvalue":true,"optional":true},
+                         "json": {"field":"JSON"}
+                     }
+                    }]';
+
+        $this->core->config->set('SignInUpSchema',json_decode($schema,true));
+
         $this->checkSecurity();
         $this->checkMethod('POST');
         if(!$this->error && !strlen($this->core->config->get('DataStoreSpaceName'))) $this->setError('Missing DataStoreSpaceName config-var',503);
@@ -96,60 +124,69 @@ class API extends RESTful
     }
     function checkSchema()
     {
-        $schema = '[{ "entity":"CloudFrameWorkUsers",
-                     "user": {"field":"User"},
-                     "name": {"field":"FullName"},
-                     "email": {"field":"Email"},
-                     "active":{"field":"Active","oninsertvalue":true},
-                     "fingerprint": {"field":"Fingerprint"},
-                     "date": {"field":"DateUpdating"},
-                     "auths":{"field":"AuthTypes"}
-                    },
-                    { "entity":"CloudFrameWorkUserAuths",
-                             "type": {"field":"Type"},
-                             "user": {"field":"User","minlength":8},
-                             "key": {"field":"Key","minlength":8},
-                             "token": {"field":"Token"},
-                             "fingerprint": {"field":"Fingerprint"},
-                             "dateinsertion": {"field":"DateInsertion"},
-                             "signup": {
-                                 "name": {"field":"FullName","index":true},
-                                 "active": {"field":"Active","type":"boolean","oninsertvalue":true,"optional":true},
-                                 "json": {"field":"JSON"}
-                             }
-                    }]';
 
-        $this->core->config->set('SignInUpSchema',json_decode($schema,true));
 
         if(!$this->error &&  !is_array($this->core->config->get('SignInUpSchema')))
             $this->setError('Missing SignInUpSchema config-var',503);
         else {
             $schema = $this->core->config->get('SignInUpSchema');
-            if(!$this->error && !strlen($schema['entity'])) $this->setError('Missing entity in SignInUpSchema ',503);
-            if(!$this->error && !strlen($schema['user']['field'])) $this->setError('Missing user.field in SignInUpSchema ',503);
-            if(!$this->error && !strlen($schema['password']['field'])) $this->setError('Missing password.field in SignInUpSchema ',503);
-            if(!$this->error && is_array($schema['signup'])) {
-                foreach ($schema['signup'] as $key => $item) {
-                    if(empty($item['field'])) {
-                        $this->setError('Missing signup.'.$key.'.field');
+            // Entity 0
+            if (!$this->error && !strlen($schema[0]['entity'])) $this->setError('Missing entity in SignInUpSchema.Users ', 503);
+            if (!$this->error && !strlen($schema[0]['user']['field'])) $this->setError('Missing user field in SignInUpSchema.Users ', 503);
+            if (!$this->error && !strlen($schema[0]['auths']['field'])) $this->setError('Missing auths field in SignInUpSchema.Users ', 503);
+            if (!$this->error && !strlen($schema[0]['fingerprint']['field'])) $this->setError('Missing fingerprint field in SignInUpSchema.Users ', 503);
+            if (!$this->error && is_array($schema[0]['signup'])) {
+                foreach ($schema[0]['signup'] as $key => $item) {
+                    if (empty($item['field'])) {
+                        $this->setError('Missing signup.' . $key . '.field  in SignInUpSchema.Users');
+                    }
+                }
+            }
+
+            // Entity 1
+            if (!$this->error && !strlen($schema[1]['entity'])) $this->setError('Missing entity in SignInUpSchema.UserAuths', 503);
+            if (!$this->error && !strlen($schema[1]['type']['field'])) $this->setError('Missing type field in SignInUpSchema.UserAuths', 503);
+            if (!$this->error && !strlen($schema[1]['user']['field'])) $this->setError('Missing user field in SignInUpSchema.UserAuths', 503);
+            if (!$this->error && !strlen($schema[1]['token_id']['field'])) $this->setError('Missing token_id field in SignInUpSchema.UserAuths', 503);
+            if (!$this->error && !strlen($schema[1]['token_secret']['field'])) $this->setError('Missing token_secret field in SignInUpSchema.UserAuthss ', 503);
+            if (!$this->error && !strlen($schema[1]['fingerprint']['field'])) $this->setError('Missing fingerprint field in SignInUpSchema.UserAuths', 503);
+            if (!$this->error && !strlen($schema[1]['dateinsertion']['field'])) $this->setError('Missing dateinsertion field in SignInUpSchema.UserAuths', 503);
+            if (!$this->error && is_array($schema[1]['signup'])) {
+                foreach ($schema[1]['signup'] as $key => $item) {
+                    if (empty($item['field'])) {
+                        $this->setError('Missing signup.' . $key . '.field  in SignInUpSchema.UserAuths');
                     }
                 }
             }
         }
-
         // Asign the schema
         if(!$this->error ) {
             /* @var $ds DataStore */
-            $dschema = [$schema['entity']=>[$schema['user']['field']=>['keyname','index']]];
-            $dschema[$schema['entity']][$schema['password']['field']] = ['string'];
-            $dschema[$schema['entity']][$schema['fingerprint']['field']] = ['string'];
-            $dschema[$schema['entity']][$schema['dateinsertion']['field']] = ['datetime','index'];
-            if(is_array($schema['signup'])) foreach ($schema['signup'] as $key => $item) {
-                $dschema[$schema['entity']][$item['field']]=[(strlen($item['type']))?$item['type']:'string'];
-                if(isset($item['index'])) $dschema[$schema['entity']][$item['field']][]='index';
+            $dschema = [$schema[0]['entity']=>[$schema[0]['user']['field']=>['keyname','index']]];
+            $dschema[$schema[0]['entity']][$schema[0]['auths']['field']] = ['list'];
+            $dschema[$schema[0]['entity']][$schema[0]['fingerprint']['field']] = ['string'];
+            if(is_array($schema[0]['signup'])) foreach ($schema[0]['signup'] as $key => $item) {
+                $dschema[$schema[0]['entity']][$item['field']]=[(strlen($item['type']))?$item['type']:'string'];
+                if(isset($item['index'])) $dschema[$schema[0]['entity']][$item['field']][]='index';
             }
-            $this->ds = $this->core->loadClass('DataStore',[$schema['entity'],$this->core->config->get('DataStoreSpaceName'),$dschema[$schema['entity']]]);
+
+            $dschema[$schema[1]['entity']][$schema[1]['user']['field']] = ['string','index'];
+            $dschema[$schema[1]['entity']][$schema[1]['type']['field']] = ['string','index'];
+            $dschema[$schema[1]['entity']][$schema[1]['token_id']['field']] = ['string'];
+            $dschema[$schema[1]['entity']][$schema[1]['token_secret']['field']] = ['string'];
+            $dschema[$schema[1]['entity']][$schema[1]['fingerprint']['field']] = ['string'];
+            $dschema[$schema[1]['entity']][$schema[1]['dateinsertion']['field']] = ['datetime'];
+
+            if(is_array($schema[1]['signup'])) foreach ($schema[1]['signup'] as $key => $item) {
+                $dschema[$schema[1]['entity']][$item['field']]=[(strlen($item['type']))?$item['type']:'string'];
+                if(isset($item['index'])) $dschema[$schema[1]['entity']][$item['field']][]='index';
+            }
+
+            $this->dsUsers = $this->core->loadClass('DataStore',[$schema[0]['entity'],$this->core->config->get('DataStoreSpaceName'),$dschema[$schema[0]['entity']]]);
+            $this->dsAuths = $this->core->loadClass('DataStore',[$schema[1]['entity'],$this->core->config->get('DataStoreSpaceName'),$dschema[$schema[1]['entity']]]);
             if ($ds->error) $this->setError($this->ds->errorMsg);
+
+
 
         }
 
@@ -170,9 +207,13 @@ class API extends RESTful
                 $this->checkMandatoryFormParams(['user','password']);
 
         if(!$this->error && in_array($this->params[0],['up','upin','social'])) {
-            if (is_array($this->schema['signup']))
-                foreach ($this->schema['signup'] as $key => $item) {
-                    if(!$item['optional']) $this->checkMandatoryFormParam($key);
+            if (is_array($this->schema[0]['signup']))
+                foreach ($this->schema[0]['signup'] as $key => $item) {
+                    if(!$item['optional'] && !$item['hidden'] ) $this->checkMandatoryFormParam($key);
+                }
+            if (is_array($this->schema[1]['signup']))
+                foreach ($this->schema[1]['signup'] as $key => $item) {
+                    if(!$item['optional'] && !$item['hidden'] ) $this->checkMandatoryFormParam($key);
                 }
         }
 
