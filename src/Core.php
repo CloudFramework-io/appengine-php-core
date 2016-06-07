@@ -546,6 +546,7 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
                     // path to file
                     if($apifile[0]=='_' || $apifile=='queue')
                         $pathfile = __DIR__ . "/api/h/{$apifile}.php";
+                        if (!file_exists($pathfile)) $pathfile='';
                     else {
                         // Every End-point inside the app has priority over the apiPaths
                         $pathfile = $this->system->app_path . "/api/{$apifile}.php";
@@ -1237,6 +1238,9 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
     class Security
     {
         private $core;
+        /* @var $dsToken DataStore */
+        private $dsToken = null;
+
         function __construct(Core &$core)
         {
             $this->core = $core;
@@ -1483,6 +1487,78 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
                 $ret .= '__' . hash_hmac('sha1', $ret, $secret);
             }
             return $ret;
+        }
+
+        private function createDSToken() {
+            $dschema = ['token' => ['keyname','index']];
+            $dschema['dateInsert'] =  ['datetime','index'];
+            $dschema['JSONZIP'] =  ['string'];
+            $dschema['fingerprint'] =  ['string'];
+            $dschema['prefix'] =  ['string','index'];
+            $spacename = $this->core->config->get('DataStoreSpaceName');
+            if(!strlen($spacename)) $spacename = "cloudframework";
+            $this->dsToken = $this->core->loadClass('DataStore',['CloudFrameWorkAuthTokens',$spacename,$dschema]);
+            if ($this->dsToken->error)  $this->core->errors->add(['setDSToken' => $this->dsToken->errorMsg]);
+
+        }
+
+        /**
+         * @param $token          Id generated with setDSToken
+         * @param string $prefix  Prefix to separate tokens Between apps
+         * @param int $time       MAX TIME to expire the token
+         * @return array|mixed    The content contained in DS.JSONZIP
+         */
+        function getDSToken($token, $prefixStarts='', $time=0) {
+            $ret = null;
+
+            // Check if token starts with $prefix
+            if(strlen($prefixStarts) && strpos($token,$prefixStarts )!==0) {
+                $this->core->errors->add(['getDSToken'=>'incorrect prefix token']);
+                return $ret;
+            }
+            // Check if object has been created
+            if(null === $this->dsToken ) $this->createDSToken();
+
+            // If not error continue
+            if(!$this->core->errors->lines) {
+                $retToken = $this->dsToken->fetchByKeys($token);
+                if ($this->dsToken->error)
+                    $this->core->errors->add(['getDSToken'=>$this->dsToken->errorMsg]);
+                elseif(sha1(json_encode($this->core->system->getRequestFingerPrint()['hash'])) != $retToken[0]['fingerprint']) {
+                    $this->core->errors->add(['getDSToken'=>'Token security violation']);
+                }elseif($time > 0 && ((new DateTime())->getTimestamp()) - (new DateTime($retToken[0]['dateInsert']))->getTimestamp() >= $time){
+                    $this->core->errors->add(['getDSToken'=>'Token expired']);
+                }elseif(isset($retToken[0]['JSONZIP'])){
+                    $ret = json_decode(gzuncompress(utf8_decode($retToken[0]['JSONZIP'])),true);
+                }
+            }
+            return $ret;
+        }
+
+        function setDSToken($data,$prefix='') {
+            $ret=null;
+            if(!strlen(trim($prefix))) $prefix='default';
+
+            // Check if object has been created
+            if(null === $this->dsToken ) $this->createDSToken();
+
+            // If not error continue
+            if(!$this->core->errors->lines) {
+                $record['dateInsert'] = "now";
+                $record['fingerprint'] = sha1(json_encode($this->core->system->getRequestFingerPrint()['hash']));
+                $record['JSONZIP'] = utf8_encode(gzcompress(json_encode($data)));
+                $record['prefix'] = $prefix;
+                $record['token'] = $prefix.'_'.sha1(json_encode($record) . date('Ymdhis'));
+
+                $retEntity = $this->dsToken->createEntities($record);
+                if ($this->dsToken->error) {
+                    $this->core->errors->add(['setDSToken' => $this->dsToken->errorMsg]);
+                } else {
+                    $ret = $retEntity[0]['KeyName'];
+                }
+            }
+            return $ret;
+
         }
     }
     Class Localization

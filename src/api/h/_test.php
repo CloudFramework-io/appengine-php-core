@@ -53,15 +53,6 @@ class API extends RESTful
 					} else {
 						$notes = array($ds->errorMsg);
 					}
-
-					/*
-                    $notes[] = ['dbServer'=>(strlen($this->core->config->get("dbServer")))?substr($this->core->config->get("dbServer"),0,4).'***':'None'];
-                    $notes[] = ['dbSocket'=>(strlen($this->core->config->get("dbSocket")))?'***':'None'];
-                    $notes[] = ['dbUser'=>(strlen($this->core->config->get("dbUser")))?'***':'None'];
-                    $notes[] = ['dbPassword'=>(strlen($this->core->config->get("dbPassword")))?'***':'None'];
-                    $notes[] = ['dbName'=>(strlen($this->core->config->get("dbName")))?'***':'None'];
-                    $notes[] = ['dbPort'=>(strlen($this->core->config->get("dbPort")))?'***':'None'];
-                    */
 					$this->core->__p->end('Test', 'DataStore connect', !$ds->error, $notes);
 				} else {
 					$this->addReturnData(array('DataStore connect' => 'no DataStoreSpaceName config-var is configuredconfigured'));
@@ -72,6 +63,7 @@ class API extends RESTful
 					$this->core->__p->init('Test', 'CloudSQL connect');
 					$db = $this->core->loadClass("CloudSQL");
 					$db->connect();
+					$notes = [];
 					if (!$db->error()) {
 						$db->close();
 						$notes[] = ['dbServer' => (strlen($this->core->config->get("dbServer"))) ? substr($this->core->config->get("dbServer"), 0, 4) . '***' : 'None'];
@@ -143,7 +135,7 @@ class API extends RESTful
 						$retOk = false;
 					}
 					$this->core->__p->end('Test', 'Cloud Service Url request->get', $retOk, $this->core->request->getServiceUrl('/_version') . ' ' . $retErr);
-
+					/*
 					$this->core->__p->init('Test', 'Cloud Service Url request->getCurl');
 					$ret = $this->core->request->getCurl($url);
 					if (!$this->core->request->error) {
@@ -154,6 +146,7 @@ class API extends RESTful
 						$retOk = false;
 					}
 					$this->core->__p->end('Test', 'Cloud Service Url request->getCurl', $retOk, $this->core->request->getServiceUrl('/_version') . ' ' . $retErr);
+					*/
 				} else {
 					$this->addReturnData(array('Cloud Service Url' => 'no CloudServiceUrl configured'));
 				}

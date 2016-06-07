@@ -164,7 +164,9 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                     if (!is_array($props)) $props = ['string', ''];
                     else $props[0] = strtolower($props[0]);
                     // true / false index
-                    $index = ('index' == strtolower($props[1]));
+                    if(isset($props[1]))
+                        $index = ('index' == strtolower($props[1]));
+                    else $index = false;
                     switch ($props[0]) {
                         case "integer":
                             $ret->addInteger($key, $index);
@@ -306,6 +308,7 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                 $this->addError('query');
 
             }
+
             $this->lastQuery = $this->store->str_last_query;
             return $ret;
         }
