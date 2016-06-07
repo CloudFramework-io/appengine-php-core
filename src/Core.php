@@ -544,10 +544,10 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
                     $apifile = $this->system->url['parts'][2];
 
                     // path to file
-                    if($apifile[0]=='_' || $apifile=='queue')
+                    if($apifile[0]=='_' || $apifile=='queue') {
                         $pathfile = __DIR__ . "/api/h/{$apifile}.php";
-                        if (!file_exists($pathfile)) $pathfile='';
-                    else {
+                        if (!file_exists($pathfile)) $pathfile = '';
+                    } else {
                         // Every End-point inside the app has priority over the apiPaths
                         $pathfile = $this->system->app_path . "/api/{$apifile}.php";
                         if (!file_exists($pathfile)) {
