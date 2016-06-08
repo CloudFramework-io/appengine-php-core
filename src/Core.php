@@ -251,9 +251,8 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
 
         function getRequestFingerPrint($extra = '')
         {
-            $ret['ip'] =  $_SERVER['REMOTE_ADDR'];
+            $ret['ip'] =  $this->ip;
             $ret['user_agent'] = $_SERVER['HTTP_USER_AGENT'];
-            $ret['http_referer'] = $_SERVER['HTTP_REFERER'];
             $ret['host'] = $_SERVER['HTTP_HOST'];
             $ret['software'] = $_SERVER['SERVER_SOFTWARE'];
             if ($extra == 'geodata') {
@@ -262,6 +261,7 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
                 unset($ret['geoData']['credit']);
             }
             $ret['hash'] = sha1(implode(",", $ret));
+            $ret['http_referer'] = $_SERVER['HTTP_REFERER'];
             $ret['time'] = date('Ymdhis');
             $ret['uri'] = $_SERVER['REQUEST_URI'];
             return ($ret);
@@ -678,7 +678,11 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
         function init($namespace='') {
             if(strlen($namespace)) $this->namespace = $namespace;
 
+            // LOGOUT with $_REQUEST paramter
+
+            if(isset($_GET['_logout']) || isset($_POST['_logout'])) $this->core->session->delete("_User_".$this->namespace);
             $this->data[$this->namespace]= $this->core->session->get("_User_".$this->namespace);
+
             if(null === $this->data[$this->namespace]) $this->data[$this->namespace] =['__auth'=>false];
         }
 
@@ -1346,12 +1350,12 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
                 foreach ($keys as $key) {
                     if($key[0] == $web_key) {
                         if(!isset($key[1])) $key[1]="*";
-                        if($key[1]=='*') return true;
+                        if($key[1]=='*') return $key;
                         elseif(!strlen($_SERVER['HTTP_ORIGIN'])) return false;
                         else {
                             $allows = explode(',',$key[1]);
                             foreach ($allows as $host) {
-                                if(preg_match('/^.*'.trim($host).'.*$/',$_SERVER['HTTP_ORIGIN'])>0) return true;
+                                if(preg_match('/^.*'.trim($host).'.*$/',$_SERVER['HTTP_ORIGIN'])>0) return $key;
                             }
                             return false;
                         }
@@ -1533,7 +1537,7 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
                 $retToken = $this->dsToken->fetchByKeys($token);
                 if ($this->dsToken->error)
                     $this->core->errors->add(['getDSToken'=>$this->dsToken->errorMsg]);
-                elseif(sha1(json_encode($this->core->system->getRequestFingerPrint()['hash'])) != $retToken[0]['fingerprint']) {
+                elseif($this->core->system->getRequestFingerPrint()['hash'] != $retToken[0]['fingerprint']) {
                     $this->core->errors->add(['getDSToken'=>'Token security violation']);
                 }elseif($time > 0 && ((new DateTime())->getTimestamp()) - (new DateTime($retToken[0]['dateInsert']))->getTimestamp() >= $time){
                     $this->core->errors->add(['getDSToken'=>'Token expired']);
@@ -1544,7 +1548,7 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
             return $ret;
         }
 
-        function setDSToken($data,$prefix='') {
+        function setDSToken($data,$prefix='',$fingerprint_hash='') {
             $ret=null;
             if(!strlen(trim($prefix))) $prefix='default';
 
@@ -1553,8 +1557,9 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
 
             // If not error continue
             if(!$this->core->errors->lines) {
+                if(!strlen($fingerprint_hash)) $fingerprint_hash = $this->core->system->getRequestFingerPrint()['hash'];
                 $record['dateInsert'] = "now";
-                $record['fingerprint'] = sha1(json_encode($this->core->system->getRequestFingerPrint()['hash']));
+                $record['fingerprint'] = $fingerprint_hash;
                 $record['JSONZIP'] = utf8_encode(gzcompress(json_encode($data)));
                 $record['prefix'] = $prefix;
                 $record['token'] = $prefix.'_'.sha1(json_encode($record) . date('Ymdhis'));
