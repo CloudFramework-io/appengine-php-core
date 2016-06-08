@@ -8,8 +8,6 @@ $core->dispatch();
 if(isset($_GET['__p']))
     _print($core->__p->data['info']);
 
-if($core->errors->lines) {
-    _print($core->errors->data);
-}
+
 
 ?>

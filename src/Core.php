@@ -609,13 +609,16 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
                 } else {
                     $logic = new CoreLogic($this);
                 }
-
                 // Templates
                 if(!empty($this->config->get('template'))) {
                     $logic->render($this->config->get('template'));
                 } else {
-                    echo 'no template tag';
+                    $this->errors->add('Not template assigned');
+                    _printe($this->errors->data);
                 }
+            } else {
+                $this->errors->add('URL has not exist in config-menu');
+                _printe($this->errors->data);
             }
         }
 
@@ -1004,15 +1007,17 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
                 if ($cond == '--') continue; // comment
                 $tagcode = '';
                 if(strpos($cond,':')!== false) {
+                    // Substitute tags for strings
+                    $cond = $this->convertTags($cond);
                     list($tagcode, $tagvalue) = explode(":", $cond, 2);
+                    if(is_string($vars)) $vars = $this->convertTags($vars);
                     $include = false;
                 } else {
                     $include = true;
                     $vars = [$cond=>$vars];
+
                 }
 
-                // Substitute tags for strings
-                $vars = $this->convertTags($vars);
                 // If there is a condition tag
                 if(!$include) {
                     switch (trim(strtolower($tagcode))) {
@@ -1023,6 +1028,7 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
                             break;
 
                         case "webapp":
+                            $this->set("webapp", $vars);
                             $this->core->setAppPath($vars);
                             break;
 
@@ -1076,9 +1082,7 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
                                 }
                             }
                             break;
-                        case "true":
-                            $include = true;
-                            break;
+
                         case "auth":
                         case "noauth":
                             if (trim(strtolower($tagcode)) == 'auth')
@@ -1158,6 +1162,7 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
 
                         case "menu":
                             if (is_array($vars)) {
+                                $vars = $this->convertTags($vars);
                                 foreach ($vars as $key => $value) {
                                     if(!empty($value['path']))
                                         $this->pushMenu($value);
@@ -1182,12 +1187,15 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
                                 $include = true;
                             break;
                         case "false":
+                        case "true":
+                            $include = trim(strtolower($tagcode));
                             break;
                         default:
                             $this->core->errors->add('unknown tag: |' . $tagcode . '|');
                             break;
                     }
                 }
+
                 // Include config vars.
                 if($include) {
                     if(is_array($vars)) {
@@ -1219,9 +1227,10 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
                 $data = json_decode(@file_get_contents($path),true);
 
                 if(!is_array($data)) {
+                    $this->core->errors->add('error reading '.$path);
                     if(json_last_error())
                         $this->core->errors->add("Wrong format of json: ".$path);
-                    else
+                    elseif(!empty(error_get_last()))
                         $this->core->errors->add(error_get_last());
                     return false;
                 } else {
