@@ -1562,7 +1562,7 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
                 $record['fingerprint'] = $fingerprint_hash;
                 $record['JSONZIP'] = utf8_encode(gzcompress(json_encode($data)));
                 $record['prefix'] = $prefix;
-                $record['token'] = $prefix.'_'.sha1(json_encode($record) . date('Ymdhis'));
+                $record['token'] = $this->core->config->get('DataStoreSpaceName').'__'.$prefix.'__'.sha1(json_encode($record) . date('Ymdhis'));
 
                 $retEntity = $this->dsToken->createEntities($record);
                 if ($this->dsToken->error) {
