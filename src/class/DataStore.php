@@ -23,6 +23,18 @@ use google\appengine\datastore\v4\EntityResult;
 if (!defined ("_DATASTORE_CLASS_") ) {
     define("_DATASTORE_CLASS_", TRUE);
 
+    class DataStoreTypes {
+        const key = 'key';
+        const keyname = 'keyname';
+        const boolean = 'boolean';
+        const integer =  'integer';
+        const date =  'date';
+        const datetime =  'datetime';
+        const float =  'float';
+        const list_elements =  'list';
+        const geo =  'bool';
+    }
+
     class DataStore
     {
         var $error = false;
@@ -34,6 +46,7 @@ if (!defined ("_DATASTORE_CLASS_") ) {
         var $schema = [];
         var $lastQuery = '';
         var $core = null;
+        var $types = null;
 
         function __construct(Core &$core, $params)
         {
@@ -45,11 +58,12 @@ if (!defined ("_DATASTORE_CLASS_") ) {
             $this->core->__p->add('DataStore new instance ', '', 'note');
             $this->entity_name = $entity;
             $this->entity_schema = $this->getEntitySchema($entity, $schema);
-
-            if (null !== $namespace && strlen($namespace)) {
-                $this->entity_gw = new ProtoBuf(null, $namespace);
+            if(!$this->error) {
+                if (null !== $namespace && strlen($namespace)) {
+                    $this->entity_gw = new ProtoBuf(null, $namespace);
+                }
+                $this->store = new Store($this->entity_schema, $this->entity_gw);
             }
-            $this->store = new Store($this->entity_schema, $this->entity_gw);
             $this->core->__p->add('DataStore new instance ', '', 'endnote');
 
 
@@ -161,6 +175,10 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                 $ret = (new Schema($entity));
                 $i = 0;
                 foreach ($this->schema['data'] as $key => $props) {
+                    if(!strlen($key)) {
+                        $this->setError('Schema of '.$entity.' with empty key');
+                        return false;
+                    }
                     if (!is_array($props)) $props = ['string', ''];
                     else $props[0] = strtolower($props[0]);
                     // true / false index
@@ -172,6 +190,7 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                             $ret->addInteger($key, $index);
                             break;
                         case "key":
+                        case "keyname":
                             break;
                         case "date":
                         case "datetime":

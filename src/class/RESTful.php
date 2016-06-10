@@ -84,6 +84,8 @@ if (!defined("_RESTfull_CLASS_")) {
                      *
                      */
                 }
+                // Trimming fields
+                foreach ($this->formParams as $i=>$data) if(is_string($data)) $this->formParams[$i] = trim ($data);
             }
 
 
