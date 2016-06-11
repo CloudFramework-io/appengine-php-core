@@ -11,6 +11,8 @@ if (!defined("_RESTfull_CLASS_")) {
         var $rawData = array();
         var $params = array();
         var $error = 0;
+        var $code = null;
+        var $codeLib = [];
         var $ok = 200;
         var $errorMsg = [];
         var $header = '';
@@ -29,13 +31,11 @@ if (!defined("_RESTfull_CLASS_")) {
         var $rewrite = [];
         var $core = null;
 
-        function RESTful(Core &$core, $apiUrl = '/h/api')
+        function __construct(Core &$core, $apiUrl = '/h/api')
         {
 
 
             $this->core = $core;
-
-
             // FORCE Ask to the browser the basic Authetication
             if (isset($_REQUEST['_forceBasicAuth'])) {
                 if (($_REQUEST['_forceBasicAuth'] !== '0' && !$this->core->security->existBasicAuth())
@@ -107,6 +107,10 @@ if (!defined("_RESTfull_CLASS_")) {
                 $this->params = explode('/', $this->serviceParam);
             }
 
+            if(method_exists($this,'__codes')) {
+                $this->__codes();
+            }
+
         }
 
         function sendCorsHeaders($methods = 'GET,POST,PUT', $origin = '')
@@ -148,7 +152,7 @@ if (!defined("_RESTfull_CLASS_")) {
             return ($this->error === 0);
         }
 
-        function checkMandatoryFormParam($key, $msg = '', $values=[],$min_length = 1)
+        function checkMandatoryFormParam($key, $msg = '', $values=[],$min_length = 1,$code=null)
         {
             if (isset($this->formParams[$key]) && is_string($this->formParams[$key]))
                 $this->formParams[$key] = trim($this->formParams[$key]);
@@ -160,7 +164,7 @@ if (!defined("_RESTfull_CLASS_")) {
             ) {
                 if (!strlen($msg))
                     $msg = "{{$key}}" . ((!isset($this->formParams[$key])) ? ' form-param missing ' : ' form-params\' length is less than: ' . $min_length);
-                $this->setError($msg);
+                $this->setError($msg,400,$code);
             }
             return ($this->error === 0);
 
@@ -177,28 +181,30 @@ if (!defined("_RESTfull_CLASS_")) {
                 $fmsg = (isset($key[1]))?$key[1]:'';
                 $fvalues = (is_array($key[2]))?$key[2]:[];
                 $fmin = (isset($key[3]))?$key[3]:1;
-                $this->checkMandatoryFormParam($fkey,$fmsg,$fvalues,$fmin);
+                $fcode = (isset($key[4]))?$key[4]:null;
+                $this->checkMandatoryFormParam($fkey,$fmsg,$fvalues,$fmin,$fcode);
             }
             return ($this->error === 0);
         }
 
-        function checkMandatoryParam($pos, $msg = '',$values = [])
+        function checkMandatoryParam($pos, $msg = '',$values = [],$code=null)
         {
             if (!isset($this->params[$pos]) || !strlen($this->params[$pos])) {
-                $this->setError(($msg == '') ? 'param ' . $pos . ' is mandatory' : $msg);
+                $this->setError(($msg == '') ? 'param ' . $pos . ' is mandatory' : $msg,400,$code);
             } else if(is_array($values) && count($values)){
                 if(!in_array($this->params[$pos], $values)) {
-                    $this->setError(($msg == '') ? 'param ' . $pos . ' is mandatory' : $msg);
+                    $this->setError(($msg == '') ? 'param ' . $pos . ' is mandatory' : $msg,400,$code);
                 }
             }
             return ($this->error === 0);
         }
 
-        function setError($value, $key = 400)
+        function setError($value, $key = 400,$code=null)
         {
             $this->error = $key;
             $this->errorMsg[] = $value;
             $this->core->errors->add($value);
+            $this->code = (null !== $code)? $code:$key;
         }
 
         function addHeader($key, $value)
@@ -295,19 +301,37 @@ if (!defined("_RESTfull_CLASS_")) {
             }
         }
 
+        function addCodeLib($code,$msg) {
+            $this->codeLib[$code] = $msg;
+        }
+
+        function getCodeLib($code) {
+            return $this->codeLib[$code];
+        }
+
         function getReturnCode()
         {
-            return (($this->error) ? $this->error : $this->ok);
+            return (($this->code!==null) ? $this->code : $this->getReturnStatus());
         }
 
         function setReturnCode($code)
         {
-            $this->ok = $code;
+            $this->code = $code;
+        }
+
+        function getReturnStatus()
+        {
+            return (($this->error) ? $this->error : $this->ok);
+        }
+
+        function setReturnStatus($status)
+        {
+            $this->ok = $status;
         }
 
         function getResponseHeader()
         {
-            switch ($this->getReturnCode()) {
+            switch ($this->getReturnStatus()) {
                 case 201:
                     $ret = ("HTTP/1.0 201 Created");
                     break;
@@ -389,7 +413,8 @@ if (!defined("_RESTfull_CLASS_")) {
         {
             $ret = array();
             $ret['success'] = ($this->core->errors->lines) ? false : true;
-            $ret['status'] = $this->getReturnCode();
+            $ret['status'] = $this->getReturnStatus();
+            $ret['code'] = $this->getReturnCode();
             $ret['url'] = (($_SERVER['HTTPS'] == 'on') ? 'https://' : 'http://') . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
             $ret['method'] = $this->method;
             $ret['ip'] = $this->core->system->ip;

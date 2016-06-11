@@ -569,7 +569,11 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
                         }
                         if (class_exists('API')) {
                             $api = new API($this);
-                            $api->main();
+                            if($api->params[0]=='__codes') {
+                                $api->addReturnData($api->codeLib);
+                            } else {
+                                $api->main();
+                            }
                             $this->__p->add("Executed RESTfull->main()", "/api/{$apifile}.php");
                             $api->send();
 
