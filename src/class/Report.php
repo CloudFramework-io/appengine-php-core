@@ -21,15 +21,30 @@ if (!defined ("_CloudServiceReporting_CLASS_") ) {
                 if(!is_array($conds[0])) $conds = [$conds];
                 foreach ($this->data as $row) {
                     $add = true;
-                    foreach ($conds as $cond) {
+                    foreach ($conds as $cond) if(isset($row[$cond[0]])) {
+                        $add = false;
                         switch ($cond[1]) {
                             case "=":
-                                if($row[$cond[0]]!=$cond[2]) $add = false;
+                                if($row[$cond[0]]==$cond[2]) $add = true;
                                 break;
                             case "!=":
+                                if($row[$cond[0]]!=$cond[2]) $add = true;
+                                break;
+                            case ">":
+                                if($row[$cond[0]] > $cond[2]) $add = true;
+                                break;
+                            case ">=":
+                                if($row[$cond[0]]>=$cond[2]) $add = true;
+                                break;
+                            case "<":
+                                if($row[$cond[0]]<$cond[2]) $add = true;
+                                break;
+                            case "<=":
+                                if($row[$cond[0]]<=$cond[2]) $add = true;
                                 break;
                         }
                     }
+
                     if($add) {
                         if(is_array($fields)) foreach ($row as $key=>$value) if(!in_array($key,$fields)) unset($row[$key]);
                         $data[] = $row;
@@ -40,10 +55,10 @@ if (!defined ("_CloudServiceReporting_CLASS_") ) {
         }
 
         /* Counting functions */
-        function count() { return $this->_count();  }
+        function count($filter=[]) { return $this->_count();  }
         function countInFields($fields) { return $this->_count($fields,false);  }
         function distinctCountInFields($fields=null) { return $this->_count($fields,true); }
-        private  function _count($fields=null,$distinct=false) {
+        private  function _count($fields=null,$distinct=false,$filter=[]) {
             if(null == $fields) return count($this->data);
             else {
                 $ret = [];
@@ -52,6 +67,9 @@ if (!defined ("_CloudServiceReporting_CLASS_") ) {
                 if(is_string($fields)) $fields = explode(',',$fields);
                 if(!is_array($fields)) return [];
                 else foreach ($this->data as $item) {
+                    if(is_array($filter) && count($filter)) {
+                        _printe($filter);
+                    }
                     foreach ($fields as $field) if(strlen(trim($field))) {
                         $add = 0;
                         if(strlen($item[$field])) {
@@ -101,6 +119,7 @@ if (!defined ("_CloudServiceReporting_CLASS_") ) {
         function addRow($report,$field,$data) { $this->add('rows',$report,$field,$data);}
         function addValue($report,$op,$fields='*') { $this->add('values',$report,$op,$fields);}
         private function add($type,$report,$field,$value) { $this->reports[$report][$type][] = [$field,$value]; }
+        function initReport($report) {$this->reports[$report] = [];}
         function getReport($report) {
             $ret = [];
             if(!is_array($this->reports[$report])) return $ret;
@@ -136,7 +155,16 @@ if (!defined ("_CloudServiceReporting_CLASS_") ) {
                 foreach ($this->reports[$report]['values'] as $value)
                     switch ($value[0]){
                         case 'count':
-                            $ret = $data->count($value[0]);
+                            // If there is a filter
+                            if(is_array($value[1])) {
+                                $count  = $data->reduce($value[1])->count();
+                            } else {
+                                $count =  $data->count();
+                            }
+                            // Assigning
+                            if(!is_array($ret) && strlen($ret)) $ret = [$ret];
+                            if(is_array($ret)) $ret[] = $count;
+                            else $ret = $count;
                             break;
                         default:
                             $ret = ['filter'=>$query,'values'=>$this->reports[$report]['values']];
