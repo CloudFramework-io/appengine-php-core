@@ -251,9 +251,8 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
 
         function getRequestFingerPrint($extra = '')
         {
-            $ret['ip'] =  $_SERVER['REMOTE_ADDR'];
+            $ret['ip'] =  $this->ip;
             $ret['user_agent'] = $_SERVER['HTTP_USER_AGENT'];
-            $ret['http_referer'] = $_SERVER['HTTP_REFERER'];
             $ret['host'] = $_SERVER['HTTP_HOST'];
             $ret['software'] = $_SERVER['SERVER_SOFTWARE'];
             if ($extra == 'geodata') {
@@ -262,6 +261,7 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
                 unset($ret['geoData']['credit']);
             }
             $ret['hash'] = sha1(implode(",", $ret));
+            $ret['http_referer'] = $_SERVER['HTTP_REFERER'];
             $ret['time'] = date('Ymdhis');
             $ret['uri'] = $_SERVER['REQUEST_URI'];
             return ($ret);
@@ -545,9 +545,10 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
                     $apifile = $this->system->url['parts'][2];
 
                     // path to file
-                    if($apifile[0]=='_' || $apifile=='queue')
+                    if($apifile[0]=='_' || $apifile=='queue') {
                         $pathfile = __DIR__ . "/api/h/{$apifile}.php";
-                    else {
+                        if (!file_exists($pathfile)) $pathfile = '';
+                    } else {
                         // Every End-point inside the app has priority over the apiPaths
                         $pathfile = $this->system->app_path . "/api/{$apifile}.php";
                         if (!file_exists($pathfile)) {
@@ -564,11 +565,16 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
                     include_once __DIR__ . '/class/RESTful.php';
 
                     try {
-                        if(strlen($pathfile))
+                        if(strlen($pathfile)) {
                             include_once $pathfile;
+                        }
                         if (class_exists('API')) {
                             $api = new API($this);
-                            $api->main();
+                            if($api->params[0]=='__codes') {
+                                $api->addReturnData($api->codeLib);
+                            } else {
+                                $api->main();
+                            }
                             $this->__p->add("Executed RESTfull->main()", "/api/{$apifile}.php");
                             $api->send();
 
@@ -608,12 +614,16 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
                 } else {
                     $logic = new CoreLogic($this);
                 }
-
                 // Templates
                 if(!empty($this->config->get('template'))) {
                     $logic->render($this->config->get('template'));
-
+                } else {
+                    $this->errors->add('Not template assigned');
+                    _printe($this->errors->data);
                 }
+            } else {
+                $this->errors->add('URL has not exist in config-menu');
+                _printe($this->errors->data);
             }
         }
 
@@ -673,7 +683,11 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
         function init($namespace='') {
             if(strlen($namespace)) $this->namespace = $namespace;
 
+            // LOGOUT with $_REQUEST paramter
+
+            if(isset($_GET['_logout']) || isset($_POST['_logout'])) $this->core->session->delete("_User_".$this->namespace);
             $this->data[$this->namespace]= $this->core->session->get("_User_".$this->namespace);
+
             if(null === $this->data[$this->namespace]) $this->data[$this->namespace] =['__auth'=>false];
         }
 
@@ -1010,13 +1024,16 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
                 if ($cond == '--') continue; // comment
                 $tagcode = '';
                 if(strpos($cond,':')!== false) {
+                    // Substitute tags for strings
+                    $cond = $this->convertTags($cond);
                     list($tagcode, $tagvalue) = explode(":", $cond, 2);
+                    if(is_string($vars)) $vars = $this->convertTags($vars);
                     $include = false;
                 } else {
                     $include = true;
                     $vars = [$cond=>$vars];
-                }
 
+                }
 
                 // If there is a condition tag
                 if(!$include) {
@@ -1032,6 +1049,7 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
                             break;
 
                         case "webapp":
+                            $this->set("webapp", $vars);
                             $this->core->setAppPath($vars);
                             break;
 
@@ -1085,9 +1103,7 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
                                 }
                             }
                             break;
-                        case "true":
-                            $include = true;
-                            break;
+
                         case "auth":
                         case "noauth":
                             if (trim(strtolower($tagcode)) == 'auth')
@@ -1167,6 +1183,7 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
 
                         case "menu":
                             if (is_array($vars)) {
+                                $vars = $this->convertTags($vars);
                                 foreach ($vars as $key => $value) {
                                     if(!empty($value['path']))
                                         $this->pushMenu($value);
@@ -1191,12 +1208,15 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
                                 $include = true;
                             break;
                         case "false":
+                        case "true":
+                            $include = trim(strtolower($tagcode));
                             break;
                         default:
                             $this->core->errors->add('unknown tag: |' . $tagcode . '|');
                             break;
                     }
                 }
+
                 // Include config vars.
                 if($include) {
                     if(is_array($vars)) {
@@ -1228,9 +1248,10 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
                 $data = json_decode(@file_get_contents($path),true);
 
                 if(!is_array($data)) {
+                    $this->core->errors->add('error reading '.$path);
                     if(json_last_error())
                         $this->core->errors->add("Wrong format of json: ".$path);
-                    else
+                    elseif(!empty(error_get_last()))
                         $this->core->errors->add(error_get_last());
                     return false;
                 } else {
@@ -1247,6 +1268,9 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
     class Security
     {
         private $core;
+        /* @var $dsToken DataStore */
+        private $dsToken = null;
+
         function __construct(Core &$core)
         {
             $this->core = $core;
@@ -1326,7 +1350,15 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
             else return '';
         }
 
-        function checkWebKey($keys) {
+        function checkWebKey($keys=null) {
+
+            // If I don't have the credentials in keys I try to check if CLOUDFRAMEWORK-WEB-KEYS is defined.
+            if(null === $keys) {
+                $keys = $this->core->config->get('CLOUDFRAMEWORK-WEB-KEYS');
+                if(!is_array($keys)) return false;
+            }
+
+            // Analyzing $keys
             if(!is_array($keys)) $keys = [[$keys,'*']];
             else if(!is_array($keys[0])) $keys = [$keys];
             $web_key = $this->getWebKey();
@@ -1335,12 +1367,12 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
                 foreach ($keys as $key) {
                     if($key[0] == $web_key) {
                         if(!isset($key[1])) $key[1]="*";
-                        if($key[1]=='*') return true;
+                        if($key[1]=='*') return $key;
                         elseif(!strlen($_SERVER['HTTP_ORIGIN'])) return false;
                         else {
                             $allows = explode(',',$key[1]);
                             foreach ($allows as $host) {
-                                if(preg_match('/^.*'.trim($host).'.*$/',$_SERVER['HTTP_ORIGIN'])>0) return true;
+                                if(preg_match('/^.*'.trim($host).'.*$/',$_SERVER['HTTP_ORIGIN'])>0) return $key;
                             }
                             return false;
                         }
@@ -1409,11 +1441,11 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
                 } else {
                     $date = new DateTime(null, new DateTimeZone($_zone));
                     $secs = microtime(true) + $date->getOffset() - $_time;
-
                     if (!strlen($secret)) {
                         $secArr = $this->core->config->get('CLOUDFRAMEWORK-ID-' . $_id);
                         if (isset($secArr['secret'])) $secret = $secArr['secret'];
                     }
+
 
                     if (!strlen($secret)) {
                         $this->core->logs->add('conf-var CLOUDFRAMEWORK-ID-' . $_id . ' missing or it is not a righ CLOUDFRAMEWORK array.');
@@ -1448,8 +1480,28 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
         }
 
         // time, has to to be microtime().
-        function generateCloudFrameWorkSecurityString($id, $time = '', $secret = '')
+        function generateCloudFrameWorkSecurityString($id='', $time = '', $secret = '')
         {
+            if(!strlen($id)) {
+                $id = $this->core->config->get('CloudServiceId');
+                if(!strlen($id)) {
+                    $this->core->errors->add('generateCloudFrameWorkSecurityString has not received $id and CloudServiceId config var does not exist');
+                    return false;
+                }
+            }
+
+            if(!strlen($secret)) {
+                $secret = $this->core->config->get('CloudServiceSecret');
+                if(!strlen($secret)) {
+                    $secArr = $this->core->config->get('CLOUDFRAMEWORK-ID-' . $id);
+                    if (isset($secArr['secret'])) $secret = $secArr['secret'];
+                    if(!strlen($secret)) {
+                        $this->core->errors->add('generateCloudFrameWorkSecurityString has not received $secret and CloudServiceSecret and CLOUDFRAMEWORK-ID-XXX   config vars don\'t not exist');
+                        return false;
+                    }
+                }
+            }
+
             $ret = null;
             if (!strlen($secret)) {
                 $secArr = $this->core->config->get('CLOUDFRAMEWORK-ID-' . $id);
@@ -1465,6 +1517,79 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
                 $ret .= '__' . hash_hmac('sha1', $ret, $secret);
             }
             return $ret;
+        }
+
+        private function createDSToken() {
+            $dschema = ['token' => ['keyname','index']];
+            $dschema['dateInsert'] =  ['datetime','index'];
+            $dschema['JSONZIP'] =  ['string'];
+            $dschema['fingerprint'] =  ['string'];
+            $dschema['prefix'] =  ['string','index'];
+            $spacename = $this->core->config->get('DataStoreSpaceName');
+            if(!strlen($spacename)) $spacename = "cloudframework";
+            $this->dsToken = $this->core->loadClass('DataStore',['CloudFrameWorkAuthTokens',$spacename,$dschema]);
+            if ($this->dsToken->error)  $this->core->errors->add(['setDSToken' => $this->dsToken->errorMsg]);
+
+        }
+
+        /**
+         * @param $token          Id generated with setDSToken
+         * @param string $prefix  Prefix to separate tokens Between apps
+         * @param int $time       MAX TIME to expire the token
+         * @return array|mixed    The content contained in DS.JSONZIP
+         */
+        function getDSToken($token, $prefixStarts='', $time=0) {
+            $ret = null;
+
+            // Check if token starts with $prefix
+            if(strlen($prefixStarts) && strpos($token,$prefixStarts )!==0) {
+                $this->core->errors->add(['getDSToken'=>'incorrect prefix token']);
+                return $ret;
+            }
+            // Check if object has been created
+            if(null === $this->dsToken ) $this->createDSToken();
+
+            // If not error continue
+            if(!$this->core->errors->lines) {
+                $retToken = $this->dsToken->fetchByKeys($token);
+                if ($this->dsToken->error)
+                    $this->core->errors->add(['getDSToken'=>$this->dsToken->errorMsg]);
+                elseif($this->core->system->getRequestFingerPrint()['hash'] != $retToken[0]['fingerprint']) {
+                    $this->core->errors->add(['getDSToken'=>'Token security violation']);
+                }elseif($time > 0 && ((new DateTime())->getTimestamp()) - (new DateTime($retToken[0]['dateInsert']))->getTimestamp() >= $time){
+                    $this->core->errors->add(['getDSToken'=>'Token expired']);
+                }elseif(isset($retToken[0]['JSONZIP'])){
+                    $ret = json_decode(gzuncompress(utf8_decode($retToken[0]['JSONZIP'])),true);
+                }
+            }
+            return $ret;
+        }
+
+        function setDSToken($data,$prefix='',$fingerprint_hash='') {
+            $ret=null;
+            if(!strlen(trim($prefix))) $prefix='default';
+
+            // Check if object has been created
+            if(null === $this->dsToken ) $this->createDSToken();
+
+            // If not error continue
+            if(!$this->core->errors->lines) {
+                if(!strlen($fingerprint_hash)) $fingerprint_hash = $this->core->system->getRequestFingerPrint()['hash'];
+                $record['dateInsert'] = "now";
+                $record['fingerprint'] = $fingerprint_hash;
+                $record['JSONZIP'] = utf8_encode(gzcompress(json_encode($data)));
+                $record['prefix'] = $prefix;
+                $record['token'] = $this->core->config->get('DataStoreSpaceName').'__'.$prefix.'__'.sha1(json_encode($record) . date('Ymdhis'));
+
+                $retEntity = $this->dsToken->createEntities($record);
+                if ($this->dsToken->error) {
+                    $this->core->errors->add(['setDSToken' => $this->dsToken->errorMsg]);
+                } else {
+                    $ret = $retEntity[0]['KeyName'];
+                }
+            }
+            return $ret;
+
         }
     }
     Class Localization
@@ -1672,7 +1797,7 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
                 $this->core->errors->set('Localization has received a wrong spacename: ');
                 return false;
             }
-            $code = preg_replace('/[^a-z_\-;]/','',strtolower($code));
+            $code = preg_replace('/[^a-z0-9_\-;]/','',strtolower($code));
             if(!strlen($code)) {
                 $this->core->errors->set('Localization has received a wrong code: ');
                 return false;

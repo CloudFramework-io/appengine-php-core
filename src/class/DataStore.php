@@ -23,6 +23,18 @@ use google\appengine\datastore\v4\EntityResult;
 if (!defined ("_DATASTORE_CLASS_") ) {
     define("_DATASTORE_CLASS_", TRUE);
 
+    class DataStoreTypes {
+        const key = 'key';
+        const keyname = 'keyname';
+        const boolean = 'boolean';
+        const integer =  'integer';
+        const date =  'date';
+        const datetime =  'datetime';
+        const float =  'float';
+        const list_elements =  'list';
+        const geo =  'bool';
+    }
+
     class DataStore
     {
         var $error = false;
@@ -34,6 +46,7 @@ if (!defined ("_DATASTORE_CLASS_") ) {
         var $schema = [];
         var $lastQuery = '';
         var $core = null;
+        var $types = null;
 
         function __construct(Core &$core, $params)
         {
@@ -45,11 +58,12 @@ if (!defined ("_DATASTORE_CLASS_") ) {
             $this->core->__p->add('DataStore new instance ', '', 'note');
             $this->entity_name = $entity;
             $this->entity_schema = $this->getEntitySchema($entity, $schema);
-
-            if (null !== $namespace && strlen($namespace)) {
-                $this->entity_gw = new ProtoBuf(null, $namespace);
+            if(!$this->error) {
+                if (null !== $namespace && strlen($namespace)) {
+                    $this->entity_gw = new ProtoBuf(null, $namespace);
+                }
+                $this->store = new Store($this->entity_schema, $this->entity_gw);
             }
-            $this->store = new Store($this->entity_schema, $this->entity_gw);
             $this->core->__p->add('DataStore new instance ', '', 'endnote');
 
 
@@ -61,7 +75,6 @@ if (!defined ("_DATASTORE_CLASS_") ) {
             $ret = [];
             if (!is_array($data)) $this->setError('No data received');
             else {
-
                 $this->core->__p->add('createEntities: ', $this->entity_name, 'note');
 
                 // converting $data into n,n dimmensions
@@ -82,7 +95,9 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                         }
                         // if the field is key or keyname feed $schema_key or $schema_keyname
                         if ($this->schema['props'][$i][1] == 'key') {
-                            $schema_key =  $value;
+                            $schema_key =  preg_replace('/[^0-9]/','' ,$value );
+                            if(!strlen($schema_key)) $this->setError('wrong Key value');
+
                         } elseif ($this->schema['props'][$i][1] == 'keyname') {
                             $schema_keyname = $value;
 
@@ -112,7 +127,9 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                         }
                     }
 
-                    //Complete info in the rest of info
+
+                    //Complete info in the rest of inf
+                    if(!$this->error)
                     if (count($record)) {
                         try {
                             $entity = $this->store->createEntity($record);
@@ -135,6 +152,8 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                             $this->setError($e->getMessage());
                             $ret = false;
                         }
+                    } else {
+                        $this->setError('Structure of the data does not match with schema');
                     }
                 }
             }
@@ -156,15 +175,22 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                 $ret = (new Schema($entity));
                 $i = 0;
                 foreach ($this->schema['data'] as $key => $props) {
+                    if(!strlen($key)) {
+                        $this->setError('Schema of '.$entity.' with empty key');
+                        return false;
+                    }
                     if (!is_array($props)) $props = ['string', ''];
                     else $props[0] = strtolower($props[0]);
                     // true / false index
-                    $index = ('index' == strtolower($props[1]));
+                    if(isset($props[1]))
+                        $index = ('index' == strtolower($props[1]));
+                    else $index = false;
                     switch ($props[0]) {
                         case "integer":
                             $ret->addInteger($key, $index);
                             break;
                         case "key":
+                        case "keyname":
                             break;
                         case "date":
                         case "datetime":
@@ -280,10 +306,15 @@ if (!defined ("_DATASTORE_CLASS_") ) {
         }
         function fetchByKeys($keys)
         {
+            $keyType = 'key';
+
+            if((is_array($this->schema) && strpos(json_encode($this->schema),'keyname' )!==false) || preg_match('/[^0-9,]/',$keys )) {
+                $keyType='keyname';
+            }
             // Are keys or names
             $ret = [];
             try {
-                if(strpos($keys,'"')===false && strpos($keys,"'")===false) {
+                if($keyType=='key') {
                     $data = $this->store->fetchByIds(explode(',',$keys));
                 } else {
                     // DOES NOT SUPPORT keys with ',' as values.
@@ -296,6 +327,7 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                 $this->addError('query');
 
             }
+
             $this->lastQuery = $this->store->str_last_query;
             return $ret;
         }

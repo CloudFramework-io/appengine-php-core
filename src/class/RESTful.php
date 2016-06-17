@@ -11,6 +11,8 @@ if (!defined("_RESTfull_CLASS_")) {
         var $rawData = array();
         var $params = array();
         var $error = 0;
+        var $code = null;
+        var $codeLib = [];
         var $ok = 200;
         var $errorMsg = [];
         var $header = '';
@@ -29,13 +31,11 @@ if (!defined("_RESTfull_CLASS_")) {
         var $rewrite = [];
         var $core = null;
 
-        function RESTful(Core &$core, $apiUrl = '/h/api')
+        function __construct(Core &$core, $apiUrl = '/h/api')
         {
 
 
             $this->core = $core;
-
-
             // FORCE Ask to the browser the basic Authetication
             if (isset($_REQUEST['_forceBasicAuth'])) {
                 if (($_REQUEST['_forceBasicAuth'] !== '0' && !$this->core->security->existBasicAuth())
@@ -84,6 +84,8 @@ if (!defined("_RESTfull_CLASS_")) {
                      *
                      */
                 }
+                // Trimming fields
+                foreach ($this->formParams as $i=>$data) if(is_string($data)) $this->formParams[$i] = trim ($data);
             }
 
 
@@ -105,6 +107,10 @@ if (!defined("_RESTfull_CLASS_")) {
                 $this->params = explode('/', $this->serviceParam);
             }
 
+            if(method_exists($this,'__codes')) {
+                $this->__codes();
+            }
+
         }
 
         function sendCorsHeaders($methods = 'GET,POST,PUT', $origin = '')
@@ -116,7 +122,7 @@ if (!defined("_RESTfull_CLASS_")) {
             if (!strlen($origin)) $origin = ((strlen($_SERVER['HTTP_ORIGIN'])) ? preg_replace('/\/$/', '', $_SERVER['HTTP_ORIGIN']) : '*');
             header("Access-Control-Allow-Origin: $origin");
             header("Access-Control-Allow-Methods: $methods");
-            header("Access-Control-Allow-Headers: Content-Type,Authorization,X-CloudFrameWork-AuthToken,X-CLOUDFRAMEWORK-SECURITY");
+            header("Access-Control-Allow-Headers: Content-Type,Authorization,X-CloudFrameWork-AuthToken,X-CLOUDFRAMEWORK-SECURITY,X-DS-TOKEN");
             header("Access-Control-Allow-Credentials: true");
             header('Access-Control-Max-Age: 1000');
 
@@ -146,38 +152,59 @@ if (!defined("_RESTfull_CLASS_")) {
             return ($this->error === 0);
         }
 
-        function checkMandatoryFormParam($keys, $msg = '', $min_length = 1)
+        function checkMandatoryFormParam($key, $msg = '', $values=[],$min_length = 1,$code=null)
         {
-            if (!is_array($keys) && strlen($keys)) $keys = array($keys);
-            if (is_array($keys))
-                foreach ($keys as $i => $key) {
-                    if(isset($this->formParams[$key]) && is_string($this->formParams[$key]))
-                        $this->formParams[$key] = trim($this->formParams[$key]);
-                    if (!isset($this->formParams[$key])
-                        || (is_string($this->formParams[$key]) && strlen($this->formParams[$key]) < $min_length)
-                        || (is_array($this->formParams[$key]) && !count($this->formParams[$key]))) {
-                        if (!strlen($msg))
-                            $msg = "{{$key}}" . ((!isset($this->formParams[$key]))?' form-param missing ':' form-params\' length is less than: '.$min_length);
-                        $this->setError($msg);
-                        break;
-                    }
-                }
+            if (isset($this->formParams[$key]) && is_string($this->formParams[$key]))
+                $this->formParams[$key] = trim($this->formParams[$key]);
+
+            if (!isset($this->formParams[$key])
+                || (is_string($this->formParams[$key]) && strlen($this->formParams[$key]) < $min_length)
+                || (is_array($this->formParams[$key]) && count($this->formParams[$key]) < $min_length)
+                || (is_array($values) && count($values) && !in_array($this->formParams[$key], $values))
+            ) {
+                if (!strlen($msg))
+                    $msg = "{{$key}}" . ((!isset($this->formParams[$key])) ? ' form-param missing ' : ' form-params\' length is less than: ' . $min_length);
+                $this->setError($msg,400,$code);
+            }
             return ($this->error === 0);
+
         }
 
-        function checkMandatoryParam($pos, $msg = '')
+        function checkMandatoryFormParams($keys)
         {
-            if (!isset($this->params[$pos]) || !strlen($this->params[$pos])) {
-                $this->setError(($msg == '') ? 'param ' . $pos . ' is mandatory' : $msg);
+
+            if (!is_array($keys) && strlen($keys)) $keys = array($keys);
+            foreach ($keys as $i=>$item) if(!is_array($item)) $keys[$i] = array($item);
+
+            foreach ($keys as $key)if(is_string($key[0])) {
+                $fkey = $key[0];
+                $fmsg = (isset($key[1]))?$key[1]:'';
+                $fvalues = (is_array($key[2]))?$key[2]:[];
+                $fmin = (isset($key[3]))?$key[3]:1;
+                $fcode = (isset($key[4]))?$key[4]:null;
+                $this->checkMandatoryFormParam($fkey,$fmsg,$fvalues,$fmin,$fcode);
             }
             return ($this->error === 0);
         }
 
-        function setError($value, $key = 400)
+        function checkMandatoryParam($pos, $msg = '',$values = [],$code=null)
+        {
+            if (!isset($this->params[$pos]) || !strlen($this->params[$pos])) {
+                $this->setError(($msg == '') ? 'param ' . $pos . ' is mandatory' : $msg,400,$code);
+            } else if(is_array($values) && count($values)){
+                if(!in_array($this->params[$pos], $values)) {
+                    $this->setError(($msg == '') ? 'param ' . $pos . ' is mandatory' : $msg,400,$code);
+                }
+            }
+            return ($this->error === 0);
+        }
+
+        function setError($value, $key = 400,$code=null)
         {
             $this->error = $key;
             $this->errorMsg[] = $value;
             $this->core->errors->add($value);
+            $this->code = (null !== $code)? $code:$key;
         }
 
         function addHeader($key, $value)
@@ -274,19 +301,37 @@ if (!defined("_RESTfull_CLASS_")) {
             }
         }
 
+        function addCodeLib($code,$msg) {
+            $this->codeLib[$code] = $msg;
+        }
+
+        function getCodeLib($code) {
+            return $this->codeLib[$code];
+        }
+
         function getReturnCode()
         {
-            return (($this->error) ? $this->error : $this->ok);
+            return (($this->code!==null) ? $this->code : $this->getReturnStatus());
         }
 
         function setReturnCode($code)
         {
-            $this->ok = $code;
+            $this->code = $code;
+        }
+
+        function getReturnStatus()
+        {
+            return (($this->error) ? $this->error : $this->ok);
+        }
+
+        function setReturnStatus($status)
+        {
+            $this->ok = $status;
         }
 
         function getResponseHeader()
         {
-            switch ($this->getReturnCode()) {
+            switch ($this->getReturnStatus()) {
                 case 201:
                     $ret = ("HTTP/1.0 201 Created");
                     break;
@@ -319,7 +364,7 @@ if (!defined("_RESTfull_CLASS_")) {
         function checkCloudFrameWorkSecurity($time = 0, $id = '')
         {
             $ret = false;
-            $info = $this->core->security->checkCloudFrameWorkSecurity($time); // Max. 10 min for the Security Token and return $this->getConf('CLOUDFRAMEWORK-ID-'.$id);
+            $info = $this->core->security->checkCloudFrameWorkSecurity($time,$id); // Max. 10 min for the Security Token and return $this->getConf('CLOUDFRAMEWORK-ID-'.$id);
             if (false === $info) $this->setError($this->core->logs->get(), 401);
             else {
                 $ret = true;
@@ -336,13 +381,15 @@ if (!defined("_RESTfull_CLASS_")) {
             return ($this->core->security->existBasicAuth() && $this->core->security->existBasicAuthConfig());
         }
 
-        function checkBasicAuthSecurity()
+        function checkBasicAuthSecurity($id='')
         {
             $ret = false;
             if (false === ($basic_info = $this->core->security->checkBasicAuthWithConfig())) {
                 $this->setError($this->core->logs->get(), 401);
             } elseif (!isset($basic_info['id'])) {
                 $this->setError('Missing "id" parameter in authorizations config file', 401);
+            } elseif (strlen($id)>0 && $id != $basic_info['id']) {
+                $this->setError('This "id" parameter in authorizations is not allowed', 401);
             } elseif (!is_array($info = $this->core->config->get('CLOUDFRAMEWORK-ID-' . $basic_info['id']))) {
                 $this->setError('Missing config CLOUDFRAMEWORK-ID-{id} specified in "authorizations" config paramater', 503);
             } else {
@@ -366,7 +413,8 @@ if (!defined("_RESTfull_CLASS_")) {
         {
             $ret = array();
             $ret['success'] = ($this->core->errors->lines) ? false : true;
-            $ret['status'] = $this->getReturnCode();
+            $ret['status'] = $this->getReturnStatus();
+            $ret['code'] = $this->getReturnCode();
             $ret['url'] = (($_SERVER['HTTPS'] == 'on') ? 'https://' : 'http://') . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
             $ret['method'] = $this->method;
             $ret['ip'] = $this->core->system->ip;
