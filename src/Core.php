@@ -389,10 +389,11 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
 
         function activeDirPath($path) {
 
-            if(is_dir($path) || !@mkdir($path)) {
+            if(is_dir($path) || @mkdir($path)) {
                 $this->type = 'CacheInDirectory';
                 $this->dir = $path;
                 $this->setSpaceName(basename($path));
+                $this->init();
                 return true;
             } else {
                 $this->addError($path.' does not exist and can not be created');
@@ -911,6 +912,14 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
                 }
         }
 
+        function getConfigLoaded() {
+            $ret = [];
+            foreach ($this->_configPaths as $path => $foo) {
+                $ret[] = str_replace($this->core->system->root_path,'',$path);
+            }
+            return $ret;
+        }
+
         private function convertTags($data) {
             $_array = is_array($data);
 
@@ -1008,12 +1017,15 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
                     $vars = [$cond=>$vars];
                 }
 
-                // Substitute tags for strings
-                $vars = $this->convertTags($vars);
+
                 // If there is a condition tag
                 if(!$include) {
-                    switch (trim(strtolower($tagcode))) {
 
+                    // Substitute tags for strings
+                    if(is_string($vars))
+                        $vars = $this->convertTags($vars);
+
+                    switch (trim(strtolower($tagcode))) {
                         case "include":
                             // Recursive Call
                             $this->readConfigJSONFile($vars);

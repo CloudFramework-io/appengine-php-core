@@ -167,7 +167,7 @@ if (!defined ("_MYSQLI_CLASS_") ) {
                     if(is_object($this->_db)) $err.=' (' . $this->_db->connect_errno . ') ';
                     if(isset($mysqli) && is_object($mysqli)) $err .=$mysqli->connect_error;
                     if($this->core->is->development()) {
-                        $err.= " [User:{$this->_dbuser}  Password:".substr($this->_dbpassword,0,2).']';
+                        $err.= " [User:{$this->_dbuser}  Password:".substr($this->_dbpassword,0,2).'***]';
                     }
                     $this->setError($err);
                 }

@@ -403,8 +403,10 @@ if (!defined("_RESTfull_CLASS_")) {
             $this->core->__p->add("RESTFull: ", '', 'endnote');
             switch ($this->contentTypeReturn) {
                 case 'JSON':
-                    if (isset($this->formParams['__p']))
+                    if (isset($this->formParams['__p'])) {
+                        $this->core->__p->data['config loaded'] = $this->core->config->getConfigLoaded();
                         $ret['__p'] = $this->core->__p->data;
+                    }
 
                     $ret['_totTime'] = $this->core->__p->getTotalTime(5) . ' secs';
                     $ret['_totMemory'] = $this->core->__p->getTotalMemory(5) . ' Mb';
