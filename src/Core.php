@@ -444,6 +444,7 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
         function get($str, $expireTime=-1) {
             if(null === $this->cache) $this->init();
             if(null === $this->cache) return false;
+            if(!strlen($expireTime)) $expireTime=-1;
 
             if(!strlen(trim($str))) return false;
             $info = $this -> cache ->get($this->spacename.'-'.$str);
