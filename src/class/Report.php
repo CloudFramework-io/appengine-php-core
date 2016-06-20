@@ -267,55 +267,80 @@ if (!defined ("_CloudServiceReporting_CLASS_") ) {
         var $error = false;
         var $errorMsg = '';
         var $core = null;
-        var $cubes = [];
-        var $caches = [];
 
         function __construct(Core &$core, $params)
         {
             $this->core = $core;
-            $this->core->cache->setSpaceName('CLASS_Report');
-
-            // Activating FileCache
-            if(isset($params['cachePath'])) {
-                $this->core->cache->activeDirPath($params['cachePath']);
-                if($this->core->cache->error) {
-                    $this->addError($this->core->cache->errorMsg);
-                }
-            }
         }
 
         function setCube($cube,$data) {
             if(!strlen(trim($cube))) return false;
-            $this->cubes[$cube] = $data;
-            $this->core->cache->set($cube,$data);
+            $this->core->cache->set('Report_'.$cube,$data);
+            return new ReportCube($data);
+
         }
 
-        /**
-         * @param $cube Cube Name
-         * @param null $filter
-         * @return ReportCube
-         */
-        function cube($cube, $filter=null) {
 
-            // Check the cube is loaded
-            if($this->loadCube($cube)) {
-                $ret = new ReportCube($this->cubes[$cube]);
-                unset($this->cubes[$cube]); // Free memory
-            } else
-                $ret =  new ReportCube([]);
+        function resetCube($cube) {
+            $this->core->cache->delete('Report_'.$cube);
+        }
 
+        function getCube($cube,$fields='*',$filter=[],$expire=-1) {
+            if(!strlen(trim($cube))) return false;
+            if(!strlen(trim($expire))) $expire=-1;
+
+            $ret = false;
+            if(!isset($_GET['_reloadReports'])) {
+                $data = $this->core->cache->get('Report_' . $cube, $expire);
+                if(is_array($data)) {
+                    $this->filterData($data,$fields,$filter);
+                    $ret =  new ReportCube($data);
+                }
+                unset($data);
+            }
             return $ret;
         }
 
-        function loadCube($cube) {
-            if(!strlen(trim($cube))) return false;
-            if(!isset($this->caches[$cube])) {
-                $this->caches[$cube] = true;
-                if(!isset($_GET['_reloadReports'])) {
-                    $this->cubes[$cube] = $this->core->cache->get($cube);
+        private function filterData(&$data,$fields,$filter)
+        {
+            if (strlen($fields) && !is_array($fields) && $fields != '*') $fields = explode(',', $fields);
+            if (is_array($filter) && count($filter)) {
+                $newdata =[];
+                foreach ($data as $i => $row) {
+                    $add = true;
+                    foreach ($filter as $cond) if (isset($row[$cond[0]])) {
+                        $add = false;
+                        switch ($cond[1]) {
+                            case "=":
+                                if ($row[$cond[0]] == $cond[2]) $add = true;
+                                break;
+                            case "!=":
+                                if ($row[$cond[0]] != $cond[2]) $add = true;
+                                break;
+                            case ">":
+                                if ($row[$cond[0]] > $cond[2]) $add = true;
+                                break;
+                            case ">=":
+                                if ($row[$cond[0]] >= $cond[2]) $add = true;
+                                break;
+                            case "<":
+                                if ($row[$cond[0]] < $cond[2]) $add = true;
+                                break;
+                            case "<=":
+                                if ($row[$cond[0]] <= $cond[2]) $add = true;
+                                break;
+                        }
+                    }
+
+                    // Filter info if it is necessary
+                    if ($add) {
+                        if (is_array($fields)) foreach ($row as $key => $value) if (!in_array($key, $fields)) unset($row[$key]);
+                        $newdata[]=$row;
+                    }
+                    unset($data[$i]);
                 }
+                $data = $newdata;
             }
-            return is_array($this->cubes[$cube]);
         }
 
         function addError($value)

@@ -120,6 +120,16 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                                     if(!strlen($value)) $value='0.00,0.00';
                                     list($lat,$long) = explode(',',$value,2);
                                     $value = new Geopoint($lat,$long);
+                                } elseif($this->schema['props'][$i][1] == 'json') {
+                                    // Check if I receive a JSON if not I encode
+                                    if(!strlen($value)) $value='{}';
+                                    else {
+                                        if(is_array($value) || is_object($value)) $value = json_encode($value,JSON_PRETTY_PRINT);
+                                        else {
+                                            json_decode($value);
+                                            if (json_last_error() !== JSON_ERROR_NONE) $value = json_encode($value, JSON_PRETTY_PRINT);
+                                        }
+                                    }
                                 }
                             }
 
@@ -139,8 +149,12 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                                 $entity->setKeyName($schema_keyname);
                             }
                             $this->store->upsert($entity);
-                            foreach ($record as $key=>$value) if($value instanceof Geopoint)
-                                $record[$key] = $value->getLatitude().','.$value->getLongitude();
+                            foreach ($record as $key=>$value)
+                                if($value instanceof Geopoint)
+                                    $record[$key] = $value->getLatitude().','.$value->getLongitude();
+                                elseif($this->schema['props'][$key][1]=='json' ) {
+                                    $record[$key] = json_decode($value,true);
+                                }
 
                             if (null !== $schema_key) {
                                 $record['KeyId'] = $entity->getKeyId();
@@ -208,6 +222,9 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                             break;
                         case "geo":
                             $ret->addGeopoint($key, $index);
+                            break;
+                        case "json":
+                            $ret->addString($key, false);
                             break;
                         default:
                             $ret->addString($key, $index);
@@ -280,8 +297,11 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                         if (is_array($data))
                             foreach ($data as $record) {
                                 // GeoData Transformation
-                                foreach ($record->getData() as $key=>$value) if($value instanceof Geopoint)
-                                    $record->{$key} = $value->getLatitude().','.$value->getLongitude();
+                                foreach ($record->getData() as $key=>$value)
+                                    if($value instanceof Geopoint)
+                                        $record->{$key} = $value->getLatitude().','.$value->getLongitude();
+                                    elseif($key=='JSON')
+                                        $record->{$key} = json_decode($value,true);
                                 $subret = (null !== $record->getKeyId())?['KeyId' => $record->getKeyId()]:['KeyName' => $record->getKeyName()];
                                 $ret[] = array_merge($subret, $record->getData());
                                 $tr++;
@@ -406,6 +426,9 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                 foreach ($record->getData() as $key=>$value)
                     if($value instanceof Geopoint)
                         $record->{$key} = $value->getLatitude().','.$value->getLongitude();
+                    elseif($key=='JSON')
+                        $record->{$key} = json_decode($value,true);
+
                 $subret = (null !== $record->getKeyId())?['KeyId' => $record->getKeyId()]:['KeyName' => $record->getKeyName()];
                 $ret[] = array_merge($subret, $record->getData());
             }

@@ -366,7 +366,9 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
 
         function get($path)
         {
-            $ret =  @file_get_contents($this->dir.$path);
+            $ret = false;
+            if(is_file($this->dir.$path))
+                $ret =  file_get_contents($this->dir.$path);
             if(false === $ret) return null;
             else return unserialize(gzuncompress($ret));
         }
@@ -387,12 +389,13 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
 
         }
 
-        function activeDirPath($path) {
+        function activeDirPath($path,$spacename='') {
 
             if(is_dir($path) || @mkdir($path)) {
                 $this->type = 'CacheInDirectory';
                 $this->dir = $path;
-                $this->setSpaceName(basename($path));
+                if(strlen($spacename)) $spacename='_'.$spacename;
+                $this->setSpaceName(basename($path).$spacename);
                 $this->init();
                 return true;
             } else {
@@ -447,6 +450,7 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
             if(!strlen($expireTime)) $expireTime=-1;
 
             if(!strlen(trim($str))) return false;
+
             $info = $this -> cache ->get($this->spacename.'-'.$str);
             if(strlen($info) && $info!==null) {
                 $info = unserialize($info);
