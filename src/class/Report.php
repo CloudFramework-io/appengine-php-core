@@ -55,33 +55,45 @@ if (!defined ("_CloudServiceReporting_CLASS_") ) {
         }
 
         /* Counting functions */
-        function count($filter=[]) { return $this->_count();  }
+        function count($filter=[]) {
+            if (is_array($filter) && count($filter)) {
+                $data = $this->data;
+                Report::filterData($data,'*',$filter,0);
+            } else {
+                $data = &$this->data;
+            }
+            return count($data);
+        }
         function countInFields($fields) { return $this->_count($fields,false);  }
         function distinctCountInFields($fields=null) { return $this->_count($fields,true); }
         private  function _count($fields=null,$distinct=false,$filter=[]) {
-            if(null == $fields) return count($this->data);
+            if(null == $fields && (!is_array($filter) || !count($filter))) return count($this->data);
             else {
                 $ret = [];
                 $distinctValues = [];
+                if(null == $fields) $fields='*';
                 if($fields=='*') $fields = $this->fields();
                 if(is_string($fields)) $fields = explode(',',$fields);
                 if(!is_array($fields)) return [];
-                else foreach ($this->data as $item) {
-                    if(is_array($filter) && count($filter)) {
-                        _printe($filter);
-                    }
-                    foreach ($fields as $field) if(strlen(trim($field))) {
-                        $add = 0;
-                        if(strlen($item[$field])) {
-                            if($distinct) {
-                                if(!isset($distinctValues[$field][$item[$field]])) {
-                                    $distinctValues[$field][$item[$field]]=true;
-                                    $add=1;
-                                }
-                            } else
-                                $add=1;
+                else {
+
+
+
+                    foreach ($this->data as $item) {
+
+                        foreach ($fields as $field) if (strlen(trim($field))) {
+                            $add = 0;
+                            if (strlen($item[$field])) {
+                                if ($distinct) {
+                                    if (!isset($distinctValues[$field][$item[$field]])) {
+                                        $distinctValues[$field][$item[$field]] = true;
+                                        $add = 1;
+                                    }
+                                } else
+                                    $add = 1;
+                            }
+                            $ret[$field] += $add;
                         }
-                        $ret[$field]+=$add;
                     }
                 }
                 return $ret;
@@ -191,6 +203,31 @@ if (!defined ("_CloudServiceReporting_CLASS_") ) {
         }
 
         /* Subsets */
+        function export($fields='*') {
+
+            function replaceForExport(&$content) {
+                $content = str_replace("\r","__r__",$content);
+                $content = str_replace("\n","__n__",$content);
+                $content = str_replace("\t","__t__",$content);
+            };
+
+            function reduceForExport($ret, $content) {
+                array_walk($content,'replaceForExport');
+                $ret .= implode("\t",$content)."\n";
+                return $ret;
+            };
+
+            $ret = $this->_get($fields);
+            $export = '';
+            if(is_array($ret[0])) {
+                $export = implode("\t",array_keys($ret[0]))."\n";
+                $export.= array_reduce($ret,'reduceForExport');
+                unset($ret);
+            }
+            return $export;
+        }
+
+
         function get($fields='*') { return($this->_get($fields)); }
         function values($fields='*',$order='asc') { return($this->_get($fields,true,false,$order)); }
         function distinctValues($fields='*',$order='asc') { return($this->_get($fields,true,true,$order)); }
@@ -239,6 +276,7 @@ if (!defined ("_CloudServiceReporting_CLASS_") ) {
         function toDate($field1,$field2) { $this->_to('date',$field1,$field2);}
         function toHour($field1,$field2) { $this->_to('hour',$field1,$field2);}
         function toMin($field1,$field2) { $this->_to('min',$field1,$field2);}
+        function toString($field1,$field2) { $this->_to('string',$field1,$field2);}
         private function _to($to,$field1,$field2) {
             foreach ($this->data as $i=>$item) {
                 switch ($to) {
@@ -256,6 +294,12 @@ if (!defined ("_CloudServiceReporting_CLASS_") ) {
                         break;
                     case 'min':
                         $this->data[$i][$field2] = substr($this->data[$i][$field1],14,2);
+                        break;
+                    case 'string':
+                        $this->data[$i][$field2] =$field1;
+                        foreach ($item as $key=>$value) if(strpos($this->data[$i][$field2],'{{'.$key.'}}')!==false){
+                            $this->data[$i][$field2] = str_replace('{{'.$key.'}}',$value,$this->data[$i][$field2]);
+                        }
                         break;
                 }
             }
@@ -285,15 +329,16 @@ if (!defined ("_CloudServiceReporting_CLASS_") ) {
             $this->core->cache->delete('Report_'.$cube);
         }
 
-        function getCube($cube,$fields='*',$filter=[],$expire=-1) {
+        function getCube($cube,$fields='*',$filter=[],$limit=0,$expire=-1) {
             if(!strlen(trim($cube))) return false;
             if(!strlen(trim($expire))) $expire=-1;
+            if(!strlen(trim($limit))) $limit=0;
 
             $ret = false;
             if(!isset($_GET['_reloadReports'])) {
                 $data = $this->core->cache->get('Report_' . $cube, $expire);
                 if(is_array($data)) {
-                    $this->filterData($data,$fields,$filter);
+                    $this->filterData($data,$fields,$filter,$limit);
                     $ret =  new ReportCube($data);
                 }
                 unset($data);
@@ -301,9 +346,9 @@ if (!defined ("_CloudServiceReporting_CLASS_") ) {
             return $ret;
         }
 
-        private function filterData(&$data,$fields,$filter)
+        static function filterData(&$data,$fields,$filter,$limit)
         {
-            if (strlen($fields) && !is_array($fields) && $fields != '*') $fields = explode(',', $fields);
+            if (!is_array($fields) && strlen($fields)  && $fields != '*') $fields = explode(',', $fields);
             if (is_array($filter) && count($filter)) {
                 $newdata =[];
                 foreach ($data as $i => $row) {
@@ -340,6 +385,10 @@ if (!defined ("_CloudServiceReporting_CLASS_") ) {
                     unset($data[$i]);
                 }
                 $data = $newdata;
+            }
+
+            if($limit>0) {
+                $data = array_slice($data,0,$limit);
             }
         }
 

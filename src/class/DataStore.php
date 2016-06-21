@@ -121,15 +121,20 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                                     list($lat,$long) = explode(',',$value,2);
                                     $value = new Geopoint($lat,$long);
                                 } elseif($this->schema['props'][$i][1] == 'json') {
-                                    // Check if I receive a JSON if not I encode
-                                    if(!strlen($value)) $value='{}';
-                                    else {
-                                        if(is_array($value) || is_object($value)) $value = json_encode($value,JSON_PRETTY_PRINT);
-                                        else {
-                                            json_decode($value);
-                                            if (json_last_error() !== JSON_ERROR_NONE) $value = json_encode($value, JSON_PRETTY_PRINT);
-                                        }
+                                    if(!strlen($value)) {
+                                        $value='{}';
+                                    } else {
+                                        json_decode($value);
+                                        if (json_last_error() !== JSON_ERROR_NONE) $value = json_encode($value, JSON_PRETTY_PRINT);
                                     }
+                                }
+                            } else {
+                                if($this->schema['props'][$i][1] == 'json') {
+                                    if (is_array($value) || is_object($value)) {
+                                        $value = json_encode($value, JSON_PRETTY_PRINT);
+                                    } elseif (!strlen($value)) {
+                                        $value = '{}';
+                                    } 
                                 }
                             }
 

@@ -426,6 +426,7 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
             $info['_microtime_']=microtime(true);
             $info['_data_']=gzcompress(serialize($data));
             $this -> cache ->set($this->spacename.'-'.$str,serialize($info));
+            unset($info);
             return true;
         }
 
