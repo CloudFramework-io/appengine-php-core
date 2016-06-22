@@ -21,28 +21,37 @@ if (!defined ("_CloudServiceReporting_CLASS_") ) {
                 if(!is_array($conds[0])) $conds = [$conds];
                 foreach ($this->data as $row) {
                     $add = true;
-                    foreach ($conds as $cond) if(isset($row[$cond[0]])) {
-                        $add = false;
+                    foreach ($conds as $cond)  {
+                        if(!isset($row[$cond[0]])) $row[$cond[0]] = '_empty_';
+                        if(!strlen($row[$cond[0]])) $row[$cond[0]] = '_empty_';
                         switch ($cond[1]) {
                             case "=":
-                                if($row[$cond[0]]==$cond[2]) $add = true;
+                                if(!($row[$cond[0]]==$cond[2])) $add = false;
                                 break;
                             case "!=":
-                                if($row[$cond[0]]!=$cond[2]) $add = true;
+                                if(!($row[$cond[0]]!=$cond[2])) $add = false;
                                 break;
                             case ">":
-                                if($row[$cond[0]] > $cond[2]) $add = true;
+                                if(!($row[$cond[0]]>$cond[2])) $add = false;
                                 break;
                             case ">=":
-                                if($row[$cond[0]]>=$cond[2]) $add = true;
+                                if(!($row[$cond[0]]>=$cond[2])) $add = false;
                                 break;
                             case "<":
-                                if($row[$cond[0]]<$cond[2]) $add = true;
+                                if(!($row[$cond[0]]<$cond[2])) $add = false;
                                 break;
                             case "<=":
-                                if($row[$cond[0]]<=$cond[2]) $add = true;
+                                if(!($row[$cond[0]]<=$cond[2])) $add = false;
+                                break;
+                            case "in":
+                                if(!is_array($cond[2])) $cond[2] = [$cond[2]];
+                                if(!(array_search($row[$cond[0]],$cond[2])!== false)) $add = false;
+                                break;
+                            default:
+                                $add = true;
                                 break;
                         }
+                        if(!$add) break;
                     }
 
                     if($add) {
@@ -304,6 +313,37 @@ if (!defined ("_CloudServiceReporting_CLASS_") ) {
                 }
             }
         }
+        function joinCube($field1,$field2,$data) {
+            if(count($data)>0 && is_array($data[0]) && key_exists($field2,$data[0]) && count($this->data) && is_array($this->data[0]) && isset($this->data[0][$field1])) {
+                $emptyRecord = array_fill_keys(array_keys($data[0]),'');
+                $data = array_column($data,null,$field2);
+                foreach ($this->data as $i=>$item)
+                    if(is_array($data[$item[$field1]])){
+                        $this->data[$i] = array_merge($this->data[$i],$data[$item[$field1]]);
+                    } else {
+                        $this->data[$i] = array_merge($this->data[$i],$emptyRecord);
+                    }
+            }
+        }
+
+        function toRange($field1,$field2,$ranges) {
+            if(!is_array($ranges)) return false;
+            foreach ($this->data as $i=>$item) {
+                $match = false;
+                foreach ($ranges as $j => $conds) {
+                    foreach ($conds as $newValue => $cond) {
+                        if (!is_array($cond) && $cond == "*") $match = true;
+                        if (is_array($cond) && array_search($item[$field1], $cond) !== false) $match = true;
+                        if ($match) {
+                            $this->data[$i][$field2] = $newValue;
+                            break;
+                        }
+                    }
+                    if($match) break;
+                }
+                if(!$match) $this->data[$i][$field2] = '';
+            }
+        }
     }
 
     class Report
@@ -346,6 +386,20 @@ if (!defined ("_CloudServiceReporting_CLASS_") ) {
             return $ret;
         }
 
+        function getCachedCube($cube,$fields='*',$filter=[],$limit=0) {
+            if(!strlen(trim($cube))) return false;
+            if(!strlen(trim($limit))) $limit=0;
+
+            $ret = false;
+            $data = $this->core->cache->get('Report_' . $cube);
+            if(is_array($data)) {
+                $this->filterData($data,$fields,$filter,$limit);
+                $ret =  new ReportCube($data);
+            }
+            unset($data);
+            return $ret;
+        }
+
         static function filterData(&$data,$fields,$filter,$limit)
         {
             if (!is_array($fields) && strlen($fields)  && $fields != '*') $fields = explode(',', $fields);
@@ -353,28 +407,37 @@ if (!defined ("_CloudServiceReporting_CLASS_") ) {
                 $newdata =[];
                 foreach ($data as $i => $row) {
                     $add = true;
-                    foreach ($filter as $cond) if (isset($row[$cond[0]])) {
-                        $add = false;
+                    foreach ($filter as $cond)  {
+                        if (!isset($row[$cond[0]])) $row[$cond[0]] = '_empty_';
+                        if (!strlen($row[$cond[0]])) $row[$cond[0]] = '_empty_';
                         switch ($cond[1]) {
                             case "=":
-                                if ($row[$cond[0]] == $cond[2]) $add = true;
+                                if (!($row[$cond[0]] == $cond[2])) $add = false;
                                 break;
                             case "!=":
-                                if ($row[$cond[0]] != $cond[2]) $add = true;
+                                if (!($row[$cond[0]] != $cond[2])) $add = false;
                                 break;
                             case ">":
-                                if ($row[$cond[0]] > $cond[2]) $add = true;
+                                if (!($row[$cond[0]] > $cond[2])) $add = false;
                                 break;
                             case ">=":
-                                if ($row[$cond[0]] >= $cond[2]) $add = true;
+                                if (!($row[$cond[0]] >= $cond[2])) $add = false;
                                 break;
                             case "<":
-                                if ($row[$cond[0]] < $cond[2]) $add = true;
+                                if (!($row[$cond[0]] < $cond[2])) $add = false;
                                 break;
                             case "<=":
-                                if ($row[$cond[0]] <= $cond[2]) $add = true;
+                                if (!($row[$cond[0]] <= $cond[2])) $add = false;
+                                break;
+                            case "in":
+                                if(!is_array($cond[2])) $cond[2] = [$cond[2]];
+                                if(!(array_search($row[$cond[0]],$cond[2])!== false)) $add = false;
+                                break;
+                            default:
+                                $add=true;
                                 break;
                         }
+                        if(!$add) break;
                     }
 
                     // Filter info if it is necessary
