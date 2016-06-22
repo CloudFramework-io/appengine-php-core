@@ -440,6 +440,12 @@ if (!defined ("_CloudServiceReporting_CLASS_") ) {
                                 if(!is_array($cond[2])) $cond[2] = [$cond[2]];
                                 if(!(array_search($row[$cond[0]],$cond[2])!== false)) $add = false;
                                 break;
+                            case "contain":
+                                $add = strpos($row[$cond[0]],$cond[2])!== false;
+                                break;
+                            case "not contain":
+                                $add = strpos($row[$cond[0]],$cond[2])=== false;
+                                break;
                             default:
                                 $add=true;
                                 break;
