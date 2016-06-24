@@ -22,8 +22,10 @@ if (!defined ("_CloudServiceReporting_CLASS_") ) {
                 foreach ($this->data as $row) {
                     $add = true;
                     foreach ($conds as $cond)  {
+
                         if(!isset($row[$cond[0]])) $row[$cond[0]] = '_empty_';
                         if(!strlen($row[$cond[0]])) $row[$cond[0]] = '_empty_';
+                        if(!strlen($cond[2])) $cond[2]= '_empty_';
                         switch ($cond[1]) {
                             case "=":
                                 if(!($row[$cond[0]]==$cond[2])) $add = false;
@@ -127,7 +129,8 @@ if (!defined ("_CloudServiceReporting_CLASS_") ) {
             }
         }
 
-        function countBy($field,$sort='desc',$tsort='value',$limit='') {
+        function countBy($fields,$sort='desc',$tsort='value',$limit='') {
+            list($field,$others) = explode(',',$fields,2);
             $ret = [];
             foreach ($this->data as $item) {
                 $ret[$item[$field]]++;
@@ -136,6 +139,14 @@ if (!defined ("_CloudServiceReporting_CLASS_") ) {
             $this->_sort($ret,$sort,$tsort);
             // slice if $limit
             if(strlen($limit) && $limit >0)  $ret = array_slice($ret,0,$limit);
+
+            // Let's see if there is more fields to call recursively
+            if(!empty($others)) {
+                foreach ($ret as $key=>$count) {
+                    $cube = $this->reduce([$field,'=',$key]);
+                    $ret[$key] = $cube->countBy($others);
+                }
+            }
 
 
             return $ret;
