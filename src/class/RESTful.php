@@ -59,8 +59,17 @@ if (!defined("_RESTfull_CLASS_")) {
             } else {
                 if (count($_GET)) $this->formParams = (count($this->formParams)) ? array_merge($this->formParam, $_GET) : $_GET;
                 if (count($_POST)) $this->formParams = (count($this->formParams)) ? array_merge($this->formParams, $_POST) : $_POST;
-                if (isset($_POST['_raw_input_']) && strlen($_POST['_raw_input_'])) $this->formParams = (count($this->formParams)) ? array_merge($this->formParams, json_decode($_POST['_raw_input_'], true)) : json_decode($_POST['_raw_input_'], true);
-                if (isset($_GET['_raw_input_']) && strlen($_GET['_raw_input_'])) $this->formParams = (count($this->formParams)) ? array_merge($this->formParams, json_decode($_GET['_raw_input_'], true)) : json_decode($_GET['_raw_input_'], true);
+
+                // Reading raw format is _raw_input is passed
+                //POST
+                $raw = null;
+                if(isset($_POST['_raw_input_']) && strlen($_POST['_raw_input_']) $raw = json_decode($_POST['_raw_input_'],true);
+                if (is_array($raw)) $this->formParams = (count($this->formParams)) ? array_merge($this->formParams, $raw) : $raw;
+                // GET
+                $raw = null;
+                if(isset($_GET['_raw_input_']) && strlen($_GET['_raw_input_']) $raw = json_decode($_GET['_raw_input_'],true);
+                if (is_array($raw)) $this->formParams = (count($this->formParams)) ? array_merge($this->formParams, $raw) : $raw;
+
 
                 // raw data.
                 $input = file_get_contents("php://input");
