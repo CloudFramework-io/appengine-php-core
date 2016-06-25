@@ -63,11 +63,11 @@ if (!defined("_RESTfull_CLASS_")) {
                 // Reading raw format is _raw_input is passed
                 //POST
                 $raw = null;
-                if(isset($_POST['_raw_input_']) && strlen($_POST['_raw_input_']) $raw = json_decode($_POST['_raw_input_'],true);
+                if(isset($_POST['_raw_input_']) && strlen($_POST['_raw_input_'])) $raw = json_decode($_POST['_raw_input_'],true);
                 if (is_array($raw)) $this->formParams = (count($this->formParams)) ? array_merge($this->formParams, $raw) : $raw;
                 // GET
                 $raw = null;
-                if(isset($_GET['_raw_input_']) && strlen($_GET['_raw_input_']) $raw = json_decode($_GET['_raw_input_'],true);
+                if(isset($_GET['_raw_input_']) && strlen($_GET['_raw_input_'])) $raw = json_decode($_GET['_raw_input_'],true);
                 if (is_array($raw)) $this->formParams = (count($this->formParams)) ? array_merge($this->formParams, $raw) : $raw;
 
 
