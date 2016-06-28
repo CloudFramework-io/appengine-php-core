@@ -22,8 +22,10 @@ if (!defined ("_CloudServiceReporting_CLASS_") ) {
                 foreach ($this->data as $row) {
                     $add = true;
                     foreach ($conds as $cond)  {
+
                         if(!isset($row[$cond[0]])) $row[$cond[0]] = '_empty_';
                         if(!strlen($row[$cond[0]])) $row[$cond[0]] = '_empty_';
+                        if(!strlen($cond[2])) $cond[2]= '_empty_';
                         switch ($cond[1]) {
                             case "=":
                                 if(!($row[$cond[0]]==$cond[2])) $add = false;
@@ -73,12 +75,23 @@ if (!defined ("_CloudServiceReporting_CLASS_") ) {
         /* Counting functions */
         function count($filter=[]) {
             if (is_array($filter) && count($filter)) {
+                if(!is_array($filter[0])) $filter = [$filter];
                 $data = $this->data;
                 Report::filterData($data,'*',$filter,0);
             } else {
                 $data = &$this->data;
             }
             return count($data);
+        }
+        function sum($field,$filter=[]) {
+            if (is_array($filter) && count($filter)) {
+                if(!is_array($filter[0])) $filter = [$filter];
+                $data = $this->data;
+                Report::filterData($data,$field,$filter,0);
+            } else {
+                $data = &$this->data;
+            }
+            return array_sum(array_column($data,$field));
         }
         function countInFields($fields) { return $this->_count($fields,false);  }
         function distinctCountInFields($fields=null) { return $this->_count($fields,true); }
@@ -116,10 +129,32 @@ if (!defined ("_CloudServiceReporting_CLASS_") ) {
             }
         }
 
-        function countBy($field,$sort='desc',$tsort='value',$limit='') {
+        function countBy($fields,$sort='desc',$tsort='value',$limit='') {
+            list($field,$others) = explode(',',$fields,2);
             $ret = [];
             foreach ($this->data as $item) {
                 $ret[$item[$field]]++;
+            }
+            // Sorting result
+            $this->_sort($ret,$sort,$tsort);
+            // slice if $limit
+            if(strlen($limit) && $limit >0)  $ret = array_slice($ret,0,$limit);
+
+            // Let's see if there is more fields to call recursively
+            if(!empty($others)) {
+                foreach ($ret as $key=>$count) {
+                    $cube = $this->reduce([$field,'=',$key]);
+                    $ret[$key] = $cube->countBy($others);
+                }
+            }
+
+
+            return $ret;
+        }
+        function sumBy($field,$value,$sort='desc',$tsort='value',$limit='') {
+            $ret = [];
+            foreach ($this->data as $item) {
+                $ret[$item[$field]] = $this->sum($value,[[$field,"=",$item[$field]]]);
             }
             // Sorting result
             $this->_sort($ret,$sort,$tsort);
@@ -180,24 +215,31 @@ if (!defined ("_CloudServiceReporting_CLASS_") ) {
             // If I receive rows then next will be cols
             else {
                 $data = $this->reduce($query);
-                foreach ($this->reports[$report]['values'] as $value)
-                    switch ($value[0]){
+                foreach ($this->reports[$report]['values'] as $value) {
+                    switch ($value[0]) {
                         case 'count':
                             // If there is a filter
-                            if(is_array($value[1])) {
-                                $count  = $data->reduce($value[1])->count();
+                            if (is_array($value[1])) {
+                                $res = $data->reduce($value[1])->count();
                             } else {
-                                $count =  $data->count();
+                                $res = $data->count();
                             }
-                            // Assigning
-                            if(!is_array($ret) && strlen($ret)) $ret = [$ret];
-                            if(is_array($ret)) $ret[] = $count;
-                            else $ret = $count;
+
+                            break;
+                        case 'sum':
+                            $res = $data->sum($value[1]);
                             break;
                         default:
-                            $ret = ['filter'=>$query,'values'=>$this->reports[$report]['values']];
+                            $res = ['filter' => $query, 'values' => $this->reports[$report]['values']];
                             break;
                     }
+
+                    // Assigning
+                    if (!is_array($ret) && strlen($ret)) $ret = [$ret];
+                    if (is_array($ret)) $ret[] = $res;
+                    else $ret = $res;
+                }
+
             }
         }
 
@@ -462,7 +504,6 @@ if (!defined ("_CloudServiceReporting_CLASS_") ) {
                 }
                 $data = $newdata;
             }
-
             if($limit>0) {
                 $data = array_slice($data,0,$limit);
             }
