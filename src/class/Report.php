@@ -25,7 +25,7 @@ if (!defined ("_CloudServiceReporting_CLASS_") ) {
 
                         if(!isset($row[$cond[0]])) $row[$cond[0]] = '_empty_';
                         if(!strlen($row[$cond[0]])) $row[$cond[0]] = '_empty_';
-                        if(!strlen($cond[2])) $cond[2]= '_empty_';
+                        if(is_string($cond[2]) && !strlen($cond[2])) $cond[2]= '_empty_';
                         switch ($cond[1]) {
                             case "=":
                                 if(!($row[$cond[0]]==$cond[2])) $add = false;
@@ -151,6 +151,42 @@ if (!defined ("_CloudServiceReporting_CLASS_") ) {
 
             return $ret;
         }
+
+        function distinctCountBy($fields,$distinct_fields,$sort='desc',$tsort='value',$limit='') {
+            list($field,$others) = explode(',',$fields,2);
+            $ret = [];
+            if(!is_array($distinct_fields)) $distinct_fields = [$distinct_fields];
+
+            $distinct_values = [];
+            foreach ($this->data as $item) {
+                $distinct_value = [];
+                foreach ($distinct_fields as $distinct_field)
+                    $distinct_value[$distinct_field] = $item[$distinct_field];
+
+                $distinct_hash = sha1(json_encode($distinct_value));
+                if(!isset($distinct_values[$distinct_hash])) {
+                    $ret[$item[$field]]++;
+                    $distinct_values[$distinct_hash] = true;
+                }
+            }
+
+            // Sorting result
+            $this->_sort($ret,$sort,$tsort);
+            // slice if $limit
+            if(strlen($limit) && $limit >0)  $ret = array_slice($ret,0,$limit);
+
+            // Let's see if there is more fields to call recursively
+            if(!empty($others)) {
+                foreach ($ret as $key=>$count) {
+                    $cube = $this->reduce([$field,'=',$key]);
+                    $ret[$key] = $cube->distinctCountBy($others,$distinct_fields);
+                }
+            }
+
+
+            return $ret;
+        }
+
         function sumBy($field,$value,$sort='desc',$tsort='value',$limit='') {
             $ret = [];
             foreach ($this->data as $item) {
