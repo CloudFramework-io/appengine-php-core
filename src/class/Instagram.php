@@ -1,7 +1,7 @@
 <?php
-// CloudSQL Class v10
-if (!defined ("_CloudServiceReporting_CLASS_") ) {
-    define("_CloudServiceReporting_CLASS_", TRUE);
+// Instagram Class v1
+if (!defined ("_Instagram_CLASS_") ) {
+    define("_Instagram_CLASS_", TRUE);
 
     class Instagram
     {
