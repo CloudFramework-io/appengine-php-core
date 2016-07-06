@@ -13,6 +13,7 @@ if (!defined("_RESTfull_CLASS_")) {
         var $error = 0;
         var $code = null;
         var $codeLib = [];
+        var $codeLibError = [];
         var $ok = 200;
         var $errorMsg = [];
         var $header = '';
@@ -310,12 +311,19 @@ if (!defined("_RESTfull_CLASS_")) {
             }
         }
 
-        function addCodeLib($code,$msg) {
+        function addCodeLib($code,$msg,$error=400) {
             $this->codeLib[$code] = $msg;
+            $this->codeLibError[$code] = $error;
         }
 
         function getCodeLib($code) {
             return $this->codeLib[$code];
+        }
+        function getCodeLibError($code) {
+            return $this->codeLibError[$code];
+        }
+        function setErrorFromCodelib($code) {
+            $this->setError($this->getCodeLib($code),$this->getCodeLibError($code),$code);
         }
 
         function getReturnCode()
@@ -495,7 +503,14 @@ if (!defined("_RESTfull_CLASS_")) {
             }
             return ($ret);
         }
-
+        function useFunction($function) {
+            if(method_exists($this,$function)) {
+                $this->$function();
+                return true;
+            } else {
+                return false;
+            }
+        }
 
     } // Class
 }
