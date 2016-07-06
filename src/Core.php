@@ -389,20 +389,35 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
 
         }
 
-        function activeDirPath($path,$spacename='') {
-
-            if(is_dir($path) || @mkdir($path)) {
+        /**
+         * @param string $path dir path to keep files.
+         * @param string $spacename
+         * @return bool
+         */
+        function activateCacheFile($path, $spacename='') {
+            if( $_SESSION['Core_CacheFile_'.$path] || is_dir($path) || @mkdir($path)) {
                 $this->type = 'CacheInDirectory';
                 $this->dir = $path;
                 if(strlen($spacename)) $spacename='_'.$spacename;
                 $this->setSpaceName(basename($path).$spacename);
                 $this->init();
+
+                // Save in session to improve the performance for buckets because is_dir has a high cost.
+                $_SESSION['Core_CacheFile_'.$path] = true;
                 return true;
             } else {
                 $this->addError($path.' does not exist and can not be created');
                 return false;
             }
 
+        }
+
+
+        /**
+         * DEPRECATED
+         */
+        function activeDirPath($path, $spacename='') {
+            return $this->activateCacheFile();
         }
 
         function init() {
@@ -577,7 +592,8 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
                         if (class_exists('API')) {
                             $api = new API($this);
                             if($api->params[0]=='__codes') {
-                                $api->addReturnData($api->codeLib);
+                                $api->addReturnData(['codes'=>$api->codeLib]);
+                                $api->addReturnData($api->codeLibError);
                             } else {
                                 $api->main();
                             }
@@ -640,6 +656,15 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
                 $this->errors->add(json_last_error_msg());
             }
             return $ret;
+        }
+
+        function activateCacheFile() {
+            if (!strlen($this->config->get("cachePath"))) return false;
+            $this->cache->activateCacheFile($this->config->get("cachePath"));
+            if($this->cache->error) {
+                $this->errors->add($this->cache->errorMsg);
+                return false;
+            } else return true;
         }
     }
 
@@ -908,7 +933,10 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
         {
             $this->setVar("UserPrivileges", array());
         }
+
+
     }
+
     class Config
     {
         private $core;

@@ -10,7 +10,9 @@ if (!defined ("_RenderTwig_CLASS_") ) {
         var $error = false;
         var $errorMsg = [];
         var $templates = [];
+        /* @var $twig Twig_Environment */
         var $twig = null;
+        private  $index = '';
 
 
         function __construct(Core &$core, $config)
@@ -39,19 +41,29 @@ if (!defined ("_RenderTwig_CLASS_") ) {
             $this->templates[$index] = ['type'=>'file','template'=>$path];
         }
 
+        function addURLTemplate($index,$path) {
+            $this->templates[$index] = ['type'=>'url','template'=>$path];
+        }
+
         function addStringTemplate($index,$template) {
             $this->templates[$index] = ['type'=>'string','template'=>$template];
         }
-
         function getTiwg($index) {
+            $this->setTwig($index);
+            return $this->twig;
+        }
+
+        function setTwig($index) {
             if(!isset($this->templates[$index])) {
                 $this->addError($index.' does not exist. Use addFileTemplate or addStringTemplate');
                 return false;
             }
 
+            $loader = null;
+            $this->core->__p->add('RenderTwig->setTwig: ', $index, 'note');
             switch ($this->templates[$index]['type']) {
                 case "file":
-
+                    $loader = new \Twig_Loader_Filesystem(dirname($this->templates[$index]['template']));
                     break;
                 default:
                     $loader = new \Twig_Loader_Array(array(
@@ -59,39 +71,68 @@ if (!defined ("_RenderTwig_CLASS_") ) {
                     ));
                     break;
             }
-            $twig = new Twig_Environment($loader, array(
-                "cache"       => $this->config['twigCachePath'],
-                "debug"       => (bool)$this->core->is->development(),
-                "auto_reload" => true,
-            ));
+            if(is_object($loader)) {
 
-            $function = new \Twig_SimpleFunction('getConf', function($key) {
-                return $this->core->config->get($key);
-            });
-            $twig->addFunction($function);
+                $this->twig = new Twig_Environment($loader, array(
+                    "cache" => $this->config['twigCachePath'],
+                    "debug" => (bool)$this->core->is->development(),
+                    "_auto_reload" => true,
+                ));
 
-            $function = new \Twig_SimpleFunction('setConf', function($key,$value) {
-                return $this->core->config->set($key,$value);
-            });
-            $twig->addFunction($function);
+                $function = new \Twig_SimpleFunction('getConf', function ($key) {
+                    return $this->core->config->get($key);
+                });
+                $this->twig->addFunction($function);
+
+                $function = new \Twig_SimpleFunction('setConf', function ($key, $value) {
+                    return $this->core->config->set($key, $value);
+                });
+                $this->twig->addFunction($function);
 
 
-            $function =  new \Twig_SimpleFunction('isAuth', function($namespace = null) {
-                return $this->core->user->isAuth();
-            });
-            $twig->addFunction($function);
+                $function = new \Twig_SimpleFunction('isAuth', function ($namespace = null) {
+                    return $this->core->user->isAuth();
+                });
+                $this->twig->addFunction($function);
 
-            $function = new \Twig_SimpleFunction('l', function($dic, $key, $config=[]) {
-                return $this->core->localization->get($dic, $key, $config);
-            });
-            $twig->addFunction($function);
+                $function = new \Twig_SimpleFunction('l', function ($dic, $key, $config = []) {
+                    return $this->core->localization->get($dic, $key, $config);
+                });
+                $this->twig->addFunction($function);
 
-            $function = new \Twig_SimpleFunction('w', function($dic, $key, $config=[]) {
-                return $this->core->localization->get($dic, $key, $config);
-            });
-            $twig->addFunction($function);
+                $function = new \Twig_SimpleFunction('w', function ($dic, $key, $config = []) {
+                    return $this->core->localization->get($dic, $key, $config);
+                });
+                $this->twig->addFunction($function);
 
-            return $twig;
+                $function = new \Twig_SimpleFunction('getLang', function () {
+                    return $this->core->config->getLang();
+                });
+                $this->twig->addFunction($function);
+                $function = new \Twig_SimpleFunction('setLang', function ($lang) {
+                    return $this->core->config->setLang($lang);
+                });
+                $this->twig->addFunction($function);
+                $this->index = $index;
+            }
+            $this->core->__p->add('RenderTwig->setTwig: ', '', 'endnote');
+        }
+
+        function render($data=[]) {
+            if(!strlen($this->index) || !is_object($this->twig)) return false;
+            else {
+                $this->core->__p->add('RenderTwig->render: ', $this->index, 'note');
+                if($this->templates[$this->index]['type']=='file') {
+                    $template = $this->twig->loadTemplate(basename($this->index.'.htm.twig'));
+                    if(!is_array($data)) $data = [$data];
+                    $ret = $template->render($data);
+                } else {
+                    $ret = $this->twig->render($this->index,$data);
+                }
+
+                $this->core->__p->add('RenderTwig->render: ', '', 'endnote');
+                return $ret;
+            }
         }
 
         function test() {

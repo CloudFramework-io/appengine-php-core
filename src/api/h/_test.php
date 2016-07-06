@@ -85,6 +85,37 @@ class API extends RESTful
 					$this->addReturnData(array('CloudSQL connect' => 'no DB configured'));
 				}
 
+			if (isset($_GET['all']) || isset($_GET['CacheFile'])) {
+				$this->core->__p->init('Test', 'CacheFile');
+				$errMsg = [];
+				$notes = [];
+				$ret = null;
+				$ok = true;
+
+				$notes[] = '{{cachePath}}='. (strlen($this->core->config->get("cachePath"))?'****'.substr($this->core->config->get("cachePath"),-6):'not defined');
+
+				// Testing Localize var
+				if (!strlen($this->core->config->get("cachePath"))) {
+					$errMsg[] = 'Missing {{cachePath}} config var.';
+				} else {
+					if(!$this->core->is->dirWritable($this->core->config->get("cachePath")))
+						$errMsg[] = 'Error in dir {{cachePath}}: '  . json_encode(error_get_last(), JSON_PRETTY_PRINT);
+					else $notes[] = "{{cachePath}} is writable";
+				}
+
+				// Test set a dictionary
+				if(!count($errMsg)) {
+					$notes[] = ['test'=>['$this->core->activateCacheFile()'=>$this->core->activateCacheFile()]];
+					if($this->core->cache->error) $errMsg[] = $this->core->cache->errorMsg;
+				}
+				// Testing $core->localization->set
+				// if($this->core->localization->set('Test','test;hello'));
+
+
+				$ok = !count($errMsg);
+				$this->core->__p->end('Test', 'CacheFile', $ok,  array_merge($notes,$errMsg));
+			}
+
 			if (isset($_GET['all']) || isset($_GET['Localization'])) {
 				$this->core->__p->init('Test', 'Localization');
 				$errMsg = [];
@@ -98,12 +129,12 @@ class API extends RESTful
 				$notes[] = '{{WAPPLOCA}}='. (strlen($this->core->config->get("WAPPLOCA"))?'****':false);
 
 				// Testing Localize var
-				if (!strlen($this->core->config->get("LocalizePath"))) {
-					$errMsg[] = 'Missing {{LocalizePath}} config var.';
+				if (!strlen($this->core->config->get("localizeCachePath"))) {
+					$errMsg[] = 'Missing {{localizeCachePath}} config var.';
 				} else {
-					if(!$this->core->is->dirWritable($this->core->config->get("LocalizePath")))
-						$errMsg[] = 'Error in dir {{LocalizePath}}: '  . json_encode(error_get_last(), JSON_PRETTY_PRINT);
-					else $notes[] = "{{LocalizePath}} is writable";
+					if(!$this->core->is->dirWritable($this->core->config->get("localizeCachePath")))
+						$errMsg[] = 'Error in dir {{localizeCachePath}}: '  . json_encode(error_get_last(), JSON_PRETTY_PRINT);
+					else $notes[] = "{{localizeCachePath}} is writable";
 				}
 
 				// Test set a dictionary
@@ -118,6 +149,49 @@ class API extends RESTful
 				$ok = !count($errMsg);
 				$this->core->__p->end('Test', 'Localization', $ok,  array_merge($notes,$errMsg));
 			}
+
+			if (isset($_GET['all']) || isset($_GET['Twig'])) {
+				$this->core->__p->init('Test', 'Twig');
+				$errMsg = [];
+				$notes = [];
+				$ret = null;
+				$ok = true;
+
+				$notes[] = '{{twigCachePath}}='. (strlen($this->core->config->get("twigCachePath"))?'****'.substr($this->core->config->get("twigCachePath"),-6):'not defined');
+
+				// Testing Localize var
+				if (!strlen($this->core->config->get("twigCachePath"))) {
+					$errMsg[] = 'Missing {{twigCachePath}} config var.';
+				} else {
+					if(!$this->core->is->dirWritable($this->core->config->get("twigCachePath")))
+						$errMsg[] = 'Error in dir {{twigCachePath}}: '  . json_encode(error_get_last(), JSON_PRETTY_PRINT);
+					else $notes[] = "{{twigCachePath}} is writable";
+				}
+
+				// Test set a dictionary
+				if(!count($errMsg)) {
+					$renderTwig = $this->core->loadClass('RenderTwig');
+					$notes[] = ['load'=>['$this->renderTwig = $this->core->loadClass(\'RenderTwig\')'=>!$renderTwig->error]];
+					if($renderTwig->error) $errMsg[] = $renderTwig->errorMsg;
+					else {
+						$renderTwig->addStringTemplate('test','Hello {{ name }}!');
+						$renderTwig->setTwig('test');
+
+						$notes[] = ['template'=>['$renderTwig->addStringTemplate(\'test\',\'Hello {{ name }}!\');'=>true]];
+						$notes[] = ['twig'=>['$renderTwig->setTwig(\'test\')'=>true]];
+						$notes[] = ['twig'=>['$renderTwig->render([\'name\'=>\'Lola\'])'=>$renderTwig->render(['name'=>'Lola'])]];
+
+					}
+				}
+				// Testing $core->localization->set
+				// if($this->core->localization->set('Test','test;hello'));
+
+
+				$ok = !count($errMsg);
+				$this->core->__p->end('Test', 'CacheFile', $ok,  array_merge($notes,$errMsg));
+			}
+
+
 
 			// Cloud Service Connections
 			if (isset($_GET['all']) || isset($_GET['CloudService']))
