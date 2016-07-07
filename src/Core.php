@@ -196,6 +196,7 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
             if(strpos($_SERVER['REQUEST_URI'],'?')!==false)
                 list($this->url['url'],$this->url['params']) = explode('?', $_SERVER['REQUEST_URI'], 2);
 
+            $this->url['host_base_url'] = (($_SERVER['HTTPS'] == 'on') ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'];
             $this->url['host_url'] = (($_SERVER['HTTPS'] == 'on') ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'].$this->url['url'];
             $this->url['host_url_uri'] = (($_SERVER['HTTPS'] == 'on') ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
             $this->url['script_name'] = $_SERVER['SCRIPT_NAME'];
@@ -1852,7 +1853,7 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
         public $responseHeaders;
         public $error = false;
         public $errorMsg = [];
-        private $curl =[];
+        private $curl = [];
 
         function __construct(Core &$core)
         {
@@ -1875,7 +1876,7 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
 
                 $this->http = $this->core->config->get("CloudServiceUrl");
 
-                if (strlen($path) && $path[0]!='/')
+                if (strlen($path) && $path[0] != '/')
                     $path = '/' . $path;
                 return ($this->http . $path);
             }
@@ -1888,20 +1889,22 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
         {
             $_qHash = hash('md5', $rute . json_encode($data) . $verb);
             $ret = $this->core->cache->get($_qHash);
-            if (isset($_GET['refreshCache']) ||  $ret === false || $ret === null) {
+            if (isset($_GET['refreshCache']) || $ret === false || $ret === null) {
                 $ret = $this->get($rute, $data, $verb, $extraheaders, $raw);
                 // Only cache successful responses.
-                if(is_array($this->responseHeaders) && isset($headers[0]) && strpos($headers[0],'OK')) {
+                if (is_array($this->responseHeaders) && isset($headers[0]) && strpos($headers[0], 'OK')) {
                     $this->core->cache->set($_qHash, $ret);
                 }
             }
             return ($ret);
         }
-        function getCurl($rute, $data = null, $verb = 'GET', $extra_headers = null, $raw = false) {
+
+        function getCurl($rute, $data = null, $verb = 'GET', $extra_headers = null, $raw = false)
+        {
             $this->core->__p->add('Request->getCurl: ', "$rute " . (($data === null) ? '{no params}' : '{with params}'), 'note');
             $rute = $this->getServiceUrl($rute);
             $this->responseHeaders = null;
-            $options['http']['header'] = ['Connection: close','Expect:','ACCEPT:'] ; // improve perfomance and avoid 100 HTTP Header
+            $options['http']['header'] = ['Connection: close', 'Expect:', 'ACCEPT:']; // improve perfomance and avoid 100 HTTP Header
 
 
             // Automatic send header for X-CLOUDFRAMEWORK-SECURITY if it is defined in config
@@ -1911,7 +1914,7 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
             // Extra Headers
             if ($extra_headers !== null && is_array($extra_headers)) {
                 foreach ($extra_headers as $key => $value) {
-                    $options['http']['header'][] .= $key . ': ' . $value ;
+                    $options['http']['header'][] .= $key . ': ' . $value;
                 }
             }
 
@@ -1919,9 +1922,9 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
             if ($verb != 'GET') {
                 if (stripos(json_encode($options['http']['header']), 'Content-type') === false) {
                     if ($raw) {
-                        $options['http']['header'][] = 'Content-type: application/json' ;
+                        $options['http']['header'][] = 'Content-type: application/json';
                     } else {
-                        $options['http']['header'][] = 'Content-type: application/x-www-form-urlencoded' ;
+                        $options['http']['header'][] = 'Content-type: application/x-www-form-urlencoded';
                     }
                 }
             }
@@ -1954,9 +1957,9 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
                 CURLOPT_SSL_VERIFYHOST => false,
                 CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_HEADER => true,            // return headers
-                CURLOPT_FOLLOWLOCATION=> false,
-                CURLOPT_HTTPHEADER=>$options['http']['header'],
-                CURLOPT_CUSTOMREQUEST =>$verb
+                CURLOPT_FOLLOWLOCATION => false,
+                CURLOPT_HTTPHEADER => $options['http']['header'],
+                CURLOPT_CUSTOMREQUEST => $verb
 
             ];
             // Appengine  workaround
@@ -1966,8 +1969,8 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
             // openssl x509 -in GIAG2.crt -inform DER -out google.pem -outform PEM
             // $curl_options[CURLOPT_CAINFO] =__DIR__.'/google.pem';
 
-            if(isset($options['http']['content'])) {
-                $curl_options[CURLOPT_POSTFIELDS]=$options['http']['content'];
+            if (isset($options['http']['content'])) {
+                $curl_options[CURLOPT_POSTFIELDS] = $options['http']['content'];
             }
 
             // Cache
@@ -1975,14 +1978,14 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
             curl_setopt_array($ch, $curl_options);
             $ret = curl_exec($ch);
 
-            if(!curl_errno($ch)) {
+            if (!curl_errno($ch)) {
                 $header_len = curl_getinfo($ch, CURLINFO_HEADER_SIZE);
                 $this->responseHeaders = substr($ret, 0, $header_len);
                 $ret = substr($ret, $header_len);
             } else {
                 $this->addError(error_get_last());
-                $this->addError([('Curl error '.curl_errno($ch))=>curl_error($ch)]);
-                $this->addError(['Curl url'=>$rute]);
+                $this->addError([('Curl error ' . curl_errno($ch)) => curl_error($ch)]);
+                $this->addError(['Curl url' => $rute]);
                 $ret = false;
             }
             curl_close($ch);
@@ -1991,6 +1994,13 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
             return $ret;
 
 
+        }
+
+        function post($rute, $data = null,  $extra_headers = null, $raw = false) {
+            return $this->get($rute, $data,  'POST',$extra_headers, $raw);
+        }
+        function put($rute, $data = null,  $extra_headers = null, $raw = false) {
+            return $this->get($rute, $data,  'PUT',$extra_headers, $raw);
         }
 
         function get($rute, $data = null, $verb = 'GET', $extra_headers = null, $raw = false)
