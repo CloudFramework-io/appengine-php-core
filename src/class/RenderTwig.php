@@ -41,8 +41,8 @@ if (!defined ("_RenderTwig_CLASS_") ) {
             $this->templates[$index] = ['type'=>'file','template'=>$path];
         }
 
-        function addURLTemplate($index,$path) {
-            $this->templates[$index] = ['type'=>'url','template'=>$path];
+        function addURLTemplate($index,$path,$reload=false) {
+            $this->templates[$index] = ['type'=>'url','url'=>$path,'reload'=>$reload==true];
         }
 
         function addStringTemplate($index,$template) {
@@ -64,6 +64,31 @@ if (!defined ("_RenderTwig_CLASS_") ) {
             switch ($this->templates[$index]['type']) {
                 case "file":
                     $loader = new \Twig_Loader_Filesystem(dirname($this->templates[$index]['template']));
+                    break;
+                case "url":
+                    $template = '';  // Raw content of the HTML
+
+                    // Trying to load from cache if reload is reload is false
+                    if(!$this->templates[$index]['reload']) {
+                        $template = $this->core->cache->get('RenderTwig_Url_Content_'.$this->templates[$index]['url']);
+                    }
+
+                    // If I don't have the template trying to load from URL
+                    if(!strlen($template)) {
+                        $template = file_get_contents($this->templates[$index]['url']);
+                        if(strlen($template)) {
+                            $this->core->cache->set('RenderTwig_Url_Content_'.$this->templates[$index]['template'],$template);
+                        }
+                    }
+
+                    if(strlen($template)) {
+                        $this->templates[$index]['template'] = $template;
+                        $loader = new \Twig_Loader_Array(array(
+                            $index => $this->templates[$index]['template'],
+                        ));
+                    } else {
+                        $this->addError($this->templates[$index]['template'].' has not content');
+                    }
                     break;
                 default:
                     $loader = new \Twig_Loader_Array(array(
@@ -133,6 +158,18 @@ if (!defined ("_RenderTwig_CLASS_") ) {
                 $this->core->__p->add('RenderTwig->render: ', '', 'endnote');
                 return $ret;
             }
+        }
+
+        function getTemplate() {
+            if(!strlen($this->index) || !is_object($this->twig)) return false;
+            else {
+                if($this->templates[$this->index]['type']=='file') {
+                    return file_get_contents($this->templates[$this->index]['template']);
+                } else {
+                    return $this->templates[$this->index]['template'];
+                }
+            }
+            return false;
         }
 
         function test() {
