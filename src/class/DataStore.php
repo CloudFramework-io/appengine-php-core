@@ -106,14 +106,16 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                             if (is_string($value)) {
                                 // date & datetime values
                                 if ($this->schema['props'][$i][1] == 'date' || $this->schema['props'][$i][1] == 'datetime') {
-                                    if ($this->schema['props'][$i][1] == 'date') $value = substr($value, 0, 10);
-                                    try {
-                                        $value_time = new DateTime($value);
-                                        $value = $value_time;
-                                    } catch (Exception $e) {
-                                        $ret[] = ['error' => 'field {' . $this->schema['props'][$i][0] . '} has a wrong date format: ' . $value];
-                                        $record = [];
-                                        break;
+                                    if(strlen($value)) {
+                                        if ($this->schema['props'][$i][1] == 'date') $value = substr($value, 0, 10);
+                                        try {
+                                            $value_time = new DateTime($value);
+                                            $value = $value_time;
+                                        } catch (Exception $e) {
+                                            $ret[] = ['error' => 'field {' . $this->schema['props'][$i][0] . '} has a wrong date format: ' . $value];
+                                            $record = [];
+                                            break;
+                                        }
                                     }
                                 // geo values
                                 } elseif($this->schema['props'][$i][1] == 'geo') {
