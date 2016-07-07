@@ -13,6 +13,7 @@ if (!defined ("_RenderTwig_CLASS_") ) {
         /* @var $twig Twig_Environment */
         var $twig = null;
         private  $index = '';
+        var $load_from_cache = false;
 
 
         function __construct(Core &$core, $config)
@@ -71,6 +72,7 @@ if (!defined ("_RenderTwig_CLASS_") ) {
                     // Trying to load from cache if reload is reload is false
                     if(!$this->templates[$index]['reload']) {
                         $template = $this->core->cache->get('RenderTwig_Url_Content_'.$this->templates[$index]['url']);
+                        if(!empty($template)) $this->load_from_cache = true;
                     }
 
                     // If I don't have the template trying to load from URL

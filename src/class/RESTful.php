@@ -16,7 +16,7 @@ if (!defined("_RESTfull_CLASS_")) {
         var $codeLibError = [];
         var $ok = 200;
         var $errorMsg = [];
-        var $header = '';
+        var $extra_headers = [];
         var $requestHeaders = array();
         var $method = '';
         var $contentTypeReturn = 'JSON';
@@ -219,7 +219,7 @@ if (!defined("_RESTfull_CLASS_")) {
 
         function addHeader($key, $value)
         {
-            $this->header[$key] = $value;
+            $this->extra_headers[] = "$key: $value";
         }
 
         function setReturnFormat($method)
@@ -257,6 +257,9 @@ if (!defined("_RESTfull_CLASS_")) {
         {
             $header = $this->getResponseHeader();
             if (strlen($header)) header($header);
+            foreach ($this->extra_headers as $header) {
+                header($header);
+            }
             switch ($this->contentTypeReturn) {
                 case 'JSON':
                     header("Content-Type: application/json");
