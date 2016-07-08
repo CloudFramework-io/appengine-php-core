@@ -1854,6 +1854,7 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
         public $error = false;
         public $errorMsg = [];
         private $curl = [];
+        var $rawResult = '';
 
         function __construct(Core &$core)
         {
@@ -1996,14 +1997,43 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
 
         }
 
-        function post($rute, $data = null,  $extra_headers = null, $raw = false) {
-            return $this->get($rute, $data,  'POST',$extra_headers, $raw);
+
+        function get_json_decode($rute, $data = null,  $extra_headers = null, $raw = false) {
+            $this->rawResult =  $this->get($rute, $data, $extra_headers, $raw);
+            $ret = json_decode($this->rawResult,true);
+            if(JSON_ERROR_NONE === json_last_error()) $this->rawResult = '';
+            return $ret;
         }
-        function put($rute, $data = null,  $extra_headers = null, $raw = false) {
-            return $this->get($rute, $data,  'PUT',$extra_headers, $raw);
+        function post_json_decode($rute, $data = null,  $extra_headers = null, $raw = false) {
+            $this->rawResult = $this->post($rute, $data, $extra_headers, $raw);
+            $ret = json_decode($this->rawResult,true);
+            if(JSON_ERROR_NONE === json_last_error()) $this->rawResult = '';
+            return $ret;
+        }
+        function put_json_decode($rute, $data = null,  $extra_headers = null, $raw = false) {
+            $this->rawResult =  $this->put($rute, $data, $extra_headers, $raw);
+            $ret = json_decode($this->rawResult,true);
+            if(JSON_ERROR_NONE === json_last_error()) $this->rawResult = '';
+            return $ret;
         }
 
-        function get($rute, $data = null, $verb = 'GET', $extra_headers = null, $raw = false)
+        function get($rute, $data = null,  $extra_headers = null, $raw = false) {
+            return $this->call($rute, $data,  'GET',$extra_headers, $raw);
+        }
+        
+        function post($rute, $data = null,  $extra_headers = null, $raw = false) {
+            return $this->call($rute, $data,  'POST',$extra_headers, $raw);
+        }
+
+        function put($rute, $data = null,  $extra_headers = null, $raw = false) {
+            return $this->call($rute, $data,  'PUT',$extra_headers, $raw);
+        }
+
+        function delete($rute, $data = null,  $extra_headers = null, $raw = false) {
+            return $this->call($rute, $data,  'DELETE',$extra_headers, $raw);
+        }
+
+        function call($rute, $data = null, $verb = 'GET', $extra_headers = null, $raw = false)
         {
             $rute = $this->getServiceUrl($rute);
             $this->responseHeaders = null;
