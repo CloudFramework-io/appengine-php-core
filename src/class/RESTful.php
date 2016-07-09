@@ -132,7 +132,7 @@ if (!defined("_RESTfull_CLASS_")) {
             if (!strlen($origin)) $origin = ((strlen($_SERVER['HTTP_ORIGIN'])) ? preg_replace('/\/$/', '', $_SERVER['HTTP_ORIGIN']) : '*');
             header("Access-Control-Allow-Origin: $origin");
             header("Access-Control-Allow-Methods: $methods");
-            header("Access-Control-Allow-Headers: Content-Type,Authorization,X-CloudFrameWork-AuthToken,X-CLOUDFRAMEWORK-SECURITY,X-DS-TOKEN");
+            header("Access-Control-Allow-Headers: Content-Type,Authorization,X-CloudFrameWork-AuthToken,X-CLOUDFRAMEWORK-SECURITY,X-DS-TOKEN,X-REST-TOKEN,X-TEST-INFO");
             header("Access-Control-Allow-Credentials: true");
             header('Access-Control-Max-Age: 1000');
 
@@ -196,6 +196,34 @@ if (!defined("_RESTfull_CLASS_")) {
             }
             return ($this->error === 0);
         }
+
+        /**
+         * Check the form paramters received based in a json model
+         * @param array $model
+         * @param string $codelibbase
+         * @param null $data
+         * @return bool
+         */
+        function checkFormParamsFromModel(array &$model, $codelibbase='', &$data=null, &$dictionaries=[])
+        {
+
+            if($this->error) return false;
+            if(null === $data) $data = $this->formParams;
+
+            /* @var $dv DataValidation */
+            $dv = $this->core->loadClass('DataValidation');
+            if(!$dv->validateModel($model,$data,$dictionaries)) {
+                if(strlen($codelibbase))
+                    $this->setErrorFromCodelib($codelibbase.'-'.$dv->field,$dv->errorMsg);
+                else
+                    $this->setError($dv->field.': '.$dv->errorMsg);
+                if(count($dv->errorFields))
+                    $this->core->errors->add($dv->errorFields);
+            }
+
+        }
+
+
 
         function checkMandatoryParam($pos, $msg = '',$values = [],$code=null)
         {
@@ -314,19 +342,46 @@ if (!defined("_RESTfull_CLASS_")) {
             }
         }
 
-        function addCodeLib($code,$msg,$error=400) {
-            $this->codeLib[$code] = $msg;
-            $this->codeLibError[$code] = $error;
+        /**
+         * Add a code for JSON output
+         * @param $code
+         * @param $msg
+         * @param int $error
+         * @param null $model
+         */
+        public function addCodeLib($code, $msg, $error=400, array $model=null) {
+            if(is_array($model))
+                foreach ($model as $key=>$value) {
+
+                    $this->codeLib[$code.'-'.$key] = $msg.$key;
+                    $this->codeLibError[$code.'-'.$key] = $error;
+                    $this->codeLib[$code.'-'.$key].= ' ['.$value['type'].']';
+
+                    // Show the validation associated to the field
+                    if(isset($value['validation']))
+                        $this->codeLib[$code.'-'.$key].= '('.$value['validation'].': '.$value['validation'].')';
+
+                    if($value['type']=='model') {
+                        $this->addCodeLib($code.'-'.$key,$msg.' '.$key.'.',$error,$value['fields']);
+                }
+            } else {
+                $this->codeLib[$code] = $msg;
+                $this->codeLibError[$code] = $error;
+            }
         }
 
+
+
+
         function getCodeLib($code) {
-            return $this->codeLib[$code];
+            return (isset($this->codeLib[$code]))?$this->codeLib[$code]:$code;
         }
         function getCodeLibError($code) {
-            return $this->codeLibError[$code];
+            return (isset($this->codeLibError[$code]))?$this->codeLibError[$code]:$code;
         }
-        function setErrorFromCodelib($code) {
-            $this->setError($this->getCodeLib($code),$this->getCodeLibError($code),$code);
+        function setErrorFromCodelib($code,$extramsg='') {
+            if(strlen($extramsg)) $extramsg = " [{$extramsg}]";
+            $this->setError($this->getCodeLib($code).$extramsg,$this->getCodeLibError($code),$code);
         }
 
         function getReturnCode()

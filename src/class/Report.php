@@ -1,5 +1,5 @@
 <?php
-// CloudSQL Class v10
+// Report Class v1
 if (!defined ("_CloudServiceReporting_CLASS_") ) {
     define("_CloudServiceReporting_CLASS_", TRUE);
 

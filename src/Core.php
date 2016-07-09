@@ -593,8 +593,11 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
                         if (class_exists('API')) {
                             $api = new API($this);
                             if($api->params[0]=='__codes') {
-                                $api->addReturnData(['codes'=>$api->codeLib]);
-                                $api->addReturnData($api->codeLibError);
+                                $__codes = $api->codeLib;
+                                foreach ($__codes as $key=>$value) {
+                                    $__codes[$key] = $api->codeLibError[$key].', '.$value;
+                                }
+                                $api->addReturnData($__codes);
                             } else {
                                 $api->main();
                             }
@@ -1345,12 +1348,13 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
         {
             $ret = false;
             list($user,$passw) = $this->getBasicAuth();
+
             if($user === null) {
                 $this->core->logs->add('checkBasicAuthWithConfig: No Authorization in headers ');
             }elseif(!is_array($auth = $this->core->config->get('authorizations'))) {
                 $this->core->logs->add('checkBasicAuthWithConfig: no "authorizations" array in config. ');
             }elseif(!isset($auth[$user])) {
-                $this->core->logs->add('checkBasicAuthWithConfig: key "'.$user.'" does not match in "authorizations"');
+                $this->core->logs->add('checkBasicAuthWithConfig: key  does not match in "authorizations"');
             }elseif(!$this->core->system->checkPassword($passw, ((isset($auth[$user]['password'])?$auth[$user]['password']:'')))) {
                 $this->core->logs->add('checkBasicAuthWithConfig: password does not match in "authorizations"');
 
