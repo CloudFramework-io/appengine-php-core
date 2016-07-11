@@ -286,11 +286,34 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                 else $data[$key] = '';
 
             }
+            /* @var $dv DataValidation */
             $dv = $this->core->loadClass('DataValidation');
             if(!$dv->validateModel($this->schema['props']['__model'],$entity,$dictionaries)) {
                 $this->setError('Error validatin Data in Model.: '.$dv->errorMsg);
             }
+
             return ($entity);
+        }
+
+        function transformEntityInMapData($entity) {
+            $map = $this->schema['data']['mapData'];
+            $transform = [];
+
+
+            if(!is_array($map)) $transform = $entity;
+            else foreach ($map as $key=>$item) {
+                $array_index = explode('.',$item); // Find potental . array separators
+                if(count($array_index) == 1) $transform[$array_index[0]] = (isset($entity[$key]))?$entity[$key]:'';
+                elseif(!isset($transform[$array_index[0]])) {
+                    $transform[$array_index[0]] = [];
+                }
+
+                for($i=1,$tr=count($array_index);$i<$tr;$i++) {
+                    $transform[$array_index[0]][$array_index[$i]] = (isset($entity[$key]))?$entity[$key]:'';
+                }
+
+            }
+            return $transform;
         }
         
         

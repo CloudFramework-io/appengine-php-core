@@ -70,7 +70,9 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
          * @param $options
          */
         public function transformValue($data, $options) {
-            if( strpos($options,'forcevalue:')!==false || (strpos($options,'defaultvalue:')!==false && !strlen($data))) {
+            if(strpos($options,'forcevalue:')!==false) {
+                $data = $this->extractOptionValue('forcevalue:',$options);
+            }elseif(strpos($options,'defaultvalue:')!==false && !strlen($data)) {
                 $data = $this->extractOptionValue('forcevalue:',$options);
             }
 
