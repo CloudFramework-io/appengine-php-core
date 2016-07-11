@@ -258,10 +258,33 @@ if (!defined ("_DATASTORE_CLASS_") ) {
             return $ret;
         }
 
-        function getCheckedRecordWithMapData($data,&$dictionaries=[]) {
+        /**
+         * Fill an array based in the model structure of the model mapped data
+         * @param $data
+         * @param array $dictionaries
+         * @return array
+         */
+        function getCheckedRecordWithMapData($data, &$dictionaries=[]) {
             $entity = array_flip(array_keys($this->schema['props']['__model']));
             foreach ($entity as $key=>$foo) {
-                $entity[$key] = (isset($this->schema['data']['mapData'][$key]))?$data[$this->schema['data']['mapData'][$key]]:'';
+                if(isset($this->schema['data']['mapData'][$key])) {
+                    $array_index = explode('.',$this->schema['data']['mapData'][$key]); // Find potental . array separators
+                    $value = (isset($data[$array_index[0]]))?$data[$array_index[0]]:'';
+                    // Explore potential subarrays
+                    for($i=1,$tr=count($array_index);$i<$tr;$i++) {
+                        if(isset($value[$array_index[$i]]))
+                            $value = $value[$array_index[$i]];
+                        else {
+                            $value = '';
+                            break;
+                        }
+                    }
+                    // Assign Value
+                    $entity[$key] = $value;
+                } elseif(isset($data[$key]))
+                    $entity[$key] = $data[$key];
+                else $data[$key] = '';
+
             }
             $dv = $this->core->loadClass('DataValidation');
             if(!$dv->validateModel($this->schema['props']['__model'],$entity,$dictionaries)) {
