@@ -69,6 +69,11 @@ if (!defined ("_DATASTORE_CLASS_") ) {
 
         }
 
+        /**
+         * Creating  entities based in the schema
+         * @param $data
+         * @return array|bool
+         */
         function createEntities($data)
         {
             if ($this->error) return false;
@@ -90,9 +95,8 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                     foreach ($row as $i => $value) {
 
                         // Only use those variables that appears in the schema.
-                        if(!isset($this->schema['props'][$i])) {
-                            continue;
-                        }
+                        if(!isset($this->schema['props'][$i])) continue;
+
                         // if the field is key or keyname feed $schema_key or $schema_keyname
                         if ($this->schema['props'][$i][1] == 'key') {
                             $schema_key =  preg_replace('/[^0-9]/','' ,$value );
@@ -126,7 +130,7 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                                     if(!strlen($value)) {
                                         $value='{}';
                                     } else {
-                                        json_decode($value);
+                                        json_decode($value); // Let's see if we receive a valid JSON
                                         if (json_last_error() !== JSON_ERROR_NONE) $value = json_encode($value, JSON_PRETTY_PRINT);
                                     }
                                 }
@@ -182,29 +186,34 @@ if (!defined ("_DATASTORE_CLASS_") ) {
             return ($ret);
         }
 
-        // Return string or GDS/Schema y we receive an array of schema
+        // Return string or GDS/Schema if we receive an array of schema
         // format:
-        // { "field1":["type"(,"index")]
-        // { "field2":["type"(,"index")]
+        // { "field1":["type"(,"index|..other validations")]
+        // { "field2":["type"(,"index|..other validations")]
         function getEntitySchema($entity, $schema)
         {
             $ret = $entity;
             $this->schema['data'] = (is_array($schema)) ? $schema : [];
-            $this->schema['props'] = [];
+            $this->schema['props'] = ['__fields'=>[]];
 
             if (is_array($schema)) {
                 $ret = (new Schema($entity));
                 $i = 0;
-                foreach ($this->schema['data'] as $key => $props) {
+                if(isset($this->schema['data']['model']) && is_array($this->schema['data']['model'])) $data = $this->schema['data']['model'];
+                else $data = $this->schema['data'];
+                foreach ($data as $key => $props) {
                     if(!strlen($key)) {
                         $this->setError('Schema of '.$entity.' with empty key');
+                        return false;
+                    } elseif($key=='__model') {
+                        $this->setError('Schema of '.$entity.' with not allowd key: __model');
                         return false;
                     }
                     if (!is_array($props)) $props = ['string', ''];
                     else $props[0] = strtolower($props[0]);
                     // true / false index
                     if(isset($props[1]))
-                        $index = ('index' == strtolower($props[1]));
+                        $index = (stripos($props[1],'index')!== false);
                     else $index = false;
                     switch ($props[0]) {
                         case "integer":
@@ -233,17 +242,35 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                         case "json":
                             $ret->addString($key, false);
                             break;
+                        case "zip":
+                            $ret->addString($key, false);
+                            break;
                         default:
                             $ret->addString($key, $index);
                             break;
                     }
-                    $this->schema['props'][$i++] = [$key, $props[0]];
-                    $this->schema['props'][$key] = [$key, $props[0]];
+                    $this->schema['props'][$i++] = [$key, $props[0], $props[1]];
+                    $this->schema['props'][$key] = [$key, $props[0], $props[1]];
+                    $this->schema['props']['__model'][$key] = ['type'=> $props[0], 'validation'=>$props[1]];
 
                 }
             }
             return $ret;
         }
+
+        function getCheckedRecordWithMapData($data,&$dictionaries=[]) {
+            $entity = array_flip(array_keys($this->schema['props']['__model']));
+            foreach ($entity as $key=>$foo) {
+                $entity[$key] = (isset($this->schema['data']['mapData'][$key]))?$data[$this->schema['data']['mapData'][$key]]:'';
+            }
+            $dv = $this->core->loadClass('DataValidation');
+            if(!$dv->validateModel($this->schema['props']['__model'],$entity,$dictionaries)) {
+                $this->setError('Error validatin Data in Model.: '.$dv->errorMsg);
+            }
+            return ($entity);
+        }
+        
+        
 
         function fetchOne($fields = '*', $where = null, $order = null)
         {
@@ -269,6 +296,9 @@ if (!defined ("_DATASTORE_CLASS_") ) {
             $ret = [];
             if (!strlen($fields)) $fields = '*';
             if (!strlen($limit)) $limit = 1000;
+
+            // FIX when you work on a local environment
+            if($this->core->is->development() && $fields!='*') $fields='*';
 
 
             $_q = 'SELECT ' . $fields . ' FROM ' . $this->entity_name;

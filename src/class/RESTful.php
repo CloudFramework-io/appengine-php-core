@@ -208,7 +208,7 @@ if (!defined("_RESTfull_CLASS_")) {
         {
 
             if($this->error) return false;
-            if(null === $data) $data = $this->formParams;
+            if(null === $data) $data = &$this->formParams;
 
             /* @var $dv DataValidation */
             $dv = $this->core->loadClass('DataValidation');
@@ -359,7 +359,7 @@ if (!defined("_RESTfull_CLASS_")) {
 
                     // Show the validation associated to the field
                     if(isset($value['validation']))
-                        $this->codeLib[$code.'-'.$key].= '('.$value['validation'].': '.$value['validation'].')';
+                        $this->codeLib[$code.'-'.$key].= '('.$value['validation'].')';
 
                     if($value['type']=='model') {
                         $this->addCodeLib($code.'-'.$key,$msg.' '.$key.'.',$error,$value['fields']);
@@ -380,6 +380,7 @@ if (!defined("_RESTfull_CLASS_")) {
             return (isset($this->codeLibError[$code]))?$this->codeLibError[$code]:$code;
         }
         function setErrorFromCodelib($code,$extramsg='') {
+            if(is_array($extramsg)) $extramsg = json_encode($extramsg,JSON_PRETTY_PRINT);
             if(strlen($extramsg)) $extramsg = " [{$extramsg}]";
             $this->setError($this->getCodeLib($code).$extramsg,$this->getCodeLibError($code),$code);
         }

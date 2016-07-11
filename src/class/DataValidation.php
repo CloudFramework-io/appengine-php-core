@@ -1,5 +1,6 @@
 <?php
 
+// Based on https://github.com/Wixel/GUMP
 // DataValidationClass
 if (!defined ("_DATAVALIDATION_CLASS_") ) {
     define("_DATAVALIDATION_CLASS_", TRUE);
@@ -16,29 +17,45 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
             $error = '';
             foreach ($model as $key=>$value) {
 
-                // Avoid optional vars
-                if(!isset($value['type']))
-                    $this->setError('Missing type attribute in model for '.$extrakey.$key);
-                elseif(isset($value['validation']) && strpos($value['validation'],'optional')!==false && !isset($data[$key]))
-                    continue;
-                elseif(isset($value['validation']) && strpos($value['validation'],'optional')===false && !isset($data[$key]))
-                    $this->setError('Missing '.$extrakey.$key);
-                elseif(!$this->validType($extrakey.$key,$value['type'],$data[$key]))
-                    $this->setError('Wrong type or empty. '.$extrakey.$key.' does not match with '.$value['type']);
-                elseif($value['type']=='model') {
-                    // Recursive CALL
-                    $this->validateModel($value['fields'],$data[$key],$dictionaries,$extrakey.$key.'-');
+                // Does type field exist?.. If not return false and break the loop
+                if(!isset($value['type'])) {
+                    $this->setError('Missing type attribute in model for ' . $extrakey . $key);
+                    return false;
                 }
-                elseif(isset($value['validation']) && !$this->validContent($extrakey.$key,$value['validation'],$data[$key]))
-                    $this->setError('Wrong content in '.$extrakey.$key);
+
+                // Transform values and check if we have an empty value
+                if(isset($value['validation'])) {
+                    // Transform values based on defaultvalue, forcevalue, tolowercase, touppercase,trim
+                    $data[$key] = $this->transformValue($data[$key],$value['validation']);
+
+                    if(empty($data[$key])) {
+
+                        // Allow empty values if we have optional in options
+                        if(strpos($value['validation'],'optional')!==false)
+                            continue;  // OK.. next
+                        else
+                            $this->setError('Missing '.$extrakey.$key);
+                    }
+                }
+
+                // Let's valid types and recursive contents..
+                if(!$this->error) {
+                    if(!$this->validType($extrakey.$key,$value['type'],$data[$key]))
+                        $this->setError(((empty($data[$key]))?'Empty':'Wrong').' data received for field {'.$extrakey.$key.'} with type {'.$value['type'].'}');
+                    elseif($value['type']=='model') {
+                        // Recursive CALL
+                        $this->validateModel($value['fields'],$data[$key],$dictionaries,$extrakey.$key.'-');
+                    }
+                    elseif(isset($value['validation']) && !$this->validContent($extrakey.$key,$value['validation'],$data[$key]))
+                        $this->setError('Wrong content in '.$extrakey.$key);
+                }
 
                 if($this->error) {
                     if(!strlen($this->field ))
-                    $this->field  = $extrakey.$key;
+                        $this->field  = $extrakey.$key;
                     return false;
                 }
             }
-
             return !$this->error;
         }
 
@@ -47,10 +64,34 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
             $this->errorMsg = $msg;
         }
 
-        public function validType($key,$type,&$data) {
+        /**
+         * Transform data based on obtions: forcevalue, defaultvalue, trim, tolowercase, touppercase
+         * @param $data
+         * @param $options
+         */
+        public function transformValue($data, $options) {
+            if( strpos($options,'forcevalue:')!==false || (strpos($options,'defaultvalue:')!==false && !strlen($data))) {
+                $data = $this->extractOptionValue('forcevalue:',$options);
+            }
+
+            if( strpos($options,'tolowercase')!==false) $data = strtolower($data);
+            if( strpos($options,'touppercase')!==false) $data = strtoupper($data);
+            if( strpos($options,'trim')!==false) $data = trim($data);
+
+            return $data;
+        }
+
+        /**
+         * Validate no empty data based in the type
+         * @param $key
+         * @param $type
+         * @param $data
+         * @return bool
+         */
+        public function validType($key, $type, &$data) {
             if(empty($data)) return false;
 
-            switch ($type) {
+            switch (strtolower($type)) {
                 case "string": return is_string($data);
                 case "integer": return is_integer($data);
                 case "model": return is_array($data) && !empty($data);
@@ -60,6 +101,10 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
                 case "url": return filter_var($data,FILTER_VALIDATE_URL);
                 case "email": return $this->validateEmail($key,$data);
                 case "phone": return is_string($data);
+                case "zip": return is_string($data);
+                case "keyname": return is_string($data);
+                case "date": return $this->validateDate($data);
+                case "datetime": return $this->validateDateTime($data);
 
                 default: return false;
             }
@@ -84,6 +129,45 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
 
             return true;
         }
+
+        /**
+         * Formats: Length bt. 8 to 10 depending of the year formar (YY or YYYY)
+         * @param $data
+         * @return bool
+         */
+        public function validateDate($data)
+        {
+
+            if($data =='now' || (strlen($data)>=8 && strlen($data)<=10)) {
+                try {
+                    $value_time = new DateTime($data);
+                    return true;
+                } catch (Exception $e) {
+                    // Is not a valida Date
+                }
+            }
+            return false;
+        }
+
+        /**
+         * Formats: Length bt. 15 to 17 depending of the year formar (YY or YYYY)
+         * @param $data
+         * @return bool
+         */
+        public function validateDateTime($data)
+        {
+            if($data =='now' || (strlen($data)>=15 && strlen($data)<=17)) {
+                try {
+                    $value_time = new DateTime($data);
+                    return true;
+                } catch (Exception $e) {
+                    // Is not a valida Date
+                }
+            }
+            return false;
+        }
+
+
 
         public function validateMaxLength($key,$options,$data) {
             if(strlen($options) && (is_integer($options) || strpos($options,'maxlength:')!==false)){
