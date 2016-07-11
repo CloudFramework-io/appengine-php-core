@@ -89,7 +89,8 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
          * @return bool
          */
         public function validType($key, $type, &$data) {
-            if(empty($data)) return false;
+
+            if(!is_bool($data) && !strlen($data)) return false;
 
             switch (strtolower($type)) {
                 case "string": return is_string($data);
@@ -105,6 +106,8 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
                 case "keyname": return is_string($data);
                 case "date": return $this->validateDate($data);
                 case "datetime": return $this->validateDateTime($data);
+                case "currency": return is_float($data);
+                case "boolean": return is_bool($data);
 
                 default: return false;
             }
