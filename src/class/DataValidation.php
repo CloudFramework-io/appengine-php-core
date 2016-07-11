@@ -90,7 +90,7 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
          */
         public function validType($key, $type, &$data) {
 
-            if(!is_bool($data) && !strlen($data)) return false;
+            if(!is_bool($data) && empty($data)) return false;
 
             switch (strtolower($type)) {
                 case "string": return is_string($data);
