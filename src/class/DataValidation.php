@@ -108,6 +108,8 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
                 case "datetime": return $this->validateDateTime($data);
                 case "currency": return is_float($data);
                 case "boolean": return is_bool($data);
+                case "array": return is_array($data);
+                case "float": return is_float($data);
 
                 default: return false;
             }
