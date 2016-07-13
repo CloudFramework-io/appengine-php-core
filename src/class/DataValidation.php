@@ -12,13 +12,13 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
         var $error=false;
         var $errorFields = [];
 
-        public function validateModel (array &$model,array &$data,array &$dictionaries=[],$onlyexisting=false,$extrakey='') {
+        public function validateModel (array &$model,array &$data,array &$dictionaries=[],$all=true,$extrakey='') {
 
             $error = '';
             foreach ($model as $key=>$value) {
 
                 // Ignore those fields that does not exist in $data if $onlyexisting=true
-                if($onlyexisting && !isset($data[$key])) continue;
+                if(!$all && !isset($data[$key])) continue;
 
                 // Does type field exist?.. If not return false and break the loop
                 if(!isset($value['type'])) {
