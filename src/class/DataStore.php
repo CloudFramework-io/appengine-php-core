@@ -278,6 +278,12 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                 $key_exist = true;
                 if(isset($this->schema['data']['mapData'][$key])) {
                     $array_index = explode('.',$this->schema['data']['mapData'][$key]); // Find potental . array separators
+                    if(isset($data[$array_index[0]])) {
+                        $value = $data[$array_index[0]];
+                    } else {
+                        $value = null;
+                        $key_exist = false;
+                    }
                     $value = (isset($data[$array_index[0]]))?$data[$array_index[0]]:'';
                     // Explore potential subarrays
                     for($i=1,$tr=count($array_index);$i<$tr;$i++) {
@@ -295,7 +301,6 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                     $key_exist = false;
                     $entity[$key] = null;
                 }
-
                 if(!$key_exist && !$all ) unset($entity[$key]);
 
             }
