@@ -12,7 +12,7 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
         var $error=false;
         var $errorFields = [];
 
-        public function validateModel (array &$model,array &$data,array &$dictionaries=[],$extrakey='',$onlyexisting=false) {
+        public function validateModel (array &$model,array &$data,array &$dictionaries=[],$onlyexisting=false,$extrakey='') {
 
             $error = '';
             foreach ($model as $key=>$value) {
@@ -47,7 +47,7 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
                         $this->setError(((empty($data[$key]))?'Empty':'Wrong').' data received for field {'.$extrakey.$key.'} with type {'.$value['type'].'}');
                     elseif($value['type']=='model') {
                         // Recursive CALL
-                        $this->validateModel($value['fields'],$data[$key],$dictionaries,$extrakey.$key.'-');
+                        $this->validateModel($value['fields'],$data[$key],$dictionaries,$onlyexisting,$extrakey.$key.'-');
                     }
                     elseif(isset($value['validation']) && !$this->validContent($extrakey.$key,$value['validation'],$data[$key]))
                         $this->setError('Wrong content in '.$extrakey.$key);

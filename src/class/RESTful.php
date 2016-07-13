@@ -222,9 +222,6 @@ if (!defined("_RESTfull_CLASS_")) {
                 if(count($dv->errorFields))
                     $this->core->errors->add($dv->errorFields);
             }
-            _printe($codelibbase.'-'.$dv->field,$this->getReturnStatus());
-
-
         }
 
 
