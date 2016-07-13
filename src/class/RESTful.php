@@ -204,15 +204,17 @@ if (!defined("_RESTfull_CLASS_")) {
          * @param null $data
          * @return bool
          */
-        function checkFormParamsFromModel(array &$model, $codelibbase='', &$data=null, &$dictionaries=[])
+        function checkFormParamsFromModel(array &$model, $codelibbase='', &$data=null, &$dictionaries=[],$onlyexisting=false)
         {
+
 
             if($this->error) return false;
             if(null === $data) $data = &$this->formParams;
 
             /* @var $dv DataValidation */
             $dv = $this->core->loadClass('DataValidation');
-            if(!$dv->validateModel($model,$data,$dictionaries)) {
+            if(!$dv->validateModel($model,$data,$dictionaries,$onlyexisting)) {
+
                 if(strlen($codelibbase))
                     $this->setErrorFromCodelib($codelibbase.'-'.$dv->field,$dv->errorMsg);
                 else
@@ -220,8 +222,11 @@ if (!defined("_RESTfull_CLASS_")) {
                 if(count($dv->errorFields))
                     $this->core->errors->add($dv->errorFields);
             }
+            _printe($codelibbase.'-'.$dv->field,$this->getReturnStatus());
+
 
         }
+
 
 
 
@@ -377,7 +382,7 @@ if (!defined("_RESTfull_CLASS_")) {
             return (isset($this->codeLib[$code]))?$this->codeLib[$code]:$code;
         }
         function getCodeLibError($code) {
-            return (isset($this->codeLibError[$code]))?$this->codeLibError[$code]:$code;
+            return (isset($this->codeLibError[$code]))?$this->codeLibError[$code]:400;
         }
         function setErrorFromCodelib($code,$extramsg='') {
             if(is_array($extramsg)) $extramsg = json_encode($extramsg,JSON_PRETTY_PRINT);
@@ -496,7 +501,7 @@ if (!defined("_RESTfull_CLASS_")) {
             $ret['ip'] = $this->core->system->ip;
 
             // Debug params
-            if (isset($this->formParams['debug'])) {
+            if (isset($this->formParams['_debug'])) {
                 $ret['header'] = $this->getResponseHeader();
                 $ret['session'] = session_id();
                 $ret['ip'] = $this->core->system->ip;
@@ -511,7 +516,7 @@ if (!defined("_RESTfull_CLASS_")) {
                 $ret['logs'] = $this->core->logs->data;
             }
 
-            // If I have been called from a queue the response has to be 200 to avoid…
+            // If I have been called from a queue the response has to be 200 to avoid loops
             if (isset($this->formParams['cloudframework_queued'])) {
                 if ($this->core->errors->lines) {
                     $ret['queued_return_error'] = $this->core->errors->data;
