@@ -111,6 +111,7 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
                 case "keyname": return is_string($data);
                 case "date": return $this->validateDate($data);
                 case "datetime": return $this->validateDateTime($data);
+                case "datetimetz": return $this->validateDateTimeTz($data);
                 case "currency": return is_float($data);
                 case "boolean": return is_bool($data);
                 case "array": return is_array($data);
@@ -167,6 +168,24 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
         public function validateDateTime($data)
         {
             if($data =='now' || (strlen($data)>=15 && strlen($data)<=17)) {
+                try {
+                    $value_time = new DateTime($data);
+                    return true;
+                } catch (Exception $e) {
+                    // Is not a valida Date
+                }
+            }
+            return false;
+        }
+
+        /**
+         * Formats: Length bt. 23 or 25  depending of the year formar (YY or YYYY)
+         * @param $data
+         * @return bool
+         */
+        public function validateDateTimeTz($data)
+        {
+            if($data =='now' || (strlen($data)>=23 && strlen($data)<=25)) {
                 try {
                     $value_time = new DateTime($data);
                     return true;
