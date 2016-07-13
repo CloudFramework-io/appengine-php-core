@@ -114,7 +114,7 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
                 case "currency": return is_float($data);
                 case "boolean": return is_bool($data);
                 case "array": return is_array($data);
-                case "float": return is_float($data);
+                case "float": return is_float(floatval($data));
 
                 default: return false;
             }
