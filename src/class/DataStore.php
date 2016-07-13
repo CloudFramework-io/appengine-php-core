@@ -94,7 +94,12 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                     // Loading info from Data. $i can be numbers 0..n or indexes.
                     foreach ($row as $i => $value) {
 
-                        // Only use those variables that appears in the schema.
+                        //$i = strtolower($i);  // Let's work with lowercase
+
+                        // If the key or keyname is passed instead the schema key|keyname let's create
+                        if($i=='key' || $i=='keyname')  $this->schema['props'][$i] = $i;
+
+                        // Only use those variables that appears in the schema except key && keyname
                         if(!isset($this->schema['props'][$i])) continue;
 
                         // if the field is key or keyname feed $schema_key or $schema_keyname
@@ -264,9 +269,10 @@ if (!defined ("_DATASTORE_CLASS_") ) {
          * @param array $dictionaries
          * @return array
          */
-        function getCheckedRecordWithMapData($data, &$dictionaries=[]) {
+        function getCheckedRecordWithMapData($data, $all=true, &$dictionaries=[]) {
             $entity = array_flip(array_keys($this->schema['props']['__model']));
             foreach ($entity as $key=>$foo) {
+                $key_exist = true;
                 if(isset($this->schema['data']['mapData'][$key])) {
                     $array_index = explode('.',$this->schema['data']['mapData'][$key]); // Find potental . array separators
                     $value = (isset($data[$array_index[0]]))?$data[$array_index[0]]:'';
@@ -275,20 +281,24 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                         if(isset($value[$array_index[$i]]))
                             $value = $value[$array_index[$i]];
                         else {
-                            $value = '';
+                            $key_exist = false;
+                            $value = null;
                             break;
                         }
                     }
                     // Assign Value
                     $entity[$key] = $value;
-                } elseif(isset($data[$key]))
-                    $entity[$key] = $data[$key];
-                else $data[$key] = '';
+                } else {
+                    $key_exist = false;
+                    $entity[$key] = null;
+                }
+
+                if(!$key_exist && !$all ) unset($entity[$key]);
 
             }
             /* @var $dv DataValidation */
             $dv = $this->core->loadClass('DataValidation');
-            if(!$dv->validateModel($this->schema['props']['__model'],$entity,$dictionaries)) {
+            if(!$dv->validateModel($this->schema['props']['__model'],$entity,$dictionaries,$all)) {
                 $this->setError('Error validatin Data in Model.: '.$dv->errorMsg);
             }
 
