@@ -180,6 +180,7 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                             } elseif(null !== $schema_keyname) {
                                 $record['KeyName'] = $entity->getKeyName();
                             }
+                            $record['Id'] = $entity->getKeyId();
                             $ret[] = $record;
                         } catch (Exception $e) {
                             $this->setError($e->getMessage());
