@@ -8,6 +8,7 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
     Class DataValidation {
 
         var $field=null;
+        var $typeError = 'field';
         var $errorMsg='';
         var $error=false;
         var $errorFields = [];
@@ -26,18 +27,48 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
                     return false;
                 }
 
+                // $excludeif controls the exintence of the field depends on others fields
+                $excludeif = [];
+                if (isset($value['validation']) && strpos($value['validation'], 'excludeifexist:') !== false) {
+                    $excludeif = explode(',',$this->extractOptionValue('excludeifexist:',$value['validation']));
+                    foreach ($excludeif as $excludefield) if(strlen($excludefield = trim($excludefield))) {
+                        if(!isset($model[$excludefield])) {
+                            $this->setError('Wrong \'excludeifexist:\' tag in '.$extrakey . $key.'. Missing field attribute in model for \'' . $excludefield.'\'' );
+                            $this->typeError = 'model';
+                        } else {
+                            // If it exist and also the exludes then error
+                            if(key_exists($key,$data)) {
+                                if (key_exists($excludefield,$data)) {
+                                    $this->setError('This field is not allowed because other field exists: \'' . $excludefield . '\'');
+                                    break;
+                                }
+                            } else {
+                                if (!key_exists($excludefield,$data)) {
+                                    $this->setError('This field is mandatory because is missing other field in \'excludeifexist:' . $excludefield . '\'');
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    // If the field does not exist but there are exclude fields and there is not error.. continue to next field
+                    if(!$this->error && strlen(trim($excludeif[0])) && !key_exists($key,$data)) continue;
+                }
+
                 // Transform values and check if we have an empty value
-                if(isset($value['validation'])) {
+                if(!$this->error && isset($value['validation'])) {
                     // Transform values based on defaultvalue, forcevalue, tolowercase, touppercase,trim
                     $data[$key] = $this->transformValue($data[$key],$value['validation']);
 
                     if(empty($data[$key])) {
-
-                        // Allow empty values if we have optional in options
+                        // OPTIONAL: -- Allow empty values if we have optional in options
                         if(strpos($value['validation'],'optional')!==false)
                             continue;  // OK.. next
-                        else
-                            $this->setError('Missing '.$extrakey.$key);
+                        else {
+                            if(!key_exists($key,$data))
+                                $this->setError('Missing '.$extrakey.$key);
+                            else
+                                $this->setError('Empty value for '.$extrakey.$key);
+                        }
                     }
                 }
 

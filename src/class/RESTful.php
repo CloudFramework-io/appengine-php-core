@@ -212,11 +212,17 @@ if (!defined("_RESTfull_CLASS_")) {
             /* @var $dv DataValidation */
             $dv = $this->core->loadClass('DataValidation');
             if(!$dv->validateModel($model,$data,$dictionaries,$all)) {
-
-                if(strlen($codelibbase))
-                    $this->setErrorFromCodelib($codelibbase.'-'.$dv->field,$dv->errorMsg);
-                else
-                    $this->setError($dv->field.': '.$dv->errorMsg);
+                if($dv->typeError=='field') {
+                    if (strlen($codelibbase))
+                        $this->setErrorFromCodelib($codelibbase . '-' . $dv->field, $dv->errorMsg);
+                    else
+                        $this->setError($dv->field . ': ' . $dv->errorMsg);
+                } else {
+                    if (strlen($codelibbase))
+                        $this->setError($this->getCodeLib($codelibbase) . '-' . $dv->field.': '. $dv->errorMsg,503);
+                    else
+                        $this->setError($dv->field . ': ' . $dv->errorMsg,503);
+                }
                 if(count($dv->errorFields))
                     $this->core->errors->add($dv->errorFields);
             }
