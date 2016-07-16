@@ -19,7 +19,7 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
             foreach ($model as $key=>$value) {
 
                 // Ignore those fields that does not exist in $data if $onlyexisting=true
-                if(!$all && !isset($data[$key])) continue;
+                if(!$all && !key_exists($key,$data) && (!isset($value['validation']) || strpos($value['validation'], 'mandatory') === false)) continue;
 
                 // Does type field exist?.. If not return false and break the loop
                 if(!isset($value['type'])) {
