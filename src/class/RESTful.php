@@ -204,19 +204,25 @@ if (!defined("_RESTfull_CLASS_")) {
          * @param null $data
          * @return bool
          */
-        function checkFormParamsFromModel(array &$model, $all=false, $codelibbase='', &$data=null, &$dictionaries=[])
+        function checkFormParamsFromModel(array &$model, $all=true, $codelibbase='', &$data=null, &$dictionaries=[])
         {
             if($this->error) return false;
             if(null === $data) $data = &$this->formParams;
 
             /* @var $dv DataValidation */
             $dv = $this->core->loadClass('DataValidation');
-            if(!$dv->validateModel($model,$data,$dictionaries,$onlyexisting)) {
-
-                if(strlen($codelibbase))
-                    $this->setErrorFromCodelib($codelibbase.'-'.$dv->field,$dv->errorMsg);
-                else
-                    $this->setError($dv->field.': '.$dv->errorMsg);
+            if(!$dv->validateModel($model,$data,$dictionaries,$all)) {
+                if($dv->typeError=='field') {
+                    if (strlen($codelibbase))
+                        $this->setErrorFromCodelib($codelibbase . '-' . $dv->field, $dv->errorMsg);
+                    else
+                        $this->setError($dv->field . ': ' . $dv->errorMsg);
+                } else {
+                    if (strlen($codelibbase))
+                        $this->setError($this->getCodeLib($codelibbase) . '-' . $dv->field.': '. $dv->errorMsg,503);
+                    else
+                        $this->setError($dv->field . ': ' . $dv->errorMsg,503);
+                }
                 if(count($dv->errorFields))
                     $this->core->errors->add($dv->errorFields);
             }

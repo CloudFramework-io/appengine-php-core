@@ -2,7 +2,6 @@
 class API extends RESTful
 {
     function main() {
-        $this->checkMethod('GET');
         if(!$this->error) {
             $this->setReturnData(array('_version'=>$this->core->_version));
             $this->addReturnData(array('time_zone'=>$this->core->system->time_zone));

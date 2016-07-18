@@ -54,6 +54,10 @@ if (!defined ("_RenderTwig_CLASS_") ) {
             return $this->twig;
         }
 
+        /**
+         * @param $index
+         * @return bool
+         */
         function setTwig($index) {
             if(!isset($this->templates[$index])) {
                 $this->addError($index.' does not exist. Use addFileTemplate or addStringTemplate');

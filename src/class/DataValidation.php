@@ -8,6 +8,7 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
     Class DataValidation {
 
         var $field=null;
+        var $typeError = 'field';
         var $errorMsg='';
         var $error=false;
         var $errorFields = [];
@@ -18,7 +19,7 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
             foreach ($model as $key=>$value) {
 
                 // Ignore those fields that does not exist in $data if $onlyexisting=true
-                if(!$all && !isset($data[$key])) continue;
+                if(!$all && !key_exists($key,$data) && (!isset($value['validation']) || strpos($value['validation'], 'mandatory') === false)) continue;
 
                 // Does type field exist?.. If not return false and break the loop
                 if(!isset($value['type'])) {
@@ -26,18 +27,48 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
                     return false;
                 }
 
+                // $excludeif controls the exintence of the field depends on others fields
+                $excludeif = [];
+                if (isset($value['validation']) && strpos($value['validation'], 'excludeifexist:') !== false) {
+                    $excludeif = explode(',',$this->extractOptionValue('excludeifexist:',$value['validation']));
+                    foreach ($excludeif as $excludefield) if(strlen($excludefield = trim($excludefield))) {
+                        if(!isset($model[$excludefield])) {
+                            $this->setError('Wrong \'excludeifexist:\' tag in '.$extrakey . $key.'. Missing field attribute in model for \'' . $excludefield.'\'' );
+                            $this->typeError = 'model';
+                        } else {
+                            // If it exist and also the exludes then error
+                            if(key_exists($key,$data)) {
+                                if (key_exists($excludefield,$data)) {
+                                    $this->setError('This field is not allowed because other field exists: \'' . $excludefield . '\'');
+                                    break;
+                                }
+                            } else {
+                                if (!key_exists($excludefield,$data)) {
+                                    $this->setError('This field is mandatory because is missing other field in \'excludeifexist:' . $excludefield . '\'');
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    // If the field does not exist but there are exclude fields and there is not error.. continue to next field
+                    if(!$this->error && strlen(trim($excludeif[0])) && !key_exists($key,$data)) continue;
+                }
+
                 // Transform values and check if we have an empty value
-                if(isset($value['validation'])) {
+                if(!$this->error && isset($value['validation'])) {
                     // Transform values based on defaultvalue, forcevalue, tolowercase, touppercase,trim
                     $data[$key] = $this->transformValue($data[$key],$value['validation']);
 
                     if(empty($data[$key])) {
-
-                        // Allow empty values if we have optional in options
+                        // OPTIONAL: -- Allow empty values if we have optional in options
                         if(strpos($value['validation'],'optional')!==false)
                             continue;  // OK.. next
-                        else
-                            $this->setError('Missing '.$extrakey.$key);
+                        else {
+                            if(!key_exists($key,$data))
+                                $this->setError('Missing '.$extrakey.$key);
+                            else
+                                $this->setError('Empty value for '.$extrakey.$key);
+                        }
                     }
                 }
 
@@ -47,7 +78,7 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
                         $this->setError(((empty($data[$key]))?'Empty':'Wrong').' data received for field {'.$extrakey.$key.'} with type {'.$value['type'].'}');
                     elseif($value['type']=='model') {
                         // Recursive CALL
-                        $this->validateModel($value['fields'],$data[$key],$dictionaries,$onlyexisting,$extrakey.$key.'-');
+                        $this->validateModel($value['fields'],$data[$key],$dictionaries,$all,$extrakey.$key.'-');
                     }
                     elseif(isset($value['validation']) && !$this->validContent($extrakey.$key,$value['validation'],$data[$key]))
                         $this->setError('Wrong content in '.$extrakey.$key);
@@ -111,6 +142,7 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
                 case "keyname": return is_string($data);
                 case "date": return $this->validateDate($data);
                 case "datetime": return $this->validateDateTime($data);
+                case "datetimetz": return $this->validateDateTimeTz($data);
                 case "currency": return is_float($data);
                 case "boolean": return is_bool($data);
                 case "array": return is_array($data);
@@ -167,6 +199,24 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
         public function validateDateTime($data)
         {
             if($data =='now' || (strlen($data)>=15 && strlen($data)<=17)) {
+                try {
+                    $value_time = new DateTime($data);
+                    return true;
+                } catch (Exception $e) {
+                    // Is not a valida Date
+                }
+            }
+            return false;
+        }
+
+        /**
+         * Formats: Length bt. 23 or 25  depending of the year formar (YY or YYYY)
+         * @param $data
+         * @return bool
+         */
+        public function validateDateTimeTz($data)
+        {
+            if($data =='now' || (strlen($data)>=23 && strlen($data)<=25)) {
                 try {
                     $value_time = new DateTime($data);
                     return true;
