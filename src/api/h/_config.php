@@ -38,6 +38,12 @@ class API extends RESTful
 					],
 					'authorizations' => $this->core->config->get('authorizations'),
 				],
+				'Cache' => [
+					'cachePath' => ($this->core->config->get("cachePath")) ? (($showConfig) ? $this->core->config->get("cachePath") : '**Require a right SystemPassword**') : false,
+					'localizeCachePath' => ($this->core->config->get("localizeCachePath")) ? (($showConfig) ? $this->core->config->get("localizeCachePath") : '**Require a right SystemPassword**') : false,
+					'twigCachePath' => ($this->core->config->get("twigCachePath")) ? (($showConfig) ? $this->core->config->get("twigCachePath") : '**Require a right SystemPassword**') : false,
+
+				],
 				'CloudServices' => [
 					'CloudServiceUrl' => ($this->core->config->get("CloudServiceUrl")) ? (($showConfig) ? $this->core->config->get("CloudServiceUrl") : '**Require a right SystemPassword**') : false,
 					'CloudServiceId' => ($this->core->config->get("CloudServiceId")) ? (($showConfig) ? $this->core->config->get("CloudServiceId") : '**Require a right SystemPassword**') : false,
@@ -57,7 +63,7 @@ class API extends RESTful
 				],
 				'Localization' => [
 					'WAPPLOCA' => ($this->core->config->get("WAPPLOCA")) ?  (($showConfig) ? $this->core->config->get("WAPPLOCA") : '**Require a right SystemPassword**') : false,
-					'LocalizePath' => ($this->core->config->get("LocalizePath")) ? (($showConfig) ? $this->core->config->get("LocalizePath") : '**Require a right SystemPassword**') : false,
+					'localizeCachePath' => ($this->core->config->get("localizeCachePath")) ? (($showConfig) ? $this->core->config->get("localizeCachePath") : '**Require a right SystemPassword**') : false,
 					'LocalizatonDefaultLang' => ($this->core->config->get("LocalizatonDefaultLang")) ? $this->core->config->get("LocalizatonDefaultLang") : 'does not exist. $core->config->lang will be \'en\'',
 					'LocalizatonAllowedLangs' => ($this->core->config->get("LocalizatonAllowedLangs")) ? $this->core->config->get("LocalizatonAllowedLangs") : 'does not exist. You can put the languages you want separated by , (en,es)',
 

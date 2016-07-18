@@ -60,7 +60,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
      * Core Class to build cloudframework applications
      * @package Core
      */
-    class Core
+    final class Core
     {
 
         /** @var CorePerformance $__p Object to control de performance */
@@ -1304,132 +1304,157 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
          */
         private function getConditionalTagResult($tagcode, $tagvalue)
         {
+            $evaluateTags = [];
+            while(strpos($tagvalue,'|')) {
+                list($tagvalue,$tags) = explode('|',$tagvalue,2);
+                $evaluateTags[] = [trim($tagcode),trim($tagvalue)];
+                list($tagcode,$tagvalue) = explode(':',$tags,2);
+            }
+            $evaluateTags[] = [trim($tagcode),trim($tagvalue)];
             $ret = false;
             // Conditionals tags
             // -----------------
-            switch (trim(strtolower($tagcode))) {
-                case "uservar":
-                case "authvar":
-                    if (strpos($tagvalue, '=') !== false) {
-                        list($authvar, $authvalue) = explode("=", $tagvalue);
-                        if ($this->core->user->isAuth() && $this->core->user->getVar($authvar) == $authvalue)
-                            $ret = true;
-                    }
-                    break;
-                case "confvar":
-                    if (strpos($tagvalue, '=') !== false) {
-                        list($confvar, $confvalue) = explode("=", $tagvalue);
-                        if ($this->get($confvar) == $confvalue)
-                            $ret = true;
-                    }
-                    break;
-                case "sessionvar":
-                    if (strpos($tagvalue, '=') !== false) {
-                        list($sessionvar, $sessionvalue) = explode("=", $tagvalue);
-                        if ($this->core->session->get($sessionvar) == $sessionvalue)
-                            $ret = true;
-                    }
-                    break;
-                case "servervar":
-                    if (strpos($tagvalue, '=') !== false) {
-                        list($servervar, $servervalue) = explode("=", $tagvalue);
-                        if ($_SERVER($servervar) == $servervalue)
-                            $ret = true;
-                    }
-                    break;
-                case "auth":
-                case "noauth":
-                    if (trim(strtolower($tagcode)) == 'auth')
-                        $ret = $this->core->user->isAuth();
-                    else
-                        $ret = !$this->core->user->isAuth();
-                    break;
-                case "development":
-                    $ret = $this->core->is->development();
-                    break;
-                case "production":
-                    $ret = $this->core->is->production();
-                    break;
-                case "indomain":
-                case "domain":
-                    $domains = explode(",", $tagvalue);
-                    foreach ($domains as $ind => $inddomain) if (strlen(trim($inddomain))) {
-                        if (trim(strtolower($tagcode)) == "domain") {
-                            if (strtolower($_SERVER['HTTP_HOST']) == strtolower(trim($inddomain)))
-                                $ret = true;
-                        } else {
-                            if (stripos($_SERVER['HTTP_HOST'], trim($inddomain)) !== false)
+            foreach ($evaluateTags as $evaluateTag) {
+                $tagcode = $evaluateTag[0];
+                $tagvalue = $evaluateTag[1];
+                switch (trim(strtolower($tagcode))) {
+                    case "uservar":
+                    case "authvar":
+                        if (strpos($tagvalue, '=') !== false) {
+                            list($authvar, $authvalue) = explode("=", $tagvalue);
+                            if ($this->core->user->isAuth() && $this->core->user->getVar($authvar) == $authvalue)
                                 $ret = true;
                         }
-                    }
-                    break;
-                case "interminal":
-                    $ret = $this->core->is->terminal();
-                    break;
-                case "url":
-                case "noturl":
-                    $urls = explode(",", $tagvalue);
+                        break;
+                    case "confvar":
+                        if (strpos($tagvalue, '=') !== false) {
+                            list($confvar, $confvalue) = explode('=', $tagvalue,2);
+                            if (strlen($confvar) && $this->get($confvar) == $confvalue)
+                                $ret = true;
+                        } elseif (strpos($tagvalue, '!=') !== false) {
+                            list($confvar, $confvalue) = explode('!=', $tagvalue,2);
+                            if (strlen($confvar) && $this->get($confvar) != $confvalue)
+                                $ret = true;
+                        }
+                        break;
+                    case "sessionvar":
+                        if (strpos($tagvalue, '=') !== false) {
+                            list($sessionvar, $sessionvalue) = explode("=", $tagvalue);
+                            if (strlen($sessionvar) && $this->core->session->get($sessionvar) == $sessionvalue)
+                                $ret = true;
+                        }elseif (strpos($tagvalue, '!=') !== false) {
+                            list($sessionvar, $sessionvalue) = explode("!=", $tagvalue);
+                            if (strlen($sessionvar) && $this->core->session->get($sessionvar) != $sessionvalue)
+                                $ret = true;
+                        }
+                        break;
+                    case "servervar":
+                        if (strpos($tagvalue, '=') !== false) {
+                            list($servervar, $servervalue) = explode("=", $tagvalue);
+                            if (strlen($servervar) && $_SERVER[$servervar] == $servervalue)
+                                $ret = true;
+                        }elseif (strpos($tagvalue, '!=') !== false) {
+                            list($servervar, $servervalue) = explode("!=", $tagvalue);
+                            if (strlen($servervar) && $_SERVER[$servervar] != $servervalue)
+                                $ret = true;
+                        }
+                        break;
+                    case "auth":
+                    case "noauth":
+                        if (trim(strtolower($tagcode)) == 'auth')
+                            $ret = $this->core->user->isAuth();
+                        else
+                            $ret = !$this->core->user->isAuth();
+                        break;
+                    case "development":
+                        $ret = $this->core->is->development();
+                        break;
+                    case "production":
+                        $ret = $this->core->is->production();
+                        break;
+                    case "indomain":
+                    case "domain":
+                        $domains = explode(",", $tagvalue);
+                        foreach ($domains as $ind => $inddomain) if (strlen(trim($inddomain))) {
+                            if (trim(strtolower($tagcode)) == "domain") {
+                                if (strtolower($_SERVER['HTTP_HOST']) == strtolower(trim($inddomain)))
+                                    $ret = true;
+                            } else {
+                                if (stripos($_SERVER['HTTP_HOST'], trim($inddomain)) !== false)
+                                    $ret = true;
+                            }
+                        }
+                        break;
+                    case "interminal":
+                        $ret = $this->core->is->terminal();
+                        break;
+                    case "url":
+                    case "noturl":
+                        $urls = explode(",", $tagvalue);
 
-                    // If noturl the condition is upsidedown
-                    if (trim(strtolower($tagcode)) == "noturl") $ret = true;
-                    foreach ($urls as $ind => $url) if (strlen(trim($url))) {
-                        if (trim(strtolower($tagcode)) == "url") {
-                            if (($this->core->system->url['url'] == trim($url)))
-                                $ret = true;
-                        } else {
-                            if (($this->core->system->url['url'] == trim($url)))
-                                $ret = false;
+                        // If noturl the condition is upsidedown
+                        if (trim(strtolower($tagcode)) == "noturl") $ret = true;
+                        foreach ($urls as $ind => $url) if (strlen(trim($url))) {
+                            if (trim(strtolower($tagcode)) == "url") {
+                                if (($this->core->system->url['url'] == trim($url)))
+                                    $ret = true;
+                            } else {
+                                if (($this->core->system->url['url'] == trim($url)))
+                                    $ret = false;
+                            }
                         }
-                    }
-                    break;
-                case "inurl":
-                case "notinurl":
-                    $urls = explode(",", $tagvalue);
+                        break;
+                    case "inurl":
+                    case "notinurl":
+                        $urls = explode(",", $tagvalue);
 
-                    // If notinurl the condition is upsidedown
-                    if (trim(strtolower($tagcode)) == "notinurl") $ret = true;
-                    foreach ($urls as $ind => $inurl) if (strlen(trim($inurl))) {
-                        if (trim(strtolower($tagcode)) == "inurl") {
-                            if ((strpos($this->core->system->url['url'], trim($inurl)) !== false))
-                                $ret = true;
-                        } else {
-                            if ((strpos($this->core->system->url['url'], trim($inurl)) !== false))
-                                $ret = false;
+                        // If notinurl the condition is upsidedown
+                        if (trim(strtolower($tagcode)) == "notinurl") $ret = true;
+                        foreach ($urls as $ind => $inurl) if (strlen(trim($inurl))) {
+                            if (trim(strtolower($tagcode)) == "inurl") {
+                                if ((strpos($this->core->system->url['url'], trim($inurl)) !== false))
+                                    $ret = true;
+                            } else {
+                                if ((strpos($this->core->system->url['url'], trim($inurl)) !== false))
+                                    $ret = false;
+                            }
                         }
-                    }
-                    break;
-                case "beginurl":
-                case "notbeginurl":
-                    $urls = explode(",", $tagvalue);
-                    // If notinurl the condition is upsidedown
-                    if (trim(strtolower($tagcode)) == "notbeginurl") $ret = true;
-                    foreach ($urls as $ind => $inurl) if (strlen(trim($inurl))) {
-                        if (trim(strtolower($tagcode)) == "beginurl") {
-                            if ((strpos($this->core->system->url['url'], trim($inurl)) === 0))
-                                $ret = true;
-                        } else {
-                            if ((strpos($this->core->system->url['url'], trim($inurl)) === 0))
-                                $ret = false;
+                        break;
+                    case "beginurl":
+                    case "notbeginurl":
+                        $urls = explode(",", $tagvalue);
+                        // If notinurl the condition is upsidedown
+                        if (trim(strtolower($tagcode)) == "notbeginurl") $ret = true;
+                        foreach ($urls as $ind => $inurl) if (strlen(trim($inurl))) {
+                            if (trim(strtolower($tagcode)) == "beginurl") {
+                                if ((strpos($this->core->system->url['url'], trim($inurl)) === 0))
+                                    $ret = true;
+                            } else {
+                                if ((strpos($this->core->system->url['url'], trim($inurl)) === 0))
+                                    $ret = false;
+                            }
                         }
-                    }
-                    break;
-                case "inmenupath":
-                    $ret = $this->inMenuPath();
-                    break;
-                case "notinmenupath":
-                    $ret = !$this->inMenuPath();
-                    break;
-                case "isversion":
-                    if (trim(strtolower($tagvalue)) == 'core')
-                        $ret = true;
-                    break;
-                case "false":
-                case "true":
-                    $ret = trim(strtolower($tagcode));
-                    break;
-                default:
-                    $this->core->errors->add('unknown tag: |' . $tagcode . '|');
-                    break;
+                        break;
+                    case "inmenupath":
+                        $ret = $this->inMenuPath();
+                        break;
+                    case "notinmenupath":
+                        $ret = !$this->inMenuPath();
+                        break;
+                    case "isversion":
+                        if (trim(strtolower($tagvalue)) == 'core')
+                            $ret = true;
+                        break;
+                    case "false":
+                    case "true":
+                        $ret = trim(strtolower($tagcode));
+                        break;
+                    default:
+                        $this->core->errors->add('unknown tag: |' . $tagcode . '|');
+                        break;
+                }
+                // If I have found a true, break foreach
+                if($ret) break;
             }
             return $ret;
         }
@@ -2582,12 +2607,26 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
          */
         function render($template)
         {
-            try {
-                include $this->core->system->app_path . '/templates/' . $template;
-            } catch (Exception $e) {
-                $this->addError(error_get_last());
-                $this->addError($e->getMessage());
+            if(strpos($template,'.htm.twig')) {
+                $template = str_replace('.htm.twig','',$template);
+                /* @var $rtwig RenderTwig */
+                $rtwig = $this->core->loadClass('RenderTwig');
+                if(!$rtwig->error) {
+                    $rtwig->addFileTemplate($template,$this->core->system->app_path . '/templates/' . $template);
+                    $rtwig->setTwig($template);
+                    echo $rtwig->render();
+                } else {
+                    $this->addError($rtwig->errorMsg);
+                }
+            } else {
+                try {
+                    include $this->core->system->app_path . '/templates/' . $template;
+                } catch (Exception $e) {
+                    $this->addError(error_get_last());
+                    $this->addError($e->getMessage());
+                }
             }
+
         }
 
         /**
