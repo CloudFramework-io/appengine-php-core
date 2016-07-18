@@ -97,9 +97,9 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                         //$i = strtolower($i);  // Let's work with lowercase
 
                         // If the key or keyname is passed instead the schema key|keyname let's create
-                        if(strtolower($i)=='key' || strtolower($i)=='keyname')  {
+                        if(strtolower($i)=='key' || strtolower($i)=='keyid' || strtolower($i)=='keyname')  {
                             $this->schema['props'][$i][0] = $i;
-                            $this->schema['props'][$i][1] = strtolower($i);
+                            $this->schema['props'][$i][1] = (strtolower($i)=='keyname')?strtolower($i):'key';
                         }
 
                         // Only use those variables that appears in the schema except key && keyname
