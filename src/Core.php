@@ -1,32 +1,26 @@
 <?php
-###########################################################
-# Madrid  nov de 2012
-# ADNBP Business & IT Perfomrnance S.L.
-# http://www.adnbp.com (info@adnbp.coom)
-# Last update: Apr 2015
-# Project ADNBP Framework
-#
-#####
-# Equipo de trabajo:
-#   Héctor López
-###########################################################
 
 /**
- * Core module
+ * @author Héctor López <hlopez@cloudframework.io>
+ * @version 2016
  */
-if (!defined("_ADNBP_CORE_CLASSES_"))
-{
+
+if (!defined("_ADNBP_CORE_CLASSES_")) {
     define("_ADNBP_CORE_CLASSES_", TRUE);
 
     // Global functions
+    /**
+     * Echo in output a group of vars passed as args
+     * @param mixed $args Element to print.
+     */
     function __print($args)
     {
-        if(key_exists('PWD',$_SERVER)) echo "\n";
+        if (key_exists('PWD', $_SERVER)) echo "\n";
         else echo "<pre>";
         for ($i = 0, $tr = count($args); $i < $tr; $i++) {
             if ($args[$i] === "exit")
                 exit;
-            if(key_exists('PWD',$_SERVER)) echo "\n[$i]: ";
+            if (key_exists('PWD', $_SERVER)) echo "\n[$i]: ";
             else echo "\n<li>[$i]: ";
 
             if (is_array($args[$i]))
@@ -39,25 +33,237 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
                 echo 'NULL';
             else
                 echo $args[$i];
-            if(key_exists('PWD',$_SERVER)) echo "\n";
+            if (key_exists('PWD', $_SERVER)) echo "\n";
             else echo "</li>";
         }
-        if(key_exists('PWD',$_SERVER)) echo "\n";
+        if (key_exists('PWD', $_SERVER)) echo "\n";
         else echo "</pre>";
     }
+
+    /**
+     * Print a group of mixed vars passed as arguments
+     */
     function _print()
     {
         __print(func_get_args());
     }
+
+    /**
+     * _print() with an exit
+     */
     function _printe()
     {
         __print(array_merge(func_get_args(), array('exit')));
     }
 
-    // Independend classes
-    class Performance
+    /**
+     * Core Class to build cloudframework applications
+     * @package Core
+     */
+    class Core
+    {
+
+        /** @var CorePerformance $__p Object to control de performance */
+        public $__p;
+        /** @var CoreSession $session Object to control de Session */
+        public $session;
+        /** @var CoreSystem $system Object to control system interaction */
+        public $system;
+        /** @var CoreLog $logs Object to control Logs */
+        public $logs;
+        /** @var CoreLog $errors Object to control Errors */
+        public $errors;
+        public $is;
+        public $cache;
+        public $security;
+        public $user;
+        public $config;
+        public $localization;
+        var $_version = '20160522';
+
+        /**
+         * @var array $loadedClasses control the classes loaded
+         * @link Core::loadClass()
+         */
+        private $loadedClasses = [];
+
+        function __construct($root_path = '')
+        {
+            $this->__p = new CorePerformance();
+            $this->session = new CoreSession();
+            $this->system = new CoreSystem($root_path);
+            $this->logs = new CoreLog();
+            $this->errors = new CoreLog();
+            $this->is = new CoreIs();
+            $this->cache = new CoreCache();
+            $this->__p->add('Construct Class with objects (__p,session[started=' . (($this->session->start) ? 'true' : 'false') . '],system,logs,errors,is,cache):' . __CLASS__, __FILE__);
+            $this->security = new CoreSecurity($this);
+            $this->user = new CoreUser($this);
+            $this->config = new CoreConfig($this, __DIR__ . '/config.json');
+            $this->request = new CoreRequest($this);
+            $this->localization = new CoreLocalization($this);
+
+            // Local configuration
+            if ($this->is->development() && is_file($this->system->root_path . '/local_config.json'))
+                $this->config->readConfigJSONFile($this->system->root_path . '/local_config.json');
+            $this->__p->add('Loaded security,user,config,request objects with __session[started=' . (($this->session->start) ? 'true' : 'false') . ']: ,', __METHOD__);
+
+        }
+
+        function setAppPath($dir)
+        {
+            if (is_dir($this->system->root_path . $dir)) {
+                $this->system->app_path = $this->system->root_path . $dir;
+                $this->system->app_url = $dir;
+            } else {
+                $this->errors->add($this->system->root_path . $dir . " doesn't exist. The path has to begin with /");
+            }
+        }
+
+        function loadClass($class, $params = null)
+        {
+
+            $hash = hash('md5', $class . json_encode($params));
+            if (key_exists($hash, $this->loadedClasses)) return $this->loadedClasses[$hash];
+
+            if (is_file(__DIR__ . "/class/{$class}.php"))
+                include_once(__DIR__ . "/class/{$class}.php");
+            elseif (is_file($this->system->app_path . "/class/" . $class . ".php"))
+                include_once($this->system->app_path . "/class/" . $class . ".php");
+            else {
+                $this->errors->add("Class $class not found");
+                return null;
+            }
+            $this->loadedClasses[$hash] = new $class($this, $params);
+            return $this->loadedClasses[$hash];
+
+        }
+
+        function dispatch()
+        {
+
+            // API end points. By default $this->config->get('core_api_url') is '/h/api'
+            if (strpos($this->system->url['url'], $this->config->get('core_api_url')) === 0) {
+                if (!strlen($this->system->url['parts'][2])) $this->errors->add('missing api end point');
+                else {
+
+                    $apifile = $this->system->url['parts'][2];
+
+                    // path to file
+                    if ($apifile[0] == '_' || $apifile == 'queue') {
+                        $pathfile = __DIR__ . "/api/h/{$apifile}.php";
+                        if (!file_exists($pathfile)) $pathfile = '';
+                    } else {
+                        // Every End-point inside the app has priority over the apiPaths
+                        $pathfile = $this->system->app_path . "/api/{$apifile}.php";
+                        if (!file_exists($pathfile)) {
+                            $pathfile = '';
+                            // pathAPI is deprecated..
+                            if (strlen($this->config->get('ApiPath')))
+                                $pathfile = $this->config->get('ApiPath') . "/{$apifile}.php";
+                            elseif (strlen($this->config->get('pathAPI')))
+                                $pathfile = $this->config->get('pathAPI') . "/{$apifile}.php";
+                        }
+                    }
+
+                    // IF NOT EXIST
+                    include_once __DIR__ . '/class/RESTful.php';
+
+                    try {
+                        if (strlen($pathfile)) {
+                            include_once $pathfile;
+                        }
+                        if (class_exists('API')) {
+                            $api = new API($this);
+                            if ($api->params[0] == '__codes') {
+                                $__codes = $api->codeLib;
+                                foreach ($__codes as $key => $value) {
+                                    $__codes[$key] = $api->codeLibError[$key] . ', ' . $value;
+                                }
+                                $api->addReturnData($__codes);
+                            } else {
+                                $api->main();
+                            }
+                            $this->__p->add("Executed RESTfull->main()", "/api/{$apifile}.php");
+                            $api->send();
+
+                        } else {
+                            $api = new RESTful($this);
+                            $api->setError("api $apifile does not include a API class extended from RESTFul with method ->main()", 404);
+                            $api->send();
+                        }
+                    } catch (Exception $e) {
+                        $this->errors->add(error_get_last());
+                        $this->errors->add($e->getMessage());
+                    }
+                    $this->__p->add("API including RESTfull.php and {$apifile}.php: ", 'There are ERRORS');
+
+                    return false;
+                }
+            } // Take a LOOK in the menu
+            elseif ($this->config->inMenuPath()) {
+                if (!empty($this->config->get('logic'))) {
+                    try {
+                        include_once $this->system->app_path . '/logic/' . $this->config->get('logic');
+                        if (class_exists('Logic')) {
+                            $logic = new Logic($this);
+                            $logic->main();
+                            $this->__p->add("Executed Logic->main()", "/logic/{$this->config->get('logic')}");
+
+                        } else {
+                            $logic = new CoreLogic($this);
+                            $logic->addError("api {$this->config->get('logic')} does not include a Logic class extended from CoreLogic with method ->main()", 404);
+                        }
+
+                    } catch (Exception $e) {
+                        $this->errors->add(error_get_last());
+                        $this->errors->add($e->getMessage());
+                    }
+                } else {
+                    $logic = new CoreLogic($this);
+                }
+                // Templates
+                if (!empty($this->config->get('template'))) {
+                    $logic->render($this->config->get('template'));
+                } else {
+                    $this->errors->add('Not template assigned');
+                    _printe($this->errors->data);
+                }
+            } else {
+                $this->errors->add('URL has not exist in config-menu');
+                _printe($this->errors->data);
+            }
+        }
+
+        function jsonDecode($string, $as_array = false)
+        {
+            $ret = json_decode($string, $as_array);
+            if (json_last_error() != JSON_ERROR_NONE) {
+                $this->errors->add('Error decoding JSON: ' . $string);
+                $this->errors->add(json_last_error_msg());
+            }
+            return $ret;
+        }
+
+        function activateCacheFile()
+        {
+            if (!strlen($this->config->get("cachePath"))) return false;
+            $this->cache->activateCacheFile($this->config->get("cachePath"));
+            if ($this->cache->error) {
+                $this->errors->add($this->cache->errorMsg);
+                return false;
+            } else return true;
+        }
+    }
+
+    /**
+     * Class to track performance
+     * @package Core
+     */
+    class CorePerformance
     {
         var $data = [];
+
         function __construct()
         {
             // Performance Vars
@@ -70,6 +276,7 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
             $this->data['info'][] = 'Init Memory Usage: ' . number_format(round($this->data['initMemory'], 4), 4) . 'Mb';
 
         }
+
         function add($title, $file = '', $type = 'all')
         {
             // Hidding full path (security)
@@ -100,7 +307,7 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
             $this->data['info'][] = $line;
 
             if ($title) {
-                if(!isset($this->data['titles'][$title])) $this->data['titles'][$title] = ['mem'=>'','time'=>0,'lastIndex'=>''];
+                if (!isset($this->data['titles'][$title])) $this->data['titles'][$title] = ['mem' => '', 'time' => 0, 'lastIndex' => ''];
                 $this->data['titles'][$title]['mem'] = $_mem;
                 $this->data['titles'][$title]['time'] += $_time;
                 $this->data['titles'][$title]['lastIndex'] = $this->data['lastIndex'];
@@ -115,12 +322,17 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
             $this->data['lastIndex']++;
 
         }
-        function getTotalTime($prec=3) {
+
+        function getTotalTime($prec = 3)
+        {
             return (round(microtime(TRUE) - $this->data['initMicrotime'], $prec));
         }
-        function getTotalMemory($prec=3) {
+
+        function getTotalMemory($prec = 3)
+        {
             return number_format(round(memory_get_usage() / (1024 * 1024), $prec), $prec);
         }
+
         function init($spacename, $key)
         {
             $this->data['init'][$spacename][$key]['mem'] = memory_get_usage();
@@ -136,7 +348,12 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
             if ($msg !== FALSE) $this->data['init'][$spacename][$key]['notes'] = $msg;
         }
     }
-    class Session
+
+    /**
+     * Class to manage session
+     * @package Core
+     */
+    class CoreSession
     {
         var $start = false;
         var $id = '';
@@ -145,7 +362,8 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
         {
         }
 
-        function init($id='') {
+        function init($id = '')
+        {
             // I will only start session if someone call me..
             $this->id = $id;  // Someone create a session based in one ID and no in a PHPSESSION
 
@@ -156,35 +374,46 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
             $this->start = true;
         }
 
-        function get($var) {
-            if(!$this->start) $this->init();
-            if(key_exists('CloudSessionVar_' . $var, $_SESSION)) {
-                    try {
-                        $ret = unserialize(gzuncompress($_SESSION['CloudSessionVar_' . $var]));
-                    } catch (Exception $e) {
-                        return null;
-                    }
-                    return $ret;
+        function get($var)
+        {
+            if (!$this->start) $this->init();
+            if (key_exists('CloudSessionVar_' . $var, $_SESSION)) {
+                try {
+                    $ret = unserialize(gzuncompress($_SESSION['CloudSessionVar_' . $var]));
+                } catch (Exception $e) {
+                    return null;
+                }
+                return $ret;
             }
             return null;
         }
-        function set($var,$value) {
-            if(!$this->start) $this->init();
+
+        function set($var, $value)
+        {
+            if (!$this->start) $this->init();
             $_SESSION['CloudSessionVar_' . $var] = gzcompress(serialize($value));
         }
-        function delete($var) {
-            if(!$this->start) $this->init();
+
+        function delete($var)
+        {
+            if (!$this->start) $this->init();
             unset($_SESSION['CloudSessionVar_' . $var]);
         }
     }
-    class System
+
+    /**
+     * Clas to interacto with with the System variables
+     * @package Core
+     */
+    class CoreSystem
     {
-        var $url,$root_path,$app_path,$app_url;
-        var $config=[];
-        var $ip, $user_agent,$format,$time_zone;
-        function __construct($root_path='')
+        var $url, $root_path, $app_path, $app_url;
+        var $config = [];
+        var $ip, $user_agent, $format, $time_zone;
+
+        function __construct($root_path = '')
         {
-            if(!strlen($root_path)) $root_path = (strlen($_SERVER['DOCUMENT_ROOT']))?$_SERVER['DOCUMENT_ROOT']: $_SERVER['PWD'];
+            if (!strlen($root_path)) $root_path = (strlen($_SERVER['DOCUMENT_ROOT'])) ? $_SERVER['DOCUMENT_ROOT'] : $_SERVER['PWD'];
 
             $this->url['https'] = $_SERVER['HTTPS'];
             $this->url['protocol'] = ($_SERVER['HTTPS'] == 'on') ? 'https' : 'http';
@@ -193,11 +422,11 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
 
             $this->url['url'] = $_SERVER['REQUEST_URI'];
             $this->url['params'] = '';
-            if(strpos($_SERVER['REQUEST_URI'],'?')!==false)
-                list($this->url['url'],$this->url['params']) = explode('?', $_SERVER['REQUEST_URI'], 2);
+            if (strpos($_SERVER['REQUEST_URI'], '?') !== false)
+                list($this->url['url'], $this->url['params']) = explode('?', $_SERVER['REQUEST_URI'], 2);
 
             $this->url['host_base_url'] = (($_SERVER['HTTPS'] == 'on') ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'];
-            $this->url['host_url'] = (($_SERVER['HTTPS'] == 'on') ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'].$this->url['url'];
+            $this->url['host_url'] = (($_SERVER['HTTPS'] == 'on') ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . $this->url['url'];
             $this->url['host_url_uri'] = (($_SERVER['HTTPS'] == 'on') ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
             $this->url['script_name'] = $_SERVER['SCRIPT_NAME'];
             $this->url['parts'] = explode('/', substr($this->url['url'], 1));
@@ -207,11 +436,11 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
             $this->app_path = $this->root_path;
 
             // Remote user:
-            $this->ip = ($_SERVER['REMOTE_ADDR']=='::1')?'localhost':$_SERVER['REMOTE_ADDR'];
+            $this->ip = ($_SERVER['REMOTE_ADDR'] == '::1') ? 'localhost' : $_SERVER['REMOTE_ADDR'];
             $this->user_agent = $_SERVER['HTTP_USER_AGENT'];
 
             // About timeZone, Date & Number format
-            if(isset($_SERVER['PWD']) && strlen($_SERVER['PWD'])) date_default_timezone_set('UTC'); // necessary for shell run
+            if (isset($_SERVER['PWD']) && strlen($_SERVER['PWD'])) date_default_timezone_set('UTC'); // necessary for shell run
             $this->time_zone = array(date_default_timezone_get(), date('Y-m-d h:i:s'), date("P"), time());
             //date_default_timezone_set(($this->core->config->get('timeZone')) ? $this->core->config->get('timeZone') : 'Europe/Madrid');
             //$this->_timeZone = array(date_default_timezone_get(), date('Y-m-d h:i:s'), date("P"), time());
@@ -224,7 +453,7 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
 
             // General conf
             // TODO default formats, currencies, timezones, etc..
-            $this->config['setLanguageByPath']= false;
+            $this->config['setLanguageByPath'] = false;
 
         }
 
@@ -232,7 +461,8 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
          * @param $url path for destination ($dest is empty) or for source ($dest if not empty)
          * @param string $dest Optional destination. If empty, destination will be $url
          */
-        function urlRedirect($url, $dest = '') {
+        function urlRedirect($url, $dest = '')
+        {
             if (!strlen($dest)) {
                 if ($url != $this->url['url']) {
                     Header("Location: $url");
@@ -252,7 +482,7 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
 
         function getRequestFingerPrint($extra = '')
         {
-            $ret['ip'] =  $this->ip;
+            $ret['ip'] = $this->ip;
             $ret['user_agent'] = $_SERVER['HTTP_USER_AGENT'];
             $ret['host'] = $_SERVER['HTTP_HOST'];
             $ret['software'] = $_SERVER['SERVER_SOFTWARE'];
@@ -285,7 +515,12 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
         }
 
     }
-    class Loggin
+
+    /**
+     * Class to manage Logs & Errors
+     * @package Core
+     */
+    class CoreLog
     {
         var $lines = 0;
         var $data = [];
@@ -296,38 +531,50 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
             $this->data = [];
             $this->add($data);
         }
+
         function add($data)
         {
             $this->data[] = $data;
             $this->lines++;
         }
+
         function get()
         {
             return $this->data;
         }
 
     }
-    class Is
+
+    /**
+     * Class to answer is? questions
+     * @package Core
+     */
+    class CoreIs
     {
         function development()
         {
             return (stripos($_SERVER['SERVER_SOFTWARE'], 'Development') !== false || isset($_SERVER['PWD']));
         }
+
         function production()
         {
             return (stripos($_SERVER['SERVER_SOFTWARE'], 'Development') === false && !isset($_SERVER['PWD']));
         }
+
         function dirReadble($dir)
         {
             if (strlen($dir)) return (is_dir($dir));
         }
-        function terminal() {
+
+        function terminal()
+        {
             return isset($_SERVER['PWD']);
         }
+
         function dirWritable($dir)
         {
             if (strlen($dir)) {
-                if(!$this->dirReadble($dir)) return false;
+                if (!$this->dirReadble($dir)) return false;
                 try {
                     if (@mkdir($dir . '/__tmp__')) {
                         rmdir($dir . '/__tmp__');
@@ -338,44 +585,24 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
                 }
             }
         }
-        function validEmail($email) {
+
+        function validEmail($email)
+        {
             return (filter_var($email, FILTER_VALIDATE_EMAIL));
         }
-        function validURL($url) {
+
+        function validURL($url)
+        {
             return (filter_var($url, FILTER_VALIDATE_URL));
         }
     }
 
-    class CacheFile  {
-
-        var $dir='';
-
-        function __construct($dir='')
-        {
-            if(strlen($dir)) $this->dir=$dir.'/';
-        }
-
-        function set($path,$data)
-        {
-            return @file_put_contents($this->dir.$path,gzcompress(serialize($data)));
-        }
-
-        function delete($path)
-        {
-            return @unlink($this->dir.$path);
-        }
-
-        function get($path)
-        {
-            $ret = false;
-            if(is_file($this->dir.$path))
-                $ret =  file_get_contents($this->dir.$path);
-            if(false === $ret) return null;
-            else return unserialize(gzuncompress($ret));
-        }
-    }
-
-    class Cache {
+    /**
+     * Class to manage Cache
+     * @package Core
+     */
+    class CoreCache
+    {
         var $cache = null;
         var $spacename = 'CloudFrameWork';
         var $type = 'memory';
@@ -383,10 +610,11 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
         var $error = false;
         var $errorMsg = [];
 
-        function __construct($spacename='',$type='memory') {
-            if(!strlen(trim($spacename)))  $spacename = (isset($_SERVER['HTTP_HOST']))?$_SERVER['HTTP_HOST']:$_SERVER['PWD'];
+        function __construct($spacename = '', $type = 'memory')
+        {
+            if (!strlen(trim($spacename))) $spacename = (isset($_SERVER['HTTP_HOST'])) ? $_SERVER['HTTP_HOST'] : $_SERVER['PWD'];
             $this->setSpaceName($spacename);
-            if($type=='memory') $this->type = 'memory';
+            if ($type == 'memory') $this->type = 'memory';
 
         }
 
@@ -395,19 +623,20 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
          * @param string $spacename
          * @return bool
          */
-        function activateCacheFile($path, $spacename='') {
-            if( $_SESSION['Core_CacheFile_'.$path] || is_dir($path) || @mkdir($path)) {
+        function activateCacheFile($path, $spacename = '')
+        {
+            if ($_SESSION['Core_CacheFile_' . $path] || is_dir($path) || @mkdir($path)) {
                 $this->type = 'CacheInDirectory';
                 $this->dir = $path;
-                if(strlen($spacename)) $spacename='_'.$spacename;
-                $this->setSpaceName(basename($path).$spacename);
+                if (strlen($spacename)) $spacename = '_' . $spacename;
+                $this->setSpaceName(basename($path) . $spacename);
                 $this->init();
 
                 // Save in session to improve the performance for buckets because is_dir has a high cost.
-                $_SESSION['Core_CacheFile_'.$path] = true;
+                $_SESSION['Core_CacheFile_' . $path] = true;
                 return true;
             } else {
-                $this->addError($path.' does not exist and can not be created');
+                $this->addError($path . ' does not exist and can not be created');
                 return false;
             }
 
@@ -417,41 +646,46 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
         /**
          * DEPRECATED
          */
-        function activeDirPath($path, $spacename='') {
+        function activeDirPath($path, $spacename = '')
+        {
             return $this->activateCacheFile();
         }
 
-        function init() {
-            if($this->type=='memory') {
-                if(class_exists('MemCache'))
+        function init()
+        {
+            if ($this->type == 'memory') {
+                if (class_exists('MemCache'))
                     $this->cache = new Memcache;
             } else
-                $this->cache = new CacheFile($this->dir);
+                $this->cache = new CoreCacheFile($this->dir);
         }
 
-        function setSpaceName($name) {
-            if(strlen($name)) $name = '_'.trim($name);
-            $this->spacename = preg_replace('/[^A-z_-]/','','CloudFrameWork_'.$this->type.$name);
+        function setSpaceName($name)
+        {
+            if (strlen($name)) $name = '_' . trim($name);
+            $this->spacename = preg_replace('/[^A-z_-]/', '', 'CloudFrameWork_' . $this->type . $name);
         }
 
-        function set($str,$data) {
-            if(null === $this->cache) $this->init();
-            if(null === $this->cache) return false;
+        function set($str, $data)
+        {
+            if (null === $this->cache) $this->init();
+            if (null === $this->cache) return false;
 
-            if(!strlen(trim($str))) return false;
-            $info['_microtime_']=microtime(true);
-            $info['_data_']=gzcompress(serialize($data));
-            $this -> cache ->set($this->spacename.'-'.$str,serialize($info));
+            if (!strlen(trim($str))) return false;
+            $info['_microtime_'] = microtime(true);
+            $info['_data_'] = gzcompress(serialize($data));
+            $this->cache->set($this->spacename . '-' . $str, serialize($info));
             unset($info);
             return true;
         }
 
-        function delete($str) {
-            if(null === $this->cache) $this->init();
-            if(null === $this->cache) return false;
+        function delete($str)
+        {
+            if (null === $this->cache) $this->init();
+            if (null === $this->cache) return false;
 
-            if(!strlen(trim($str))) return false;
-            $this -> cache ->delete($this->spacename.'-'.$str);
+            if (!strlen(trim($str))) return false;
+            $this->cache->delete($this->spacename . '-' . $str);
             return true;
         }
 
@@ -461,35 +695,37 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
          * @param int $expireTime The default value es -1. If you want to expire, you can use a value in seconds.
          * @return bool|mixed|null
          */
-        function get($str, $expireTime=-1) {
-            if(null === $this->cache) $this->init();
-            if(null === $this->cache) return false;
-            if(!strlen($expireTime)) $expireTime=-1;
+        function get($str, $expireTime = -1)
+        {
+            if (null === $this->cache) $this->init();
+            if (null === $this->cache) return false;
+            if (!strlen($expireTime)) $expireTime = -1;
 
-            if(!strlen(trim($str))) return false;
+            if (!strlen(trim($str))) return false;
 
-            $info = $this -> cache ->get($this->spacename.'-'.$str);
-            if(strlen($info) && $info!==null) {
+            $info = $this->cache->get($this->spacename . '-' . $str);
+            if (strlen($info) && $info !== null) {
                 $info = unserialize($info);
                 // Expire Caché
-                if($expireTime >=0 && microtime(true)-$info['_microtime_'] >= $expireTime) {
-                    $this -> cache ->delete($this->spacename.'-'.$str);
+                if ($expireTime >= 0 && microtime(true) - $info['_microtime_'] >= $expireTime) {
+                    $this->cache->delete($this->spacename . '-' . $str);
                     return null;
                 } else {
-                    return(unserialize(gzuncompress($info['_data_'])));
+                    return (unserialize(gzuncompress($info['_data_'])));
                 }
             } else {
                 return null;
             }
         }
 
-        function getTime($str,$expireTime=-1) {
-            if(null === $this->cache) $this->init();
-            if(!strlen(trim($str))) return false;
-            $info = $this -> cache ->get($this->spacename.'-'.$str);
-            if(strlen($info) && $info!==null) {
+        function getTime($str, $expireTime = -1)
+        {
+            if (null === $this->cache) $this->init();
+            if (!strlen(trim($str))) return false;
+            $info = $this->cache->get($this->spacename . '-' . $str);
+            if (strlen($info) && $info !== null) {
                 $info = unserialize($info);
-                return(microtime(true)-$info['_microtime_']);
+                return (microtime(true) - $info['_microtime_']);
             } else {
                 return null;
             }
@@ -503,186 +739,55 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
 
     }
 
-    // Core dependent classes
-    class Core
+    /**
+     * Class to manate Cache in Files
+     * @package Core
+     */
+    class CoreCacheFile
     {
-        public $obj = [];
-        public $__p,$session,$system,$logs,$errors,$is,$cache,$security,$user,$config,$localization;
-        var $_version = '20160522';
-        function __construct($root_path='') {
-            $this->__p  = new Performance();
-            $this->session  = new Session();
-            $this->system  = new System($root_path);
-            $this->logs  = new Loggin();
-            $this->errors= new Loggin();
-            $this->is = new Is();
-            $this->cache = new Cache();
-            $this->__p->add('Construct Class with objects (__p,session[started='.(($this->session->start)?'true':'false').'],system,logs,errors,is,cache):' . __CLASS__, __FILE__);
-            $this->security = new Security($this);
-            $this->user = new User($this);
-            $this->config = new Config($this, __DIR__ . '/config.json');
-            $this->request = new Request($this);
-            $this->localization = new Localization($this);
 
-            // Local configuration
-            if($this->is->development() && is_file($this->system->root_path.'/local_config.json'))
-                $this->config->readConfigJSONFile($this->system->root_path.'/local_config.json');
-            $this->__p->add('Loaded security,user,config,request objects with __session[started='.(($this->session->start)?'true':'false').']: ,' , __METHOD__);
+        var $dir = '';
 
-        }
-        function setAppPath($dir) {
-            if(is_dir($this->system->root_path.$dir)) {
-                $this->system->app_path = $this->system->root_path.$dir;
-                $this->system->app_url = $dir;
-            } else {
-                $this->errors->add($this->system->root_path.$dir . " doesn't exist. The path has to begin with /");
-            }
+        function __construct($dir = '')
+        {
+            if (strlen($dir)) $this->dir = $dir . '/';
         }
 
-        function loadClass($class,$params=null) {
-
-            $hash = hash('md5', $class . json_encode($params));
-            if(key_exists($hash,$this->obj)) return $this->obj[$hash];
-
-            if (is_file(__DIR__ . "/class/{$class}.php"))
-                include_once(__DIR__ .  "/class/{$class}.php");
-            elseif (is_file($this->system->app_path . "/class/" . $class . ".php"))
-                include_once($this->system->app_path . "/class/" . $class . ".php");
-            else {
-                $this->errors->add("Class $class not found");
-                return null;
-            }
-            $this->obj[$hash] = new $class($this,$params);
-            return $this->obj[$hash];
-            
+        function set($path, $data)
+        {
+            return @file_put_contents($this->dir . $path, gzcompress(serialize($data)));
         }
 
-        function dispatch() {
-
-            // API end points. By default $this->config->get('core_api_url') is '/h/api'
-            if(strpos($this->system->url['url'],$this->config->get('core_api_url'))===0 ) {
-                if(!strlen($this->system->url['parts'][2])) $this->errors->add('missing api end point');
-                else {
-
-                    $apifile = $this->system->url['parts'][2];
-
-                    // path to file
-                    if($apifile[0]=='_' || $apifile=='queue') {
-                        $pathfile = __DIR__ . "/api/h/{$apifile}.php";
-                        if (!file_exists($pathfile)) $pathfile = '';
-                    } else {
-                        // Every End-point inside the app has priority over the apiPaths
-                        $pathfile = $this->system->app_path . "/api/{$apifile}.php";
-                        if (!file_exists($pathfile)) {
-                            $pathfile = '';
-                            // pathAPI is deprecated..
-                            if(strlen($this->config->get('ApiPath')))
-                                $pathfile = $this->config->get('ApiPath') . "/{$apifile}.php";
-                            elseif(strlen($this->config->get('pathAPI')))
-                                $pathfile = $this->config->get('pathAPI') . "/{$apifile}.php";
-                        }
-                    }
-
-                    // IF NOT EXIST
-                    include_once __DIR__ . '/class/RESTful.php';
-
-                    try {
-                        if(strlen($pathfile)) {
-                            include_once $pathfile;
-                        }
-                        if (class_exists('API')) {
-                            $api = new API($this);
-                            if($api->params[0]=='__codes') {
-                                $__codes = $api->codeLib;
-                                foreach ($__codes as $key=>$value) {
-                                    $__codes[$key] = $api->codeLibError[$key].', '.$value;
-                                }
-                                $api->addReturnData($__codes);
-                            } else {
-                                $api->main();
-                            }
-                            $this->__p->add("Executed RESTfull->main()", "/api/{$apifile}.php");
-                            $api->send();
-
-                        } else {
-                            $api = new RESTful($this);
-                            $api->setError("api $apifile does not include a API class extended from RESTFul with method ->main()",404);
-                            $api->send();
-                        }
-                    } catch (Exception $e) {
-                        $this->errors->add(error_get_last());
-                        $this->errors->add($e->getMessage());
-                    }
-                    $this->__p->add("API including RESTfull.php and {$apifile}.php: ",'There are ERRORS');
-
-                    return false;
-                }
-            }
-            // Take a LOOK in the menu
-            elseif($this->config->inMenuPath()){
-                if(!empty($this->config->get('logic'))) {
-                    try {
-                        include_once $this->system->app_path . '/logic/' . $this->config->get('logic');
-                        if (class_exists('Logic')) {
-                            $logic = new Logic($this);
-                            $logic->main();
-                            $this->__p->add("Executed Logic->main()", "/logic/{$this->config->get('logic')}");
-
-                        } else {
-                            $logic = new CoreLogic($this);
-                            $logic->addError("api {$this->config->get('logic')} does not include a Logic class extended from CoreLogic with method ->main()",404);
-                        }
-
-                    }catch (Exception $e) {
-                        $this->errors->add(error_get_last());
-                        $this->errors->add($e->getMessage());
-                    }
-                } else {
-                    $logic = new CoreLogic($this);
-                }
-                // Templates
-                if(!empty($this->config->get('template'))) {
-                    $logic->render($this->config->get('template'));
-                } else {
-                    $this->errors->add('Not template assigned');
-                    _printe($this->errors->data);
-                }
-            } else {
-                $this->errors->add('URL has not exist in config-menu');
-                _printe($this->errors->data);
-            }
+        function delete($path)
+        {
+            return @unlink($this->dir . $path);
         }
 
-        function jsonDecode($string,$as_array=false) {
-            $ret = json_decode($string,$as_array);
-            if(json_last_error() != JSON_ERROR_NONE) {
-                $this->errors->add('Error decoding JSON: '.$string);
-                $this->errors->add(json_last_error_msg());
-            }
-            return $ret;
-        }
-
-        function activateCacheFile() {
-            if (!strlen($this->config->get("cachePath"))) return false;
-            $this->cache->activateCacheFile($this->config->get("cachePath"));
-            if($this->cache->error) {
-                $this->errors->add($this->cache->errorMsg);
-                return false;
-            } else return true;
+        function get($path)
+        {
+            $ret = false;
+            if (is_file($this->dir . $path))
+                $ret = file_get_contents($this->dir . $path);
+            if (false === $ret) return null;
+            else return unserialize(gzuncompress($ret));
         }
     }
 
-    class User
+    /**
+     * Class to manage User information
+     * @package Core
+     */
+    class CoreUser
     {
         private $core;
         var $isAuth = null;
         var $namespace;
         var $data = [];
 
-        function __construct(Core &$core,$namespace='Default')
+        function __construct(Core &$core, $namespace = 'Default')
         {
             $this->core = $core;
-            $this->namespace = (is_string($namespace) && strlen($namespace))?$namespace:'Default';
+            $this->namespace = (is_string($namespace) && strlen($namespace)) ? $namespace : 'Default';
 
             // Check if the Auth comes from X-CloudFrameWork-AuthToken and there is a hacking.
             if (strlen($this->core->security->getHeader('X-CloudFrameWork-AuthToken'))) {
@@ -690,9 +795,9 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
 
                 // Checking security
                 $_security = '';
-                if(!strlen(trim($hash)) || $hash != $this->core->system->getRequestFingerPrint()[hash]) {
+                if (!strlen(trim($hash)) || $hash != $this->core->system->getRequestFingerPrint()[hash]) {
                     $_security = 'Wrong token.';
-                    if(strlen($hash)) $_security.=' Violating token integrity, ';
+                    if (strlen($hash)) $_security .= ' Violating token integrity, ';
                 } else {
 
                     $this->core->session->init($sessionId);
@@ -706,7 +811,7 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
                 }
                 // Informing security issue
                 // This is top level risk
-                if(strlen($_security)) {
+                if (strlen($_security)) {
                     // TODO: Report the log
                     //$this->sendLog('access', 'Hacking', 'X-CloudFrameWork-AuthToken', 'Ilegal token ' . $this->getHeader('X-CloudFrameWork-AuthToken')
                     //    , 'Error comparing with internal token: ' . $this->getAuthUserData('token') . ' for user: ' . $this->getAuthUserData('email'), $this->getConf('CloudServiceLogEmail'));
@@ -715,46 +820,52 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
             }
         }
 
-        function init($namespace='') {
-            if(strlen($namespace)) $this->namespace = $namespace;
+        function init($namespace = '')
+        {
+            if (strlen($namespace)) $this->namespace = $namespace;
 
             // LOGOUT with $_REQUEST paramter
 
-            if(isset($_GET['_logout']) || isset($_POST['_logout'])) $this->core->session->delete("_User_".$this->namespace);
-            $this->data[$this->namespace]= $this->core->session->get("_User_".$this->namespace);
+            if (isset($_GET['_logout']) || isset($_POST['_logout'])) $this->core->session->delete("_User_" . $this->namespace);
+            $this->data[$this->namespace] = $this->core->session->get("_User_" . $this->namespace);
 
-            if(null === $this->data[$this->namespace]) $this->data[$this->namespace] =['__auth'=>false];
+            if (null === $this->data[$this->namespace]) $this->data[$this->namespace] = ['__auth' => false];
         }
 
-        function setVar($var,$data='') {
-            if(null === $this->data[$this->namespace]) $this->init();
-            if(is_array($var)) {
+        function setVar($var, $data = '')
+        {
+            if (null === $this->data[$this->namespace]) $this->init();
+            if (is_array($var)) {
                 foreach ($var as $key => $value)
                     $this->data[$this->namespace][$key] = $value;
             } else {
                 $this->data[$this->namespace][$var] = $data;
             }
             $this->data[$this->namespace]['__auth'] = true;
-            $this->core->session->set("_User_".$this->namespace,$this->data[$this->namespace]);
+            $this->core->session->set("_User_" . $this->namespace, $this->data[$this->namespace]);
         }
 
-        function getVar($var='') {
-            if(null === $this->data[$this->namespace]) $this->init();
-            if(!strlen($var))
+        function getVar($var = '')
+        {
+            if (null === $this->data[$this->namespace]) $this->init();
+            if (!strlen($var))
                 return $this->data[$this->namespace];
             else
-                return (key_exists($var,$this->data[$this->namespace]))?$this->data[$this->namespace][$var]:null;
+                return (key_exists($var, $this->data[$this->namespace])) ? $this->data[$this->namespace][$var] : null;
         }
 
-        function isAuth() {
-            if(null === $this->isAuth) $this->init();
-            return(true === $this->data[$this->namespace]['__auth']);
+        function isAuth()
+        {
+            if (null === $this->isAuth) $this->init();
+            return (true === $this->data[$this->namespace]['__auth']);
         }
-        function setAuth($bool) {
-            if($bool) $this->setData('__auth',true);
+
+        function setAuth($bool)
+        {
+            if ($bool) $this->setData('__auth', true);
             else {
-                $this->data[$this->namespace] = ['__auth'=>false];
-                $this->core->session->set("_User_".$this->namespace,$this->data[$this->namespace]);
+                $this->data[$this->namespace] = ['__auth' => false];
+                $this->core->session->set("_User_" . $this->namespace, $this->data[$this->namespace]);
             }
         }
 
@@ -762,7 +873,7 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
         * Manage User Organizations
         */
 
-        function addOrganization($orgId, $orgData,$group='')
+        function addOrganization($orgId, $orgData, $group = '')
         {
             $_userOrganizations = $this->getVar("userOrganizations");
             if (empty($_userOrganizations))
@@ -770,18 +881,19 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
 
 
             // Default Organization
-            if(count($_userOrganizations)==0)
+            if (count($_userOrganizations) == 0)
                 $_userOrganizations['__org__'] = $orgId;
 
-            $_userOrganizations['__orgs__'][$orgId]= $orgData;
-            if(!strlen($group)) $group = '__OTHER__';
-            $_userOrganizations['__groups__'][$group][$orgId]= true;
+            $_userOrganizations['__orgs__'][$orgId] = $orgData;
+            if (!strlen($group)) $group = '__OTHER__';
+            $_userOrganizations['__groups__'][$group][$orgId] = true;
 
             $this->setVar("userOrganizations", $_userOrganizations);
         }
 
-        function setOrganizationDefault($orgId) {
-            if(strlen($orgId)) {
+        function setOrganizationDefault($orgId)
+        {
+            if (strlen($orgId)) {
                 $_userOrganizations = $this->getVar("userOrganizations");
                 if (is_array($_userOrganizations) && isset($_userOrganizations['__orgs__'][$orgId])) {
                     $_userOrganizations['__org__'] = $orgId;
@@ -790,9 +902,10 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
             }
         }
 
-        function getOrganizationDefault() {
+        function getOrganizationDefault()
+        {
             $_userOrganizations = $this->getVar("userOrganizations");
-            if(is_array($_userOrganizations) && isset($_userOrganizations['__org__']))
+            if (is_array($_userOrganizations) && isset($_userOrganizations['__org__']))
                 return $_userOrganizations['__org__'];
             else return '__orgNotNefined__';
         }
@@ -808,6 +921,7 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
 
             return $_userOrganizations['__orgs__'];
         }
+
         function getOrganizationsGroups()
         {
             $_userOrganizations = $this->getVar("userOrganizations");
@@ -819,11 +933,12 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
 
             return $_userOrganizations['__groups__'];
         }
-        function getOrganization($id='')
+
+        function getOrganization($id = '')
         {
-            if(!strlen($id)) $id = $this->getOrganizationDefault();
+            if (!strlen($id)) $id = $this->getOrganizationDefault();
             $orgs = $this->getOrganizations();
-            if(isset($orgs[$id])) return($orgs[$id]);
+            if (isset($orgs[$id])) return ($orgs[$id]);
             else return null;
         }
 
@@ -891,14 +1006,14 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
             $this->setVar("UserRoles", array());
         }
 
-        function getRoles($org='')
+        function getRoles($org = '')
         {
             if (!strlen($org))
                 $org = $this->getOrganizationDefault();
 
             $ret = $this->getVar("UserRoles");
-            if($org=='*') return $ret;
-            else return (isset($ret[$org]))?$ret[$org]:[];
+            if ($org == '*') return $ret;
+            else return (isset($ret[$org])) ? $ret[$org] : [];
         }
 
 
@@ -918,18 +1033,19 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
             $this->setVar("UserPrivileges", $_userPrivileges);
         }
 
-        function getPrivileges($appId='',$privilege='' , $org = '')
+        function getPrivileges($appId = '', $privilege = '', $org = '')
         {
             if (!strlen($org)) $org = $this->getOrganizationDefault();
             $_userPrivileges = $this->getVar("UserPrivileges");
 
             if (empty($_userPrivileges)
                 || (strlen($appId) && !isset($_userPrivileges[$org][$appId]))
-                || (strlen($privilege) && !isset($_userPrivileges[$org][$appId][$privilege])))
+                || (strlen($privilege) && !isset($_userPrivileges[$org][$appId][$privilege]))
+            )
                 return null;
 
-            if(!strlen($appId)) return $_userPrivileges[$org];
-            elseif(!strlen($privilege)) return $_userPrivileges[$org][$appId];
+            if (!strlen($appId)) return $_userPrivileges[$org];
+            elseif (!strlen($privilege)) return $_userPrivileges[$org][$appId];
             else return $_userPrivileges[$org][$appId][$privilege];
         }
 
@@ -941,92 +1057,109 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
 
     }
 
-    class Config
+    /**
+     * Class to manage CloudFramework configuration
+     * @package Core
+     */
+    class CoreConfig
     {
         private $core;
         private $_configPaths = [];
         var $data = [];
         var $menu = [];
         protected $lang = 'en';
-        function __construct(Core &$core,$path)
+
+        function __construct(Core &$core, $path)
         {
             $this->core = $core;
             $this->readConfigJSONFile($path);
 
-            if(strlen($this->get('LocalizatonDefaultLang'))) $this->setLang($this->get('LocalizatonDefaultLang'));
+            if (strlen($this->get('LocalizatonDefaultLang'))) $this->setLang($this->get('LocalizatonDefaultLang'));
 
             // Session value for lang
-            if(!empty($_GET['_lang'])) $this->core->session->set('_CloudFrameWorkLang_',$_GET['_lang']);
+            if (!empty($_GET['_lang'])) $this->core->session->set('_CloudFrameWorkLang_', $_GET['_lang']);
             $lang = $this->core->session->get('_CloudFrameWorkLang_');
-            if(strlen($lang))
-                if(!$this->setLang($lang)) {
+            if (strlen($lang))
+                if (!$this->setLang($lang)) {
                     $this->core->session->delete('_CloudFrameWorkLang_');
                 }
         }
 
-        function getConfigLoaded() {
+        /**
+         * Return an array of files readed for config.
+         * @return array
+         */
+        function getConfigLoaded()
+        {
             $ret = [];
             foreach ($this->_configPaths as $path => $foo) {
-                $ret[] = str_replace($this->core->system->root_path,'',$path);
+                $ret[] = str_replace($this->core->system->root_path, '', $path);
             }
             return $ret;
         }
 
-        private function convertTags($data) {
-            $_array = is_array($data);
-
-            // Convert into string if we received an array
-            if($_array) $data = json_encode($data);
-            // Tags Conversions
-            $data = str_replace('{{rootPath}}', $this->core->system->root_path, $data);
-            $data = str_replace('{{appPath}}', $this->core->system->app_path, $data);
-            $data = str_replace('{{lang}}', $this->lang, $data);
-            while(strpos($data,'{{confVar:')!==false) {
-                list($foo,$var) = explode("{{confVar:",$data,2);
-                list($var,$foo) = explode("}}",$var,2);
-                $data = str_replace('{{confVar:'.$var.'}}',$this->get(trim($var)),$data);
-            }
-            // Convert into array if we received an array
-            if($_array) $data = json_decode($data,true);
-            return $data;
-        }
-
-        /*
-         * ABOUT CONFIG LANGUAGE
+        /**
+         * Get the current lang
+         * @return string
          */
-        function getLang() {
-            return($this->lang);
+        function getLang()
+        {
+            return ($this->lang);
         }
-        function setLang($lang) {
-            $lang = preg_replace('/[^a-z]/','',strtolower($lang));
+
+        /**
+         * Assign the language
+         * @param $lang
+         * @return bool
+         */
+        function setLang($lang)
+        {
+            $lang = preg_replace('/[^a-z]/', '', strtolower($lang));
             // Control Lang
-            if(strlen($lang=trim($lang))<2) {
-                $this->core->logs->add('Warning config->setLang. Trying to pass an incorrect Lang: '.$lang);
+            if (strlen($lang = trim($lang)) < 2) {
+                $this->core->logs->add('Warning config->setLang. Trying to pass an incorrect Lang: ' . $lang);
                 return false;
             }
-            if(strlen($this->get('LocalizatonAllowedLangs'))
-            && !preg_match('/(^|,)'.$lang.'(,|$)/',preg_replace('/[^A-z,]/','',$this->get('LocalizatonAllowedLangs')))) {
-                $this->core->logs->add('Warning in config->setLang. '.$lang.' is not included in {{LocalizatonAllowedLangs}}');
+            if (strlen($this->get('LocalizatonAllowedLangs'))
+                && !preg_match('/(^|,)' . $lang . '(,|$)/', preg_replace('/[^A-z,]/', '', $this->get('LocalizatonAllowedLangs')))
+            ) {
+                $this->core->logs->add('Warning in config->setLang. ' . $lang . ' is not included in {{LocalizatonAllowedLangs}}');
                 return false;
             }
 
             $this->lang = $lang;
             return true;
         }
-        /*
-         * ABOUT ASSIGN VARS
+
+        /**
+         * Get a config var value
+         * @param $var string Config variable
+         * @return mixed|null
          */
-        function get($var)
+        public function get($var)
         {
-            return (key_exists($var,$this->data))?$this->data[$var]:null;
+            return (key_exists($var, $this->data)) ? $this->data[$var] : null;
         }
-        function set($var,$data) {
+
+        /**
+         * Set a config var
+         * @param $var string
+         * @param $data mixed
+         */
+        public function set($var, $data)
+        {
             $this->data[$var] = $data;
         }
-        function pushMenu($var) {
-            if(!key_exists('menupath',$this->data)) {
+
+        /**
+         * Add a menu line
+         * @param $var
+         */
+        public function pushMenu($var)
+        {
+            if (!key_exists('menupath', $this->data)) {
                 $this->menu[] = $var;
-                if(!isset($var['path'])) {
+                if (!isset($var['path'])) {
                     $this->core->logs->add('Missing path in menu line');
                     $this->core->logs->add($var);
                 } else {
@@ -1034,238 +1167,112 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
                     if (strpos($var['path'], "{*}"))
                         $_found = strpos($this->core->system->url['url'], str_replace("{*}", '', $var['path'])) === 0;
                     else
-                        $_found =$this->core->system->url['url'] == $var['path'];
+                        $_found = $this->core->system->url['url'] == $var['path'];
 
-                    if($_found) {
-                        $this->set('menupath',$var['path']);
-                        foreach ($var as $key =>$value) {
+                    if ($_found) {
+                        $this->set('menupath', $var['path']);
+                        foreach ($var as $key => $value) {
                             $value = $this->convertTags($value);
-                            $this->set($key,$value);
+                            $this->set($key, $value);
                         }
                     }
                 }
             }
         }
 
-        function inMenuPath() {
-            return key_exists('menupath',$this->data);
+        /**
+         * Determine if the current URL is part of the menupath
+         * @return bool
+         */
+        public function inMenuPath()
+        {
+            return key_exists('menupath', $this->data);
         }
 
-
-
-
-        function processConfigData($data)
+        /**
+         * Try to read a JOSN file to process it as a corfig file
+         * @param $path string
+         * @return bool
+         */
+        public function readConfigJSONFile($path)
         {
+            // Avoid recursive load JSON files
+            if (isset($this->_configPaths[$path])) {
+                $this->core->errors->add("Recursive config file: " . $path);
+                return false;
+            }
+            $this->_configPaths[$path] = 1; // Control witch config paths are beeing loaded.
+            try {
+                $data = json_decode(@file_get_contents($path), true);
 
+                if (!is_array($data)) {
+                    $this->core->errors->add('error reading ' . $path);
+                    if (json_last_error())
+                        $this->core->errors->add("Wrong format of json: " . $path);
+                    elseif (!empty(error_get_last()))
+                        $this->core->errors->add(error_get_last());
+                    return false;
+                } else {
+                    $this->processConfigData($data);
+                    return true;
+                }
+            } catch (Exception $e) {
+                $this->core->errors->add(error_get_last());
+                $this->core->errors->add($e->getMessage());
+                return false;
+            }
+        }
+
+        /**
+         * Process a config array
+         * @param $data array
+         */
+        public function processConfigData(array $data)
+        {
             // going through $data
             foreach ($data as $cond => $vars) {
-                if ($cond == '--') continue; // comment
+
+                // Just a comment
+                if ($cond == '--') continue;
+
+                // Convert potentials Tags
+                if (is_string($vars)) $vars = $this->convertTags($vars);
+                $include = false;
+
                 $tagcode = '';
-                if(strpos($cond,':')!== false) {
+                if (strpos($cond, ':') !== false) {
                     // Substitute tags for strings
-                    $cond = $this->convertTags($cond);
+                    $cond = $this->convertTags(trim($cond));
                     list($tagcode, $tagvalue) = explode(":", $cond, 2);
-                    if(is_string($vars)) $vars = $this->convertTags($vars);
-                    $include = false;
+                    $tagcode = trim($tagcode);
+                    $tagvalue = trim($tagvalue);
+
+                    if ($this->isConditionalTag($tagcode))
+                        $include = $this->getConditionalTagResult($tagcode, $tagvalue);
+                    elseif ($this->isAssignationTag($tagcode)) {
+                        $this->setAssignationTag($tagcode, $tagvalue, $vars);
+                        continue;
+                    } else {
+                        $this->core->errors->add('unknown tag: |' . $tagcode . '|');
+                        continue;
+                    }
+
                 } else {
                     $include = true;
-                    $vars = [$cond=>$vars];
+                    $vars = [$cond => $vars];
 
-                }
-
-                // If there is a condition tag
-                if(!$include) {
-
-                    // Substitute tags for strings
-                    if(is_string($vars))
-                        $vars = $this->convertTags($vars);
-
-                    switch (trim(strtolower($tagcode))) {
-                        case "include":
-                            // Recursive Call
-                            $this->readConfigJSONFile($vars);
-                            break;
-
-                        case "webapp":
-                            $this->set("webapp", $vars);
-                            $this->core->setAppPath($vars);
-                            break;
-
-                        case "uservar":
-                        case "authvar":
-                            if(strpos($tagvalue,'=')!==false) {
-                                list($authvar, $authvalue) = explode("=", $tagvalue);
-                                if ($this->core->user->isAuth() && $this->core->user->getVar($authvar) == $authvalue)
-                                    $include = true;
-                            }
-                            break;
-                        case "confvar":
-                            if(strpos($tagvalue,'=')!==false) {
-                                list($confvar, $confvalue) = explode("=", $tagvalue);
-                                if ($this->get($confvar) == $confvalue)
-                                    $include = true;
-                            }
-                            break;
-                        case "sessionvar":
-                            if(strpos($tagvalue,'=')!==false) {
-                                list($sessionvar, $sessionvalue) = explode("=", $tagvalue);
-                                if ($this->core->session->get($sessionvar) == $sessionvalue)
-                                    $include = true;
-                            }
-                            break;
-                        case "servervar":
-                            if(strpos($tagvalue,'=')!==false) {
-                                list($servervar, $servervalue) = explode("=", $tagvalue);
-                                if ($_SERVER($servervar) == $servervalue)
-                                    $include = true;
-                            }
-                            break;
-                        case "redirect":
-                            // Array of redirections
-                            if(!$this->core->is->terminal()) {
-                                if (is_array($vars)) {
-                                    foreach ($vars as $ind => $urls)
-                                        if (!is_array($urls)) {
-                                            $this->core->errors->add('Wrong redirect format. It has to be an array of redirect elements: [{orig:dest},{..}..]');
-                                        } else {
-                                            foreach ($urls as $urlOrig => $urlDest) {
-                                                if ($urlOrig == '*' || !strlen($urlOrig))
-                                                    $this->core->system->urlRedirect($urlDest);
-                                                else
-                                                    $this->core->system->urlRedirect($urlOrig, $urlDest);
-                                            }
-                                        }
-
-                                } else {
-                                    $this->core->system->urlRedirect($vars);
-                                }
-                            }
-                            break;
-
-                        case "auth":
-                        case "noauth":
-                            if (trim(strtolower($tagcode)) == 'auth')
-                                $include = $this->core->user->isAuth();
-                            else
-                                $include = !$this->core->user->isAuth();
-                            break;
-                        case "development":
-                            $include = $this->core->is->development();
-                            break;
-                        case "production":
-                            $include = $this->core->is->production();
-                            break;
-                        case "indomain":
-                        case "domain":
-                            $domains = explode(",", $tagvalue);
-                            foreach ($domains as $ind => $inddomain) if (strlen(trim($inddomain))) {
-                                if (trim(strtolower($tagcode)) == "domain") {
-                                    if (strtolower($_SERVER['HTTP_HOST']) == strtolower(trim($inddomain)))
-                                        $include = true;
-                                } else {
-                                    if (stripos($_SERVER['HTTP_HOST'], trim($inddomain)) !== false)
-                                        $include = true;
-                                }
-                            }
-                            break;
-                        case "interminal":
-                                $include = $this->core->is->terminal();
-                            break;
-                        case "url":
-                        case "noturl":
-                            $urls = explode(",", $tagvalue);
-
-                            // If noturl the condition is upsidedown
-                            if (trim(strtolower($tagcode)) == "noturl") $include = true;
-                            foreach ($urls as $ind => $url) if (strlen(trim($url))) {
-                                if (trim(strtolower($tagcode)) == "url") {
-                                    if (($this->core->system->url['url'] == trim($url)))
-                                        $include = true;
-                                } else {
-                                    if (($this->core->system->url['url'] == trim($url)))
-                                        $include = false;
-                                }
-                            }
-                            break;
-                        case "inurl":
-                        case "notinurl":
-                            $urls = explode(",", $tagvalue);
-
-                            // If notinurl the condition is upsidedown
-                            if (trim(strtolower($tagcode)) == "notinurl") $include = true;
-                            foreach ($urls as $ind => $inurl) if (strlen(trim($inurl))) {
-                                if (trim(strtolower($tagcode)) == "inurl") {
-                                    if ((strpos($this->core->system->url['url'], trim($inurl)) !== false))
-                                        $include = true;
-                                } else {
-                                    if ((strpos($this->core->system->url['url'], trim($inurl)) !== false))
-                                        $include = false;
-                                }
-                            }
-                            break;
-                        case "beginurl":
-                        case "notbeginurl":
-                            $urls = explode(",", $tagvalue);
-                            // If notinurl the condition is upsidedown
-                            if (trim(strtolower($tagcode)) == "notbeginurl") $include = true;
-                            foreach ($urls as $ind => $inurl) if (strlen(trim($inurl))) {
-                                if (trim(strtolower($tagcode)) == "beginurl") {
-                                    if ((strpos($this->core->system->url['url'], trim($inurl)) === 0))
-                                        $include = true;
-                                } else {
-                                    if ((strpos($this->core->system->url['url'], trim($inurl)) === 0))
-                                        $include = false;
-                                }
-                            }
-                            break;
-
-                        case "menu":
-                            if (is_array($vars)) {
-                                $vars = $this->convertTags($vars);
-                                foreach ($vars as $key => $value) {
-                                    if(!empty($value['path']))
-                                        $this->pushMenu($value);
-                                    else {
-                                        $this->core->logs->add('wrong menu format. Missing path element');
-                                        $this->core->logs->add($value);
-                                    }
-
-                                }
-                            } else {
-                                $this->core->errors->add("menu: tag does not contain an array");
-                            }
-                            break;
-                        case "inmenupath":
-                            $include = $this->inMenuPath();
-                            break;
-                        case "notinmenupath":
-                            $include = !$this->inMenuPath();
-                            break;
-                        case "isversion":
-                            if (trim(strtolower($tagvalue)) == 'core')
-                                $include = true;
-                            break;
-                        case "false":
-                        case "true":
-                            $include = trim(strtolower($tagcode));
-                            break;
-                        default:
-                            $this->core->errors->add('unknown tag: |' . $tagcode . '|');
-                            break;
-                    }
                 }
 
                 // Include config vars.
-                if($include) {
-                    if(is_array($vars)) {
+                if ($include) {
+                    if (is_array($vars)) {
                         foreach ($vars as $key => $value) {
                             if ($key == '--') continue; // comment
                             // Recursive call to analyze subelements
                             if (strpos($key, ':')) {
 
                                 $this->processConfigData([$key => $value]);
-                            }
-                            else {
+                            } else {
                                 // Assign conf var values converting {} tags
                                 $this->set($key, $this->convertTags($value));
                             }
@@ -1275,35 +1282,268 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
             }
 
         }
-        function readConfigJSONFile($path) {
-            // Avoid recursive load JSON files
-            if(isset($this->_configPaths[$path])) {
-                $this->core->errors->add("Recursive config file: ".$path);
-                return false;
-            }
-            $this->_configPaths[$path] = 1; // Control witch config paths are beeing loaded.
-            try {
-                $data = json_decode(@file_get_contents($path),true);
 
-                if(!is_array($data)) {
-                    $this->core->errors->add('error reading '.$path);
-                    if(json_last_error())
-                        $this->core->errors->add("Wrong format of json: ".$path);
-                    elseif(!empty(error_get_last()))
-                        $this->core->errors->add(error_get_last());
-                    return false;
-                } else {
-                    $this->processConfigData($data);
-                    return true;
-                }
-            } catch(Exception $e) {
-                $this->core->errors->add(error_get_last());
-                $this->core->errors->add($e->getMessage());
-                return false;
+        /**
+         * Evalue if the tag is a condition
+         * @param $tag
+         * @return bool
+         */
+        private function isConditionalTag($tag)
+        {
+            $tags = ["uservar", "authvar", "confvar", "sessionvar", "servervar", "auth", "noauth", "development", "production"
+                , "indomain", "domain", "interminal", "url", "noturl", "inurl", "notinurl", "beginurl", "notbeginurl"
+                , "inmenupath", "notinmenupath", "isversion", "false", "true"];
+            return in_array(strtolower($tag), $tags);
+        }
+
+        /**
+         * Evalue conditional tags on config file
+         * @param $tagcode string
+         * @param $tagvalue string
+         * @return bool
+         */
+        private function getConditionalTagResult($tagcode, $tagvalue)
+        {
+            $ret = false;
+            // Conditionals tags
+            // -----------------
+            switch (trim(strtolower($tagcode))) {
+                case "uservar":
+                case "authvar":
+                    if (strpos($tagvalue, '=') !== false) {
+                        list($authvar, $authvalue) = explode("=", $tagvalue);
+                        if ($this->core->user->isAuth() && $this->core->user->getVar($authvar) == $authvalue)
+                            $ret = true;
+                    }
+                    break;
+                case "confvar":
+                    if (strpos($tagvalue, '=') !== false) {
+                        list($confvar, $confvalue) = explode("=", $tagvalue);
+                        if ($this->get($confvar) == $confvalue)
+                            $ret = true;
+                    }
+                    break;
+                case "sessionvar":
+                    if (strpos($tagvalue, '=') !== false) {
+                        list($sessionvar, $sessionvalue) = explode("=", $tagvalue);
+                        if ($this->core->session->get($sessionvar) == $sessionvalue)
+                            $ret = true;
+                    }
+                    break;
+                case "servervar":
+                    if (strpos($tagvalue, '=') !== false) {
+                        list($servervar, $servervalue) = explode("=", $tagvalue);
+                        if ($_SERVER($servervar) == $servervalue)
+                            $ret = true;
+                    }
+                    break;
+                case "auth":
+                case "noauth":
+                    if (trim(strtolower($tagcode)) == 'auth')
+                        $ret = $this->core->user->isAuth();
+                    else
+                        $ret = !$this->core->user->isAuth();
+                    break;
+                case "development":
+                    $ret = $this->core->is->development();
+                    break;
+                case "production":
+                    $ret = $this->core->is->production();
+                    break;
+                case "indomain":
+                case "domain":
+                    $domains = explode(",", $tagvalue);
+                    foreach ($domains as $ind => $inddomain) if (strlen(trim($inddomain))) {
+                        if (trim(strtolower($tagcode)) == "domain") {
+                            if (strtolower($_SERVER['HTTP_HOST']) == strtolower(trim($inddomain)))
+                                $ret = true;
+                        } else {
+                            if (stripos($_SERVER['HTTP_HOST'], trim($inddomain)) !== false)
+                                $ret = true;
+                        }
+                    }
+                    break;
+                case "interminal":
+                    $ret = $this->core->is->terminal();
+                    break;
+                case "url":
+                case "noturl":
+                    $urls = explode(",", $tagvalue);
+
+                    // If noturl the condition is upsidedown
+                    if (trim(strtolower($tagcode)) == "noturl") $ret = true;
+                    foreach ($urls as $ind => $url) if (strlen(trim($url))) {
+                        if (trim(strtolower($tagcode)) == "url") {
+                            if (($this->core->system->url['url'] == trim($url)))
+                                $ret = true;
+                        } else {
+                            if (($this->core->system->url['url'] == trim($url)))
+                                $ret = false;
+                        }
+                    }
+                    break;
+                case "inurl":
+                case "notinurl":
+                    $urls = explode(",", $tagvalue);
+
+                    // If notinurl the condition is upsidedown
+                    if (trim(strtolower($tagcode)) == "notinurl") $ret = true;
+                    foreach ($urls as $ind => $inurl) if (strlen(trim($inurl))) {
+                        if (trim(strtolower($tagcode)) == "inurl") {
+                            if ((strpos($this->core->system->url['url'], trim($inurl)) !== false))
+                                $ret = true;
+                        } else {
+                            if ((strpos($this->core->system->url['url'], trim($inurl)) !== false))
+                                $ret = false;
+                        }
+                    }
+                    break;
+                case "beginurl":
+                case "notbeginurl":
+                    $urls = explode(",", $tagvalue);
+                    // If notinurl the condition is upsidedown
+                    if (trim(strtolower($tagcode)) == "notbeginurl") $ret = true;
+                    foreach ($urls as $ind => $inurl) if (strlen(trim($inurl))) {
+                        if (trim(strtolower($tagcode)) == "beginurl") {
+                            if ((strpos($this->core->system->url['url'], trim($inurl)) === 0))
+                                $ret = true;
+                        } else {
+                            if ((strpos($this->core->system->url['url'], trim($inurl)) === 0))
+                                $ret = false;
+                        }
+                    }
+                    break;
+                case "inmenupath":
+                    $ret = $this->inMenuPath();
+                    break;
+                case "notinmenupath":
+                    $ret = !$this->inMenuPath();
+                    break;
+                case "isversion":
+                    if (trim(strtolower($tagvalue)) == 'core')
+                        $ret = true;
+                    break;
+                case "false":
+                case "true":
+                    $ret = trim(strtolower($tagcode));
+                    break;
+                default:
+                    $this->core->errors->add('unknown tag: |' . $tagcode . '|');
+                    break;
+            }
+            return $ret;
+        }
+
+        /**
+         * Evalue if the tag is a condition
+         * @param $tag
+         * @return bool
+         */
+        private function isAssignationTag($tag)
+        {
+            $tags = ["webapp", "set", "include", "redirect", "menu"];
+            return in_array(strtolower($tag), $tags);
+        }
+
+        /**
+         * Execure an assigantion based on the tagcode
+         * @param $tagcode string
+         * @param $tagvalue string
+         * @return bool
+         */
+        private function setAssignationTag($tagcode, $tagvalue, $vars)
+        {
+            // Asignation tags
+            // -----------------
+            switch (trim(strtolower($tagcode))) {
+                case "webapp":
+                    $this->set("webapp", $vars);
+                    $this->core->setAppPath($vars);
+                    break;
+                case "set":
+                    $this->set($tagvalue, $vars);
+                    break;
+                case "include":
+                    // Recursive Call
+                    $this->readConfigJSONFile($vars);
+                    break;
+                case "redirect":
+                    // Array of redirections
+                    if (!$this->core->is->terminal()) {
+                        if (is_array($vars)) {
+                            foreach ($vars as $ind => $urls)
+                                if (!is_array($urls)) {
+                                    $this->core->errors->add('Wrong redirect format. It has to be an array of redirect elements: [{orig:dest},{..}..]');
+                                } else {
+                                    foreach ($urls as $urlOrig => $urlDest) {
+                                        if ($urlOrig == '*' || !strlen($urlOrig))
+                                            $this->core->system->urlRedirect($urlDest);
+                                        else
+                                            $this->core->system->urlRedirect($urlOrig, $urlDest);
+                                    }
+                                }
+
+                        } else {
+                            $this->core->system->urlRedirect($vars);
+                        }
+                    }
+                    break;
+
+                case "menu":
+                    if (is_array($vars)) {
+                        $vars = $this->convertTags($vars);
+                        foreach ($vars as $key => $value) {
+                            if (!empty($value['path']))
+                                $this->pushMenu($value);
+                            else {
+                                $this->core->logs->add('wrong menu format. Missing path element');
+                                $this->core->logs->add($value);
+                            }
+
+                        }
+                    } else {
+                        $this->core->errors->add("menu: tag does not contain an array");
+                    }
+                    break;
+
+                default:
+                    $this->core->errors->add('unknown tag: |' . $tagcode . '|');
+                    break;
             }
         }
+
+        /**
+         * Convert tags inside a string or object
+         * @param $data mixed
+         * @return mixed|string
+         */
+        private function convertTags($data)
+        {
+            $_array = is_array($data);
+
+            // Convert into string if we received an array
+            if ($_array) $data = json_encode($data);
+            // Tags Conversions
+            $data = str_replace('{{rootPath}}', $this->core->system->root_path, $data);
+            $data = str_replace('{{appPath}}', $this->core->system->app_path, $data);
+            $data = str_replace('{{lang}}', $this->lang, $data);
+            while (strpos($data, '{{confVar:') !== false) {
+                list($foo, $var) = explode("{{confVar:", $data, 2);
+                list($var, $foo) = explode("}}", $var, 2);
+                $data = str_replace('{{confVar:' . $var . '}}', $this->get(trim($var)), $data);
+            }
+            // Convert into array if we received an array
+            if ($_array) $data = json_decode($data, true);
+            return $data;
+        }
+
     }
-    class Security
+
+    /**
+     * Class to manage the access security
+     * @package Core
+     */
+    class CoreSecurity
     {
         private $core;
         /* @var $dsToken DataStore */
@@ -1314,15 +1554,19 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
             $this->core = $core;
 
         }
+
         /*
          * BASIC AUTH
          */
-        function existBasicAuth() {
+        function existBasicAuth()
+        {
             return (isset($_SERVER['PHP_AUTH_USER']) && strlen($_SERVER['PHP_AUTH_USER'])
-               || (isset($_SERVER['HTTP_AUTHORIZATION']) && strpos(strtolower($_SERVER['HTTP_AUTHORIZATION']),'basic')===0)
+                || (isset($_SERVER['HTTP_AUTHORIZATION']) && strpos(strtolower($_SERVER['HTTP_AUTHORIZATION']), 'basic') === 0)
             );
         }
-        function getBasicAuth() {
+
+        function getBasicAuth()
+        {
             $username = null;
             $password = null;
             // mod_php
@@ -1331,46 +1575,50 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
                 $password = $_SERVER['PHP_AUTH_PW'];
                 // most other servers
             } elseif (isset($_SERVER['HTTP_AUTHORIZATION'])) {
-                if (strpos(strtolower($_SERVER['HTTP_AUTHORIZATION']),'basic')===0)
-                    list($username,$password) = explode(':',base64_decode(substr($_SERVER['HTTP_AUTHORIZATION'], 6)));
+                if (strpos(strtolower($_SERVER['HTTP_AUTHORIZATION']), 'basic') === 0)
+                    list($username, $password) = explode(':', base64_decode(substr($_SERVER['HTTP_AUTHORIZATION'], 6)));
             }
-            return([$username,$password]);
+            return ([$username, $password]);
         }
+
         function checkBasicAuth($user, $passw)
         {
-            list($username,$password) = $this->getBasicAuth();
-            return (!is_null($username) && $user==$username && $passw==$password);
+            list($username, $password) = $this->getBasicAuth();
+            return (!is_null($username) && $user == $username && $passw == $password);
         }
-        function existBasicAuthConfig() {
+
+        function existBasicAuthConfig()
+        {
             return is_array($this->core->config->get('authorizations'));
         }
+
         function checkBasicAuthWithConfig()
         {
             $ret = false;
-            list($user,$passw) = $this->getBasicAuth();
+            list($user, $passw) = $this->getBasicAuth();
 
-            if($user === null) {
+            if ($user === null) {
                 $this->core->logs->add('checkBasicAuthWithConfig: No Authorization in headers ');
-            }elseif(!is_array($auth = $this->core->config->get('authorizations'))) {
+            } elseif (!is_array($auth = $this->core->config->get('authorizations'))) {
                 $this->core->logs->add('checkBasicAuthWithConfig: no "authorizations" array in config. ');
-            }elseif(!isset($auth[$user])) {
+            } elseif (!isset($auth[$user])) {
                 $this->core->logs->add('checkBasicAuthWithConfig: key  does not match in "authorizations"');
-            }elseif(!$this->core->system->checkPassword($passw, ((isset($auth[$user]['password'])?$auth[$user]['password']:'')))) {
+            } elseif (!$this->core->system->checkPassword($passw, ((isset($auth[$user]['password']) ? $auth[$user]['password'] : '')))) {
                 $this->core->logs->add('checkBasicAuthWithConfig: password does not match in "authorizations"');
 
-           // User and password match!!!
+                // User and password match!!!
             } else {
                 $ret = true;
                 // IPs Security
-                if(isset($auth[$user]['ips']) && strlen($auth[$user]['ips'])) {
-                    if(!($ret = $this->checkIPs($auth[$user]['ips']))) {
-                        $this->core->logs->add('checkBasicAuthWithConfig: IP "'.$this->core->system->ip.'" not allowed');
+                if (isset($auth[$user]['ips']) && strlen($auth[$user]['ips'])) {
+                    if (!($ret = $this->checkIPs($auth[$user]['ips']))) {
+                        $this->core->logs->add('checkBasicAuthWithConfig: IP "' . $this->core->system->ip . '" not allowed');
                     }
                 }
             }
 
             // Return the array of elements it passed
-            if($ret) {
+            if ($ret) {
                 $auth[$user]['_BasicAuthUser_'] = $user;
                 $ret = $auth[$user];
             }
@@ -1380,38 +1628,42 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
         /*
          * API KEY
          */
-        function existWebKey() {
+        function existWebKey()
+        {
             return (isset($_GET['web_key']) || isset($_POST['web_key']));
         }
-        function getWebKey() {
-            if(isset($_GET['web_key'])) return $_GET['web_key'];
-            else if(isset($_POST['web_key'])) return $_POST['web_key'];
+
+        function getWebKey()
+        {
+            if (isset($_GET['web_key'])) return $_GET['web_key'];
+            else if (isset($_POST['web_key'])) return $_POST['web_key'];
             else return '';
         }
 
-        function checkWebKey($keys=null) {
+        function checkWebKey($keys = null)
+        {
 
             // If I don't have the credentials in keys I try to check if CLOUDFRAMEWORK-WEB-KEYS is defined.
-            if(null === $keys) {
+            if (null === $keys) {
                 $keys = $this->core->config->get('CLOUDFRAMEWORK-WEB-KEYS');
-                if(!is_array($keys)) return false;
+                if (!is_array($keys)) return false;
             }
 
             // Analyzing $keys
-            if(!is_array($keys)) $keys = [[$keys,'*']];
-            else if(!is_array($keys[0])) $keys = [$keys];
+            if (!is_array($keys)) $keys = [[$keys, '*']];
+            else if (!is_array($keys[0])) $keys = [$keys];
             $web_key = $this->getWebKey();
 
-            if(strlen($web_key))
+            if (strlen($web_key))
                 foreach ($keys as $key) {
-                    if($key[0] == $web_key) {
-                        if(!isset($key[1])) $key[1]="*";
-                        if($key[1]=='*') return $key;
-                        elseif(!strlen($_SERVER['HTTP_ORIGIN'])) return false;
+                    if ($key[0] == $web_key) {
+                        if (!isset($key[1])) $key[1] = "*";
+                        if ($key[1] == '*') return $key;
+                        elseif (!strlen($_SERVER['HTTP_ORIGIN'])) return false;
                         else {
-                            $allows = explode(',',$key[1]);
+                            $allows = explode(',', $key[1]);
                             foreach ($allows as $host) {
-                                if(preg_match('/^.*'.trim($host).'.*$/',$_SERVER['HTTP_ORIGIN'])>0) return $key;
+                                if (preg_match('/^.*' . trim($host) . '.*$/', $_SERVER['HTTP_ORIGIN']) > 0) return $key;
                             }
                             return false;
                         }
@@ -1420,24 +1672,28 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
             return false;
         }
 
-        function existServerKey() {
-            return (strlen($this->getHeader('X-CLOUDFRAMEWORK-SERVER-KEY'))>0);
+        function existServerKey()
+        {
+            return (strlen($this->getHeader('X-CLOUDFRAMEWORK-SERVER-KEY')) > 0);
         }
-        function getServerKey() {
+
+        function getServerKey()
+        {
             return $this->getHeader('X-CLOUDFRAMEWORK-SERVER-KEY');
         }
 
-        function checkServerKey($keys) {
-            if(!is_array($keys)) $keys = [[$keys,'*']];
-            else if(!is_array($keys[0])) $keys = [$keys];
+        function checkServerKey($keys)
+        {
+            if (!is_array($keys)) $keys = [[$keys, '*']];
+            else if (!is_array($keys[0])) $keys = [$keys];
             $web_key = $this->getServerKey();
 
-            if(strlen($web_key))
+            if (strlen($web_key))
                 foreach ($keys as $key) {
-                    if($key[0] == $web_key) {
-                        if(!isset($key[1])) $key[1]="*";
-                        if($key[1]=='*') return true;
-                        elseif(!strlen($_SERVER['HTTP_ORIGIN'])) return false;
+                    if ($key[0] == $web_key) {
+                        if (!isset($key[1])) $key[1] = "*";
+                        if ($key[1] == '*') return true;
+                        elseif (!strlen($_SERVER['HTTP_ORIGIN'])) return false;
                         else return $this->checkIPs($key[1]);
                     }
                 }
@@ -1449,14 +1705,16 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
          * @param array|string $allows string to compre with the current IP
          * @return bool
          */
-        private function checkIPs($allows) {
-            if(is_string($allows)) $allows = explode(',',$allows);
+        private function checkIPs($allows)
+        {
+            if (is_string($allows)) $allows = explode(',', $allows);
             foreach ($allows as $host) {
                 $host = trim($host);
-                if($host=='*' || preg_match('/^.*'.$host.'.*$/',$this->core->system->ip)>0) return true;
+                if ($host == '*' || preg_match('/^.*' . $host . '.*$/', $this->core->system->ip) > 0) return true;
             }
             return false;
         }
+
         function getHeader($str)
         {
             $str = strtoupper($str);
@@ -1509,32 +1767,33 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
             return false;
         }
 
-        function getCloudFrameWorkSecurityInfo($maxSeconds = 0, $id = '', $secret = '') {
-            $info = $this->checkCloudFrameWorkSecurity($maxSeconds,$id,$secret);
-            if(false === $info) return [];
+        function getCloudFrameWorkSecurityInfo($maxSeconds = 0, $id = '', $secret = '')
+        {
+            $info = $this->checkCloudFrameWorkSecurity($maxSeconds, $id, $secret);
+            if (false === $info) return [];
             else {
-                return $this->core->config->get('CLOUDFRAMEWORK-ID-'.$info['SECURITY-ID']);
+                return $this->core->config->get('CLOUDFRAMEWORK-ID-' . $info['SECURITY-ID']);
             }
 
         }
 
         // time, has to to be microtime().
-        function generateCloudFrameWorkSecurityString($id='', $time = '', $secret = '')
+        function generateCloudFrameWorkSecurityString($id = '', $time = '', $secret = '')
         {
-            if(!strlen($id)) {
+            if (!strlen($id)) {
                 $id = $this->core->config->get('CloudServiceId');
-                if(!strlen($id)) {
+                if (!strlen($id)) {
                     $this->core->errors->add('generateCloudFrameWorkSecurityString has not received $id and CloudServiceId config var does not exist');
                     return false;
                 }
             }
 
-            if(!strlen($secret)) {
+            if (!strlen($secret)) {
                 $secret = $this->core->config->get('CloudServiceSecret');
-                if(!strlen($secret)) {
+                if (!strlen($secret)) {
                     $secArr = $this->core->config->get('CLOUDFRAMEWORK-ID-' . $id);
                     if (isset($secArr['secret'])) $secret = $secArr['secret'];
-                    if(!strlen($secret)) {
+                    if (!strlen($secret)) {
                         $this->core->errors->add('generateCloudFrameWorkSecurityString has not received $secret and CloudServiceSecret and CLOUDFRAMEWORK-ID-XXX   config vars don\'t not exist');
                         return false;
                     }
@@ -1558,67 +1817,70 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
             return $ret;
         }
 
-        private function createDSToken() {
-            $dschema = ['token' => ['keyname','index']];
-            $dschema['dateInsert'] =  ['datetime','index'];
-            $dschema['JSONZIP'] =  ['string'];
-            $dschema['fingerprint'] =  ['string'];
-            $dschema['prefix'] =  ['string','index'];
+        private function createDSToken()
+        {
+            $dschema = ['token' => ['keyname', 'index']];
+            $dschema['dateInsert'] = ['datetime', 'index'];
+            $dschema['JSONZIP'] = ['string'];
+            $dschema['fingerprint'] = ['string'];
+            $dschema['prefix'] = ['string', 'index'];
             $spacename = $this->core->config->get('DataStoreSpaceName');
-            if(!strlen($spacename)) $spacename = "cloudframework";
-            $this->dsToken = $this->core->loadClass('DataStore',['CloudFrameWorkAuthTokens',$spacename,$dschema]);
-            if ($this->dsToken->error)  $this->core->errors->add(['setDSToken' => $this->dsToken->errorMsg]);
+            if (!strlen($spacename)) $spacename = "cloudframework";
+            $this->dsToken = $this->core->loadClass('DataStore', ['CloudFrameWorkAuthTokens', $spacename, $dschema]);
+            if ($this->dsToken->error) $this->core->errors->add(['setDSToken' => $this->dsToken->errorMsg]);
 
         }
 
         /**
          * @param $token          Id generated with setDSToken
-         * @param string $prefix  Prefix to separate tokens Between apps
-         * @param int $time       MAX TIME to expire the token
+         * @param string $prefix Prefix to separate tokens Between apps
+         * @param int $time MAX TIME to expire the token
          * @return array|mixed    The content contained in DS.JSONZIP
          */
-        function getDSToken($token, $prefixStarts='', $time=0) {
+        function getDSToken($token, $prefixStarts = '', $time = 0)
+        {
             $ret = null;
 
             // Check if token starts with $prefix
-            if(strlen($prefixStarts) && strpos($token,$prefixStarts )!==0) {
-                $this->core->errors->add(['getDSToken'=>'incorrect prefix token']);
+            if (strlen($prefixStarts) && strpos($token, $prefixStarts) !== 0) {
+                $this->core->errors->add(['getDSToken' => 'incorrect prefix token']);
                 return $ret;
             }
             // Check if object has been created
-            if(null === $this->dsToken ) $this->createDSToken();
+            if (null === $this->dsToken) $this->createDSToken();
 
             // If not error continue
-            if(!$this->core->errors->lines) {
+            if (!$this->core->errors->lines) {
                 $retToken = $this->dsToken->fetchByKeys($token);
                 if ($this->dsToken->error)
-                    $this->core->errors->add(['getDSToken'=>$this->dsToken->errorMsg]);
-                elseif($this->core->system->getRequestFingerPrint()['hash'] != $retToken[0]['fingerprint']) {
-                    $this->core->errors->add(['getDSToken'=>'Token security violation']);
-                }elseif($time > 0 && ((new DateTime())->getTimestamp()) - (new DateTime($retToken[0]['dateInsert']))->getTimestamp() >= $time){
-                    $this->core->errors->add(['getDSToken'=>'Token expired']);
-                }elseif(isset($retToken[0]['JSONZIP'])){
-                    $ret = json_decode(gzuncompress(utf8_decode($retToken[0]['JSONZIP'])),true);
+                    $this->core->errors->add(['getDSToken' => $this->dsToken->errorMsg]);
+                elseif ($this->core->system->getRequestFingerPrint()['hash'] != $retToken[0]['fingerprint']) {
+                    $this->core->errors->add(['getDSToken' => 'Token security violation']);
+                } elseif ($time > 0 && ((new DateTime())->getTimestamp()) - (new DateTime($retToken[0]['dateInsert']))->getTimestamp() >= $time) {
+                    $this->core->errors->add(['getDSToken' => 'Token expired']);
+                } elseif (isset($retToken[0]['JSONZIP'])) {
+                    $ret = json_decode(gzuncompress(utf8_decode($retToken[0]['JSONZIP'])), true);
                 }
             }
             return $ret;
         }
 
-        function setDSToken($data,$prefix='',$fingerprint_hash='') {
-            $ret=null;
-            if(!strlen(trim($prefix))) $prefix='default';
+        function setDSToken($data, $prefix = '', $fingerprint_hash = '')
+        {
+            $ret = null;
+            if (!strlen(trim($prefix))) $prefix = 'default';
 
             // Check if object has been created
-            if(null === $this->dsToken ) $this->createDSToken();
+            if (null === $this->dsToken) $this->createDSToken();
 
             // If not error continue
-            if(!$this->core->errors->lines) {
-                if(!strlen($fingerprint_hash)) $fingerprint_hash = $this->core->system->getRequestFingerPrint()['hash'];
+            if (!$this->core->errors->lines) {
+                if (!strlen($fingerprint_hash)) $fingerprint_hash = $this->core->system->getRequestFingerPrint()['hash'];
                 $record['dateInsert'] = "now";
                 $record['fingerprint'] = $fingerprint_hash;
                 $record['JSONZIP'] = utf8_encode(gzcompress(json_encode($data)));
                 $record['prefix'] = $prefix;
-                $record['token'] = $this->core->config->get('DataStoreSpaceName').'__'.$prefix.'__'.sha1(json_encode($record) . date('Ymdhis'));
+                $record['token'] = $this->core->config->get('DataStoreSpaceName') . '__' . $prefix . '__' . sha1(json_encode($record) . date('Ymdhis'));
 
                 $retEntity = $this->dsToken->createEntities($record);
                 if ($this->dsToken->error) {
@@ -1631,7 +1893,12 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
 
         }
     }
-    Class Localization
+
+    /**
+     * Class to manage localizations
+     * @package Core
+     */
+    Class CoreLocalization
     {
         protected $core;
         var $data = [];
@@ -1642,17 +1909,17 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
             $this->core = $core;
 
             // Maintain compatibilty with old variable
-            if(!strlen($this->core->config->get('localizeCachePath')) && strlen($this->core->config->get('LocalizePath')))
-                $this->core->config->set('localizeCachePath',$this->core->config->get('LocalizePath'));
+            if (!strlen($this->core->config->get('localizeCachePath')) && strlen($this->core->config->get('LocalizePath')))
+                $this->core->config->set('localizeCachePath', $this->core->config->get('LocalizePath'));
 
             // Read from Cache last Dics
-            if(!isset($_GET['_reloadDics']) && !isset($_GET['_nocacheDics'])) {
+            if (!isset($_GET['_reloadDics']) && !isset($_GET['_nocacheDics'])) {
                 $this->data = $this->core->cache->get('Core:Localization:Data');
                 if (!is_array($this->data)) $this->data = [];
             }
 
             // $this->core->config->get('wapploca_cache_expiration_time') default 3600
-            if( !isset($_GET['_nocacheDics'])) {
+            if (!isset($_GET['_nocacheDics'])) {
                 $this->wapploca = $this->core->cache->get('Core:Localization:WAPPLOCA', $this->core->config->get('wapploca_cache_expiration_time'));
                 if (!is_array($this->wapploca)) $this->wapploca = [];
             }
@@ -1665,58 +1932,59 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
          * @param array $config
          * @return mixed|string
          */
-        function get($locFile, $code, $config=[]) {
+        function get($locFile, $code, $config = [])
+        {
             // Check syntax of $locFile & $code
-            if(!$this->checkLocFileAndCode($locFile,$code)) return 'Err in: ['.$locFile."{{$code}}".']';
+            if (!$this->checkLocFileAndCode($locFile, $code)) return 'Err in: [' . $locFile . "{{$code}}" . ']';
             $lang = $this->core->config->getLang();
-            if(isset($config['lang']) && strlen($config['lang'])==2) $lang = strtoupper($config['lang']);
+            if (isset($config['lang']) && strlen($config['lang']) == 2) $lang = strtoupper($config['lang']);
             // The $locFile does not exist
-            if(!isset($_GET['_debugDics'])) {
+            if (!isset($_GET['_debugDics'])) {
 
                 // Trying read from file
                 $file_readed = false;
                 if (!isset($this->data[$locFile][$lang]) && !isset($_GET['_reloadDics'])) {
                     $file_readed = true;
-                    $this->readFromFile($locFile,$lang);
+                    $this->readFromFile($locFile, $lang);
                 }
 
                 // Trying read from CloudServe
                 $wapploca_readed = false;
                 if (!isset($this->data[$locFile][$lang])) {
 
-                    if($this->readFromWAPPLOCA($locFile, $code,$lang) &&  isset($this->data[$locFile][$lang][$code])) {
+                    if ($this->readFromWAPPLOCA($locFile, $code, $lang) && isset($this->data[$locFile][$lang][$code])) {
                         // Writting Local file.
                         $file_readed = true;
                         $wapploca_readed = true;
-                        $this->writeLocalization($locFile,$lang);
+                        $this->writeLocalization($locFile, $lang);
                     }
                 }
                 // If this localization file exists but the $code does not exist because the cache
-                if(isset($this->data[$locFile][$lang]) && !isset($this->data[$locFile][$lang][$code])) {
+                if (isset($this->data[$locFile][$lang]) && !isset($this->data[$locFile][$lang][$code])) {
                     // Rewrite Cache.
-                    if(!$file_readed) {
-                        $this->readFromFile($locFile,$lang);
+                    if (!$file_readed) {
+                        $this->readFromFile($locFile, $lang);
                     }
 
                     // If still does not exist
-                    if(!$wapploca_readed && !isset($this->data[$locFile][$lang][$code])) {
+                    if (!$wapploca_readed && !isset($this->data[$locFile][$lang][$code])) {
                         // Reload from WAPPLOCA the code.
-                        if($this->readFromWAPPLOCA($locFile, $code,$lang) &&  isset($this->data[$locFile][$lang][$code])) {
-                            $this->writeLocalization($locFile,$lang);
+                        if ($this->readFromWAPPLOCA($locFile, $code, $lang) && isset($this->data[$locFile][$lang][$code])) {
+                            $this->writeLocalization($locFile, $lang);
                         }
                     }
 
                 }
             }
 
-            if(isset($_GET['_debugDics'])){
-                $ret = $lang.'_'.$locFile.":({$code})";
-            } else if(isset($this->data[$locFile][$lang][$code])) {
+            if (isset($_GET['_debugDics'])) {
+                $ret = $lang . '_' . $locFile . ":({$code})";
+            } else if (isset($this->data[$locFile][$lang][$code])) {
                 $ret = $this->data[$locFile][$lang][$code];
             } else {
                 $this->core->logs->add('Missing configuration for Localizations');
-                $this->core->logs->add('WAPPLOCA: '.((empty($this->core->config->get('WAPPLOCA')))?'empty':'***'));
-                $this->core->logs->add('localizeCachePath: '.((empty($this->core->config->get('localizeCachePath')))?'empty':'***'));
+                $this->core->logs->add('WAPPLOCA: ' . ((empty($this->core->config->get('WAPPLOCA'))) ? 'empty' : '***'));
+                $this->core->logs->add('localizeCachePath: ' . ((empty($this->core->config->get('localizeCachePath'))) ? 'empty' : '***'));
             }
 
             return $ret;
@@ -1727,19 +1995,20 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
          * @param $locFile
          * @return bool
          */
-        private function readFromFile($locFile,$lang='') {
-            if(!strlen($this->core->config->get('localizeCachePath'))) return false;
-            if(!strlen($lang)) $lang = $this->core->config->getLang();
+        private function readFromFile($locFile, $lang = '')
+        {
+            if (!strlen($this->core->config->get('localizeCachePath'))) return false;
+            if (!strlen($lang)) $lang = $this->core->config->getLang();
             $ok = true;
             $this->core->__p->add('Localization->readFromFile: ', $locFile, 'note');
             // First read from local directory if {{localizeCachePath}} is defined.
-            if(strlen($this->core->config->get('localizeCachePath'))) {
-                $filename = $this->core->config->get('localizeCachePath').'/'.$lang.'_Core_'.$locFile.'.json';
+            if (strlen($this->core->config->get('localizeCachePath'))) {
+                $filename = $this->core->config->get('localizeCachePath') . '/' . $lang . '_Core_' . $locFile . '.json';
                 try {
                     $ret = @file_get_contents($filename);
                     if ($ret !== false) {
-                        $this->data[$locFile][$lang] = json_decode($ret,true);
-                        $this->core->cache->set('Core:Localization:Data',$this->data);
+                        $this->data[$locFile][$lang] = json_decode($ret, true);
+                        $this->core->cache->set('Core:Localization:Data', $this->data);
                     } else {
                         $this->core->logs->add('Error reading ' . $filename);
                         $this->core->logs->add(error_get_last());
@@ -1748,23 +2017,24 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
                 } catch (Exception $e) {
                     $ok = false;
                     $this->core->logs->add('Error reading ' . $filename . ': ');
-                    $this->core->logs->add( $e->getMessage() . ' ' . error_get_last());
+                    $this->core->logs->add($e->getMessage() . ' ' . error_get_last());
                 }
             }
             $this->core->__p->add('Localization->readFromFile: ', '', 'endnote');
             return $ok;
         }
 
-        private function  writeLocalization($locFile,$lang='') {
-            if(!strlen($this->core->config->get('localizeCachePath'))) return false;
-            if(!isset($this->data[$locFile])) return false;
-            if(!strlen($lang)) $lang = $this->core->config->getLang();
+        private function writeLocalization($locFile, $lang = '')
+        {
+            if (!strlen($this->core->config->get('localizeCachePath'))) return false;
+            if (!isset($this->data[$locFile])) return false;
+            if (!strlen($lang)) $lang = $this->core->config->getLang();
             $ok = true;
-            $this->core->__p->add('Localization->writeLocalization: ', $lang.'_Core_'.$locFile.'.json', 'note');
+            $this->core->__p->add('Localization->writeLocalization: ', $lang . '_Core_' . $locFile . '.json', 'note');
 
-            $filename = $this->core->config->get('localizeCachePath').'/'.$lang.'_Core_'.$locFile.'.json';
+            $filename = $this->core->config->get('localizeCachePath') . '/' . $lang . '_Core_' . $locFile . '.json';
             try {
-                $ret = @file_put_contents($filename,json_encode($this->data[$locFile][$lang],JSON_PRETTY_PRINT));
+                $ret = @file_put_contents($filename, json_encode($this->data[$locFile][$lang], JSON_PRETTY_PRINT));
                 if ($ret === false) {
                     $ok = false;
                     $this->core->logs->add('Error writting ' . $filename);
@@ -1773,7 +2043,7 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
             } catch (Exception $e) {
                 $ok = false;
                 $this->core->logs->add('Error reading ' . $filename . ': ');
-                $this->core->logs->add( $e->getMessage() . ' ' . error_get_last());
+                $this->core->logs->add($e->getMessage() . ' ' . error_get_last());
             }
             $this->core->__p->add('Localization->writeLocalization: ', '', 'endnote');
             return $ok;
@@ -1786,29 +2056,30 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
          * @param $code
          * @return bool
          */
-        private function readFromWAPPLOCA($locFile,$code,$lang='') {
-            if(empty($this->core->config->get('WAPPLOCA'))) return false;
-            if(!strlen($lang)) $lang = $this->core->config->getLang();
+        private function readFromWAPPLOCA($locFile, $code, $lang = '')
+        {
+            if (empty($this->core->config->get('WAPPLOCA'))) return false;
+            if (!strlen($lang)) $lang = $this->core->config->getLang();
 
-            list($org,$app,$cat,$loc_code) = explode(';',$code,4);
-            if(!strlen($loc_code) || preg_match('/[^a-z0-9_-]/',$loc_code)) {
-                $this->core->logs->add('Localization->readFromWAPPLOCA: has a wrong value for $code: '.$code);
+            list($org, $app, $cat, $loc_code) = explode(';', $code, 4);
+            if (!strlen($loc_code) || preg_match('/[^a-z0-9_-]/', $loc_code)) {
+                $this->core->logs->add('Localization->readFromWAPPLOCA: has a wrong value for $code: ' . $code);
                 return false;
             }
             $ok = true;
 
-            $key = "$org/$app/$cat?lang=".$lang;
+            $key = "$org/$app/$cat?lang=" . $lang;
             // Read From CloudService the info and put the cats into $this->wapploca
             $url = $this->core->config->get('wapploca_api_url');
-            if(!isset($this->wapploca[$key])) {
-                $ret = $this->core->request->get($url.'/dics/' . $key);
+            if (!isset($this->wapploca[$key])) {
+                $ret = $this->core->request->get($url . '/dics/' . $key);
                 if (!$this->core->request->error) {
                     $ret = json_decode($ret, true);
                     if (!$ret['success']) {
                         $this->core->logs->add($ret);
                         $ok = false;
                     } else {
-                        if(is_array($ret['data'])) {
+                        if (is_array($ret['data'])) {
                             $this->wapploca[$key] = $ret['data'];
                             $this->core->cache->set('Core:Localization:WAPPLOCA', $this->wapploca);
                         } else {
@@ -1816,13 +2087,12 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
                             $this->core->logs->add($ret);
                         }
                     }
-                }
-                else $ok = false;
+                } else $ok = false;
             }
 
             // Return the code required
-            if(isset($this->wapploca[$key][$code]))
-                $this->data[$locFile][$lang][$code] =  $this->wapploca[$key][$code];
+            if (isset($this->wapploca[$key][$code]))
+                $this->data[$locFile][$lang][$code] = $this->wapploca[$key][$code];
             else
                 $this->data[$locFile][$lang][$code] = $code;
             return $ok;
@@ -1835,14 +2105,15 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
          * @param $code
          * @return bool
          */
-        private function checkLocFileAndCode(&$locFile, &$code) {
-            $locFile = preg_replace('/[^A-z_\-]/','',$locFile);
-            if(!strlen($locFile)) {
+        private function checkLocFileAndCode(&$locFile, &$code)
+        {
+            $locFile = preg_replace('/[^A-z_\-]/', '', $locFile);
+            if (!strlen($locFile)) {
                 $this->core->errors->set('Localization has received a wrong spacename: ');
                 return false;
             }
-            $code = preg_replace('/[^a-z0-9_\-;]/','',strtolower($code));
-            if(!strlen($code)) {
+            $code = preg_replace('/[^a-z0-9_\-;]/', '', strtolower($code));
+            if (!strlen($code)) {
                 $this->core->errors->set('Localization has received a wrong code: ');
                 return false;
             }
@@ -1850,7 +2121,11 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
         }
     }
 
-    Class Request
+    /**
+     * Class to manage HTTP requests
+     * @package Core
+     */
+    Class CoreRequest
     {
         protected $core;
         protected $http;
@@ -2002,39 +2277,48 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
         }
 
 
-        function get_json_decode($rute, $data = null,  $extra_headers = null, $raw = false) {
-            $this->rawResult =  $this->get($rute, $data, $extra_headers, $raw);
-            $ret = json_decode($this->rawResult,true);
-            if(JSON_ERROR_NONE === json_last_error()) $this->rawResult = '';
+        function get_json_decode($rute, $data = null, $extra_headers = null, $raw = false)
+        {
+            $this->rawResult = $this->get($rute, $data, $extra_headers, $raw);
+            $ret = json_decode($this->rawResult, true);
+            if (JSON_ERROR_NONE === json_last_error()) $this->rawResult = '';
             return $ret;
         }
-        function post_json_decode($rute, $data = null,  $extra_headers = null, $raw = false) {
+
+        function post_json_decode($rute, $data = null, $extra_headers = null, $raw = false)
+        {
             $this->rawResult = $this->post($rute, $data, $extra_headers, $raw);
-            $ret = json_decode($this->rawResult,true);
-            if(JSON_ERROR_NONE === json_last_error()) $this->rawResult = '';
-            return $ret;
-        }
-        function put_json_decode($rute, $data = null,  $extra_headers = null, $raw = false) {
-            $this->rawResult =  $this->put($rute, $data, $extra_headers, $raw);
-            $ret = json_decode($this->rawResult,true);
-            if(JSON_ERROR_NONE === json_last_error()) $this->rawResult = '';
+            $ret = json_decode($this->rawResult, true);
+            if (JSON_ERROR_NONE === json_last_error()) $this->rawResult = '';
             return $ret;
         }
 
-        function get($rute, $data = null,  $extra_headers = null, $raw = false) {
-            return $this->call($rute, $data,  'GET',$extra_headers, $raw);
-        }
-        
-        function post($rute, $data = null,  $extra_headers = null, $raw = false) {
-            return $this->call($rute, $data,  'POST',$extra_headers, $raw);
-        }
-
-        function put($rute, $data = null,  $extra_headers = null, $raw = false) {
-            return $this->call($rute, $data,  'PUT',$extra_headers, $raw);
+        function put_json_decode($rute, $data = null, $extra_headers = null, $raw = false)
+        {
+            $this->rawResult = $this->put($rute, $data, $extra_headers, $raw);
+            $ret = json_decode($this->rawResult, true);
+            if (JSON_ERROR_NONE === json_last_error()) $this->rawResult = '';
+            return $ret;
         }
 
-        function delete($rute, $data = null,  $extra_headers = null, $raw = false) {
-            return $this->call($rute, $data,  'DELETE',$extra_headers, $raw);
+        function get($rute, $data = null, $extra_headers = null, $raw = false)
+        {
+            return $this->call($rute, $data, 'GET', $extra_headers, $raw);
+        }
+
+        function post($rute, $data = null, $extra_headers = null, $raw = false)
+        {
+            return $this->call($rute, $data, 'POST', $extra_headers, $raw);
+        }
+
+        function put($rute, $data = null, $extra_headers = null, $raw = false)
+        {
+            return $this->call($rute, $data, 'PUT', $extra_headers, $raw);
+        }
+
+        function delete($rute, $data = null, $extra_headers = null, $raw = false)
+        {
+            return $this->call($rute, $data, 'DELETE', $extra_headers, $raw);
         }
 
         function call($rute, $data = null, $verb = 'GET', $extra_headers = null, $raw = false)
@@ -2044,8 +2328,8 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
 
             $this->core->__p->add('Request->get: ', "$rute " . (($data === null) ? '{no params}' : '{with params}'), 'note');
             // Performance for connections
-            $options = array('ssl'=>array('verify_peer' => false));
-            $options['http']['ignore_errors'] ='1';
+            $options = array('ssl' => array('verify_peer' => false));
+            $options['http']['ignore_errors'] = '1';
             $options['http']['header'] = 'Connection: close' . "\r\n";
 
 
@@ -2081,7 +2365,7 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
                         if (strpos($rute, '?') === false) $rute .= '?';
                         else $rute .= '&';
                         foreach ($data as $key => $value) {
-                            if(is_array($value)) {
+                            if (is_array($value)) {
                                 foreach ($value as $item) {
                                     $rute .= $key . '=' . rawurlencode($item) . '&';
                                 }
@@ -2115,13 +2399,13 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
                 if ($ret === false) $this->addError(error_get_last());
                 else {
                     $code = $this->getLastResponseCode();
-                    if($code === null) {
+                    if ($code === null) {
                         $this->addError('Return header not found');
                         $this->addError($this->responseHeaders);
                         $this->addError($ret);
                     } else {
-                        if($code >= 400) {
-                            $this->addError('Error code returned: '.$code);
+                        if ($code >= 400) {
+                            $this->addError('Error code returned: ' . $code);
                             $this->addError($this->responseHeaders);
                             $this->addError($ret);
                         }
@@ -2136,11 +2420,12 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
             $this->core->__p->add('Request->get: ', '', 'endnote');
             return ($ret);
         }
-        
-        function getLastResponseCode() {
+
+        function getLastResponseCode()
+        {
             $code = null;
-            if(isset($this->responseHeaders[0])) {
-                list($foo,$code,$foo) = explode(' ',$this->responseHeaders[0],3);
+            if (isset($this->responseHeaders[0])) {
+                list($foo, $code, $foo) = explode(' ', $this->responseHeaders[0], 3);
             }
             return $code;
 
@@ -2178,7 +2463,7 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
 
             if (!strlen($app)) $app = $this->core->system->url['host'];
 
-            $this->core->logs->add(['sending cloud service logs:'=>[$this->getServiceUrl('queue/cf_logs/'.$app),$type, $cat, $subcat, $title]]);
+            $this->core->logs->add(['sending cloud service logs:' => [$this->getServiceUrl('queue/cf_logs/' . $app), $type, $cat, $subcat, $title]]);
             if (!$this->core->config->get('CloudServiceLog') && !$this->core->config->get('LogPath')) return false;
             $app = str_replace(' ', '_', $app);
             $params['id'] = $this->core->config->get('CloudServiceId');
@@ -2187,26 +2472,26 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
             $params['title'] = $title;
             if (!is_string($text)) $text = json_encode($text);
             $params['text'] = $text . ((strlen($text)) ? "\n\n" : '');
-            if ($this->core->errors->lines) $params['text'] .= "Errors: " . json_encode($this->core->errors->data,JSON_PRETTY_PRINT) . "\n\n";
-            if (count($this->core->logs->lines)) $params['text'] .= "Logs: " . json_encode($this->core->logs->data,JSON_PRETTY_PRINT);
+            if ($this->core->errors->lines) $params['text'] .= "Errors: " . json_encode($this->core->errors->data, JSON_PRETTY_PRINT) . "\n\n";
+            if (count($this->core->logs->lines)) $params['text'] .= "Logs: " . json_encode($this->core->logs->data, JSON_PRETTY_PRINT);
 
             // IP gathered from queue
-            if(isset($_REQUEST['cloudframework_queued_ip']))
+            if (isset($_REQUEST['cloudframework_queued_ip']))
                 $params['ip'] = $_REQUEST['cloudframework_queued_ip'];
             else
                 $params['ip'] = $this->core->system->ip;
 
             // IP gathered from queue
-            if(isset($_REQUEST['cloudframework_queued_fingerprint']))
+            if (isset($_REQUEST['cloudframework_queued_fingerprint']))
                 $params['fingerprint'] = $_REQUEST['cloudframework_queued_fingerprint'];
             else
-                $params['fingerprint'] = json_encode($this->core->system->getRequestFingerPrint(),JSON_PRETTY_PRINT);
+                $params['fingerprint'] = json_encode($this->core->system->getRequestFingerPrint(), JSON_PRETTY_PRINT);
 
             // Tell the service to send email of the report.
             if (strlen($email) && filter_var($email, FILTER_VALIDATE_EMAIL))
                 $params['email'] = $email;
             if ($this->core->config->get('CloudServiceLog')) {
-                $ret = $this->core->jsonDecode($this->get('queue/cf_logs/' . urlencode($app) . '/' . urlencode($type), $params, 'POST'),true);
+                $ret = $this->core->jsonDecode($this->get('queue/cf_logs/' . urlencode($app) . '/' . urlencode($type), $params, 'POST'), true);
                 if (is_array($ret) && !$ret['success']) $this->addError($ret);
             } else {
                 $ret = 'Sending to LogPath not yet implemented';
@@ -2214,70 +2499,106 @@ if (!defined("_ADNBP_CORE_CLASSES_"))
             return $ret;
         }
     }
-}
 
-Class CoreLogic
-{
-    protected $core;
-    var $method = '';
-    var $formParams = array();
-    var $params = array();
-    public $error = false;
-    public $errorMsg = [];
 
-    function __construct(Core &$core)
+    /**
+     * Class to be extended for the creation of a logic application.
+     *
+     * The sintax is: `Class Logic extends CoreLogic() {..}`
+     *
+     *
+     * Normally your file has to be stored in the `logic/` directory and extend this class.
+     * @package Core
+     */
+    Class CoreLogic
     {
-        $this->core = $core;
-        $this->method = (strlen($_SERVER['REQUEST_METHOD'])) ? $_SERVER['REQUEST_METHOD'] : 'GET';
-        if ($this->method == 'GET') {
-            $this->formParams = &$_GET;
-            if (isset($_GET['_raw_input_']) && strlen($_GET['_raw_input_'])) $this->formParams = (count($this->formParams)) ? array_merge($this->formParams, json_decode($_GET['_raw_input_'], true)) : json_decode($_GET['_raw_input_'], true);
-        } else {
-            if (count($_GET)) $this->formParams = (count($this->formParams)) ? array_merge($this->formParam, $_GET) : $_GET;
-            if (count($_POST)) $this->formParams = (count($this->formParams)) ? array_merge($this->formParams, $_POST) : $_POST;
-            if (isset($_POST['_raw_input_']) && strlen($_POST['_raw_input_'])) $this->formParams = (count($this->formParams)) ? array_merge($this->formParams, json_decode($_POST['_raw_input_'], true)) : json_decode($_POST['_raw_input_'], true);
-            if (isset($_GET['_raw_input_']) && strlen($_GET['_raw_input_'])) $this->formParams = (count($this->formParams)) ? array_merge($this->formParams, json_decode($_GET['_raw_input_'], true)) : json_decode($_GET['_raw_input_'], true);
+        /** @var Core $core pointer to the Core class. `$this->core->...` */
+        private $core;
 
-            // raw data.
-            $input = file_get_contents("php://input");
-            if (strlen($input)) {
-                $this->formParams['_raw_input_'] = $input;
+        /** @var string $method indicates the HTTP method used to access the script: GET, POST etc.. Default value is GET */
+        var $method = 'GET';
 
-                if (is_object(json_decode($input))) {
-                    $input_array = json_decode($input, true);
-                } else {
-                    parse_str($input, $input_array);
+        /** @var array $formParams Contains the variables passed in a GET,POST,PUT call intro an URL  */
+        var $formParams = array();
+
+        /** @var array $params contains the substrings paths of an URL script/param0/param1/..  */
+        var $params = array();
+
+        /**
+         * @var boolean $error Indicates if an error has been produced
+         */
+        public $error = false;
+
+        /** @var array $errorMsg Keep the error messages  */
+        public $errorMsg = [];
+
+        /**
+         * CoreLogic constructor.
+         * @param Core $core
+         */
+        function __construct(Core &$core)
+        {
+            $this->core = $core;
+            $this->method = (strlen($_SERVER['REQUEST_METHOD'])) ? $_SERVER['REQUEST_METHOD'] : 'GET';
+            if ($this->method == 'GET') {
+                $this->formParams = &$_GET;
+                if (isset($_GET['_raw_input_']) && strlen($_GET['_raw_input_'])) $this->formParams = (count($this->formParams)) ? array_merge($this->formParams, json_decode($_GET['_raw_input_'], true)) : json_decode($_GET['_raw_input_'], true);
+            } else {
+                if (count($_GET)) $this->formParams = (count($this->formParams)) ? array_merge($this->formParam, $_GET) : $_GET;
+                if (count($_POST)) $this->formParams = (count($this->formParams)) ? array_merge($this->formParams, $_POST) : $_POST;
+                if (isset($_POST['_raw_input_']) && strlen($_POST['_raw_input_'])) $this->formParams = (count($this->formParams)) ? array_merge($this->formParams, json_decode($_POST['_raw_input_'], true)) : json_decode($_POST['_raw_input_'], true);
+                if (isset($_GET['_raw_input_']) && strlen($_GET['_raw_input_'])) $this->formParams = (count($this->formParams)) ? array_merge($this->formParams, json_decode($_GET['_raw_input_'], true)) : json_decode($_GET['_raw_input_'], true);
+
+                // raw data.
+                $input = file_get_contents("php://input");
+                if (strlen($input)) {
+                    $this->formParams['_raw_input_'] = $input;
+
+                    if (is_object(json_decode($input))) {
+                        $input_array = json_decode($input, true);
+                    } else {
+                        parse_str($input, $input_array);
+                    }
+                    if (is_array($input_array))
+                        $this->formParams = array_merge($this->formParams, $input_array);
+                    else {
+                        $this->setError('Wrong JSON: ' . $input, 400);
+                    }
+                    unset($input_array);
+                    /*
+                   if(strpos($this->requestHeaders['Content-Type'], 'json')) {
+                   }
+                     *
+                     */
                 }
-                if (is_array($input_array))
-                    $this->formParams = array_merge($this->formParams, $input_array);
-                else {
-                    $this->setError('Wrong JSON: ' . $input, 400);
-                }
-                unset($input_array);
-                /*
-               if(strpos($this->requestHeaders['Content-Type'], 'json')) {
-               }
-                 *
-                 */
+            }
+            $this->params = &$this->core->system->url['parts'];
+
+        }
+
+        /**
+         * Try to render a template
+         * @param string $template Path to the template
+         */
+        function render($template)
+        {
+            try {
+                include $this->core->system->app_path . '/templates/' . $template;
+            } catch (Exception $e) {
+                $this->addError(error_get_last());
+                $this->addError($e->getMessage());
             }
         }
-        $this->params = &$this->core->system->url['parts'];
 
-    }
-
-    function render($template) {
-        try {
-            include $this->core->system->app_path . '/templates/' . $template;
+        /**
+         * Add an error in the class
+         * @param $value
+         */
+        function addError($value)
+        {
+            $this->error = true;
+            $this->core->errors->add($value);
+            $this->errorMsg[] = $value;
         }
-        catch (Exception $e) {
-            $this->addError(error_get_last());
-            $this->addError($e->getMessage());
-        }
-    }
-    function addError($value)
-    {
-        $this->error = true;
-        $this->core->errors->add($value);
-        $this->errorMsg[] = $value;
     }
 }
