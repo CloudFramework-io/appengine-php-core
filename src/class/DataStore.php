@@ -425,6 +425,7 @@ if (!defined ("_DATASTORE_CLASS_") ) {
 
             }
             $this->core->__p->add('fetch: ', '', 'endnote');
+            syslog(LOG_DEBUG,'Return  datastore->'. json_encode($ret,JSON_FORCE_OBJECT));
             return $ret;
         }
         function fetchKeys($keys) {
