@@ -120,6 +120,11 @@ if (!defined ("_RenderTwig_CLASS_") ) {
                 });
                 $this->twig->addFunction($function);
 
+                $function = new \Twig_SimpleFunction('session', function ($key) {
+                    return $this->core->session->get($key);
+                });
+                $this->twig->addFunction($function);
+
 
                 $function = new \Twig_SimpleFunction('isAuth', function ($namespace = null) {
                     return $this->core->user->isAuth();
