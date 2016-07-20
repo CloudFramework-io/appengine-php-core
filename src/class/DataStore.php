@@ -174,7 +174,7 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                                 elseif($this->schema['props'][$key][1]=='json' ) {
                                     $record[$key] = json_decode($value,true);
                                 }
-
+                            syslog(LOG_DEBUG, 'Entity->' . json_encode($entity,JSON_FORCE_OBJECT));
                             if (null !== $schema_key) {
                                 $record['KeyId'] = $entity->getKeyId();
                             } elseif(null !== $schema_keyname) {
@@ -399,6 +399,7 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                         $data = $this->store->fetchPage($page);
                         if (is_array($data))
                             foreach ($data as $record) {
+                                syslog(LOG_DEBUG,'Record->'. json_encode($record,JSON_FORCE_OBJECT));
                                 // GeoData Transformation
                                 foreach ($record->getData() as $key=>$value)
                                     if($value instanceof Geopoint)
