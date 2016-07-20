@@ -47,6 +47,8 @@ if (!defined ("_DATASTORE_CLASS_") ) {
         var $lastQuery = '';
         var $core = null;
         var $types = null;
+        var $limit = 0;
+        var $page = 0;
 
         function __construct(Core &$core, $params)
         {
@@ -345,7 +347,7 @@ if (!defined ("_DATASTORE_CLASS_") ) {
 
         function fetchAll($fields = '*', $where = null, $order = null)
         {
-            return $this->fetch('all', $fields, $where, $order, 0);
+            return $this->fetch('all', $fields, $where, $order, null);
         }
 
         function fetchLimit($fields = '*', $where = null, $order = null, $limit = null)
@@ -361,7 +363,7 @@ if (!defined ("_DATASTORE_CLASS_") ) {
             $this->core->__p->add('fetch: ', $type . ' fields:' . $fields . ' where:' . $where . ' order:' . $order . ' limit:' . $limit, 'note');
             $ret = [];
             if (!strlen($fields)) $fields = '*';
-            if (!strlen($limit)) $limit = 1000;
+            if (!strlen($limit)) $limit = $this->limit;
 
             // FIX when you work on a local environment
             if($this->core->is->development() && $fields!='*') $fields='*';
@@ -383,7 +385,7 @@ if (!defined ("_DATASTORE_CLASS_") ) {
             }
             if (strlen($order)) $_q .= " ORDER BY $order";
 
-            $this->lastQuery = $_q . ((is_array($where)) ? ' ' . json_encode($where) : '') . ' limit=' . $limit;
+            $this->lastQuery = $_q . ((is_array($where)) ? ' ' . json_encode($where) : '') . ' limit=' . $limit.' page='.$this->page;
 
 
             try {
@@ -392,11 +394,18 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                 else {
                     $this->store->query($_q, $where);
                     // page size
-                    $page = 500;
-                    if ($limit > 0 && $limit < $page) $page = $limit;
+                    $blocksOfEntities = 500;  // Maxium group of records per datastore call
+                    $init = false;
+
+                    if ($limit > 0 && $limit < $blocksOfEntities) $blocksOfEntities = $limit;
                     $tr = 0;
                     do {
-                        $data = $this->store->fetchPage($page);
+                        if(!$init) {
+                            $data = $this->store->fetchPage($blocksOfEntities, $this->page * $limit);
+                            $init = true;
+                        } else {
+                            $data = $this->store->fetchPage($blocksOfEntities);
+                        }
                         if (is_array($data))
                             foreach ($data as $record) {
                                 // GeoData Transformation
@@ -412,8 +421,9 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                             }
                         if ($limit > 0) {
                             if ($tr >= $limit) $data = null;
-                            elseif (($tr + $page) >= $limit) $page = $limit - $tr;
+                            elseif (($tr + $blocksOfEntities) >= $limit) $blocksOfEntities = $limit - $tr;
                         }
+
                     } while ($data);
                 }
             } catch (Exception $e) {
