@@ -393,7 +393,7 @@ if (!defined("_RESTfull_CLASS_")) {
 
         function getReturnCode()
         {
-            return (($this->code!==null) ? $this->code : $this->getReturnStatus());
+            return (($this->code !==null ) ? strval($this->code) : strval($this->getReturnStatus()));
         }
 
         function setReturnCode($code)
