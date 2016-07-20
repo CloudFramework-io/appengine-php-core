@@ -86,7 +86,7 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
 
                 if($this->error) {
                     if(!strlen($this->field ))
-                        $this->field  = $extrakey.$key;
+                        $this->field  = $extrakey.$key.': '.$value['validation'];
                     return false;
                 }
             }
