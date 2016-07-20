@@ -399,7 +399,9 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                         $data = $this->store->fetchPage($page);
                         if (is_array($data))
                             foreach ($data as $record) {
-                                syslog(LOG_DEBUG,'Record->'. json_encode($record,JSON_FORCE_OBJECT));
+                                syslog(LOG_DEBUG,'Record->'. json_encode(get_class_methods($record),JSON_FORCE_OBJECT));
+                                syslog(LOG_DEBUG,'Record->'. json_encode($record->getKeyId(),JSON_FORCE_OBJECT));
+
                                 // GeoData Transformation
                                 foreach ($record->getData() as $key=>$value)
                                     if($value instanceof Geopoint)
