@@ -113,7 +113,7 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
             if( strpos($options,'tolowercase')!==false) $data = strtolower($data);
             if( strpos($options,'touppercase')!==false) $data = strtoupper($data);
             if( strpos($options,'trim')!==false) $data = trim($data);
-            if( strpos($options,'toarray:')!==false) {
+            if( strpos($options,'toarray:')!==false && !is_array($data) && is_string($data)) {
                 $sep = $this->extractOptionValue('toarray:',$options);
                 if(strlen($data))
                     $data = explode($sep,$data);
