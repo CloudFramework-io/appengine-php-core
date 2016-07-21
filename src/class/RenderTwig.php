@@ -120,6 +120,11 @@ if (!defined ("_RenderTwig_CLASS_") ) {
                 });
                 $this->twig->addFunction($function);
 
+                $function = new \Twig_SimpleFunction('session', function ($key) {
+                    return $this->core->session->get($key);
+                });
+                $this->twig->addFunction($function);
+
 
                 $function = new \Twig_SimpleFunction('isAuth', function ($namespace = null) {
                     return $this->core->user->isAuth();
@@ -142,6 +147,10 @@ if (!defined ("_RenderTwig_CLASS_") ) {
                 $this->twig->addFunction($function);
                 $function = new \Twig_SimpleFunction('setLang', function ($lang) {
                     return $this->core->config->setLang($lang);
+                });
+                $this->twig->addFunction($function);
+                $function = new \Twig_SimpleFunction('system', function ($var) {
+                    if(property_exists($this->core->system,$var)) return $this->core->system->{$var};
                 });
                 $this->twig->addFunction($function);
                 $this->index = $index;
