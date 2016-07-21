@@ -160,10 +160,11 @@ class Insightly {
 
     public function __construct(Core &$core, $params) {
         $this->core = $core;
-        if(!strlen($params[0])) {
+
+        if(!is_string($params) || !strlen($params)) {
             $this->addError('Missing key params in Insightly Class');
         }
-        $this->apikey = $params[0];
+        $this->apikey = $params;
     }
 
     function addError($msg) {

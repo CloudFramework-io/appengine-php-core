@@ -407,7 +407,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
      */
     class CoreSystem
     {
-        var $url, $root_path, $app_path, $app_url;
+        var $url, $app,$root_path, $app_path, $app_url;
         var $config = [];
         var $ip, $user_agent, $format, $time_zone;
 
@@ -1655,13 +1655,15 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
          */
         function existWebKey()
         {
-            return (isset($_GET['web_key']) || isset($_POST['web_key']));
+
+            return (isset($_GET['web_key']) || isset($_POST['web_key']) || strlen($this->getHeader('X-WEB-KEY')));
         }
 
         function getWebKey()
         {
             if (isset($_GET['web_key'])) return $_GET['web_key'];
             else if (isset($_POST['web_key'])) return $_POST['web_key'];
+            else if (strlen($this->getHeader('X-WEB-KEY'))) return $this->getHeader('X-WEB-KEY');
             else return '';
         }
 
@@ -1862,7 +1864,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
          * @param int $time MAX TIME to expire the token
          * @return array|mixed    The content contained in DS.JSONZIP
          */
-        function getDSToken($token, $prefixStarts = '', $time = 0)
+        function getDSToken($token, $prefixStarts = '', $time = 0, $fingerprint_hash='')
         {
             $ret = null;
 
@@ -1874,13 +1876,18 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             // Check if object has been created
             if (null === $this->dsToken) $this->createDSToken();
 
+
             // If not error continue
             if (!$this->core->errors->lines) {
                 $retToken = $this->dsToken->fetchByKeys($token);
+
+                // Allow to rewrite the fingerprint it it is passed
+                if(!$this->dsToken->error && !strlen($fingerprint_hash)) $fingerprint_hash = $this->core->system->getRequestFingerPrint()['hash'];
+
                 if ($this->dsToken->error)
                     $this->core->errors->add(['getDSToken' => $this->dsToken->errorMsg]);
-                elseif ($this->core->system->getRequestFingerPrint()['hash'] != $retToken[0]['fingerprint']) {
-                    $this->core->errors->add(['getDSToken' => 'Token security violation']);
+                elseif ($fingerprint_hash != $retToken[0]['fingerprint']) {
+                    $this->core->errors->add(['getDSToken' => 'Token fingerprint does not match. Security violation.']);
                 } elseif ($time > 0 && ((new DateTime())->getTimestamp()) - (new DateTime($retToken[0]['dateInsert']))->getTimestamp() >= $time) {
                     $this->core->errors->add(['getDSToken' => 'Token expired']);
                 } elseif (isset($retToken[0]['JSONZIP'])) {
