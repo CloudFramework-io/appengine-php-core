@@ -27,8 +27,8 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
                     return false;
                 }
 
-                // ---
-                // excludeifexist: controls the exintence of the field depends on others fields
+                // $excludeif controls the exintence of the field depends on others fields
+                $excludeif = [];
                 if (isset($value['validation']) && strpos($value['validation'], 'excludeifexist:') !== false) {
                     $excludeif = explode(',',$this->extractOptionValue('excludeifexist:',$value['validation']));
                     foreach ($excludeif as $excludefield) if(strlen($excludefield = trim($excludefield))) {
@@ -61,7 +61,7 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
 
                     if(empty($data[$key])) {
                         // OPTIONAL: -- Allow empty values if we have optional in options
-                        if(strpos($value['validation'],'optional')!==false || strpos($value['validation'],'hidden')!==false)
+                        if(strpos($value['validation'],'optional')!==false)
                             continue;  // OK.. next
                         else {
                             if(!key_exists($key,$data))
@@ -69,9 +69,6 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
                             else
                                 $this->setError('Empty value for '.$extrakey.$key);
                         }
-                    } else {
-                        if(strpos($value['validation'],'hidden')!==false && strpos($value['validation'],'forcevalue:')===false &&  strpos($value['validation'],'defaultvalue:')===false)
-                            $this->setError('There is value for a hidden field '.$extrakey.$key);
                     }
                 }
 
@@ -110,12 +107,18 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
             if(strpos($options,'forcevalue:')!==false) {
                 $data = $this->extractOptionValue('forcevalue:',$options);
             }elseif(strpos($options,'defaultvalue:')!==false && !strlen($data)) {
-                $data = $this->extractOptionValue('defaultvalue:',$options);
+                $data = $this->extractOptionValue('forcevalue:',$options);
             }
 
             if( strpos($options,'tolowercase')!==false) $data = strtolower($data);
             if( strpos($options,'touppercase')!==false) $data = strtoupper($data);
             if( strpos($options,'trim')!==false) $data = trim($data);
+            if( strpos($options,'toarray:')!==false) {
+                $sep = $this->extractOptionValue('toarray:',$options);
+                if(strlen($data))
+                    $data = explode($sep,$data);
+                else $data = [];
+            }
 
             return $data;
         }
@@ -133,8 +136,6 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
 
             switch (strtolower($type)) {
                 case "string": return is_string($data);
-                case "alpha": return $this->validateAlpha($key,$data);
-                case "alphanumber": return $this->validateAlpha($key,$data,'0-9');
                 case "integer": return is_integer($data);
                 case "model": return is_array($data) && !empty($data);
                 case "json": return is_string($data) && is_object(json_encode($data));
@@ -142,6 +143,7 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
                 case "ip": return filter_var($data,FILTER_VALIDATE_IP);
                 case "url": return filter_var($data,FILTER_VALIDATE_URL);
                 case "email": return $this->validateEmail($key,$data);
+                case "emails": return $this->validateEmail($key,$data,true);
                 case "phone": return is_string($data);
                 case "zip": return is_string($data);
                 case "keyname": return is_string($data);
@@ -177,14 +179,6 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
             return true;
         }
 
-        public function validateAlpha($key,$data,$extra='') {
-            if (!preg_match('/^([a-z'.$extra.'])+$/i', $data) !== false)
-            {
-                $this->errorFields[] = ['key'=>$key,'method'=>__FUNCTION__."[extra=$extra]",'data'=>$data];
-                return false;
-            }
-            return true;
-        }
         /**
          * Formats: Length bt. 8 to 10 depending of the year formar (YY or YYYY)
          * @param $data
@@ -278,10 +272,14 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
             return true;
         }
 
-        public function validateEmail($key,$data) {
-            if(!filter_var($data,FILTER_VALIDATE_EMAIL)) {
-                $this->errorFields[] = ['key'=>$key,'method'=>__FUNCTION__,'data'=>$data];
-                return false;
+        public function validateEmail($key,$data,$multiple=false) {
+            if(!$multiple) $emails = [$data];
+            else $emails = explode(',',$data);
+            foreach ($emails as $email) {
+                if(!filter_var($email,FILTER_VALIDATE_EMAIL)) {
+                    $this->errorFields[] = ['key'=>$key,'method'=>__FUNCTION__,'data'=>$data];
+                    return false;
+                }
             }
             return true;
         }
