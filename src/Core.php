@@ -2538,7 +2538,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
     Class CoreLogic
     {
         /** @var Core $core pointer to the Core class. `$this->core->...` */
-        private $core;
+        protected $core;
 
         /** @var string $method indicates the HTTP method used to access the script: GET, POST etc.. Default value is GET */
         var $method = 'GET';
