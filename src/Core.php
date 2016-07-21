@@ -2618,9 +2618,11 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                 $template = str_replace('.htm.twig','',$template);
                 /* @var $rtwig RenderTwig */
                 $rtwig = $this->core->loadClass('RenderTwig');
+
                 if(!$rtwig->error) {
                     $rtwig->addFileTemplate($template,$this->core->system->app_path . '/templates/' . $template);
                     $rtwig->setTwig($template);
+
                     echo $rtwig->render();
                 } else {
                     $this->addError($rtwig->errorMsg);

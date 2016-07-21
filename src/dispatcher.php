@@ -5,8 +5,15 @@ include_once (__DIR__ . "/Core.php"); //
 $core = new Core();
 $core->dispatch();
 
-if(isset($_GET['__p']))
+if(isset($_GET['__p'])) {
     _print($core->__p->data['info']);
+
+    if($core->errors->lines)
+        _print($core->errors->data);
+
+    if($core->logs->lines)
+        _print($core->logs->data);
+}
 
 
 
