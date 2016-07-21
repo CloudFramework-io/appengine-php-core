@@ -118,6 +118,15 @@ if (!defined("_RESTfull_CLASS_")) {
             }
 
             if(method_exists($this,'__codes')) {
+
+                $this->addCodeLib('ok','OK',200);
+                $this->addCodeLib('inserted','Inserted succesfully',201);
+                $this->addCodeLib('params-error','Wrong paramaters.',400);
+                $this->addCodeLib('form-params-error','Wrong form paramaters.',400);
+                $this->addCodeLib('system-error','There is a problem in th platform.',503);
+                $this->addCodeLib('security-error','You don\'t have access.',401);
+                $this->addCodeLib('not-found','Inserted succesfully',404);
+
                 $this->__codes();
             }
 
@@ -204,7 +213,7 @@ if (!defined("_RESTfull_CLASS_")) {
          * @param null $data
          * @return bool
          */
-        function checkFormParamsFromModel(array &$model, $all=true, $codelibbase='', &$data=null, &$dictionaries=[])
+        function checkFormParamsFromModel(array $model, $all=true, $codelibbase='', &$data=null, &$dictionaries=[])
         {
             if($this->error) return false;
             if(null === $data) $data = &$this->formParams;
@@ -361,8 +370,13 @@ if (!defined("_RESTfull_CLASS_")) {
 
                     $this->codeLib[$code.'-'.$key] = $msg.$key;
                     $this->codeLibError[$code.'-'.$key] = $error;
-                    $this->codeLib[$code.'-'.$key].= ' ['.$value['type'].']';
 
+                    // If instead to pass [type=>,validation=>] pass [type,validaton]
+                    if(count($value) && isset($value[0])) {
+                        $value['type'] = $value[0];
+                        if(isset($value[1])) $value['validation'] = $value[1];
+                    }
+                    $this->codeLib[$code.'-'.$key].= ' ['.$value['type'].']';
                     // Show the validation associated to the field
                     if(isset($value['validation']))
                         $this->codeLib[$code.'-'.$key].= '('.$value['validation'].')';
@@ -393,7 +407,7 @@ if (!defined("_RESTfull_CLASS_")) {
 
         function getReturnCode()
         {
-            return (($this->code !==null ) ? strval($this->code) : strval($this->getReturnStatus()));
+            return (($this->code!==null) ? $this->code : $this->getReturnStatus());
         }
 
         function setReturnCode($code)

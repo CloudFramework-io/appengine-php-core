@@ -271,17 +271,26 @@ if (!defined ("_DATASTORE_CLASS_") ) {
         }
 
         /**
-         * Fill an array based in the model structure of the model mapped data
+         * Fill an array based in the model structure and  mapped data
          * @param $data
          * @param array $dictionaries
          * @return array
          */
         function getCheckedRecordWithMapData($data, $all=true, &$dictionaries=[]) {
             $entity = array_flip(array_keys($this->schema['props']['__model']));
+
+            // If there is not mapdata.. Use the model fields to mapdata
+            if(!isset($this->schema['data']['mapData']) || !count($this->schema['data']['mapData'])) {
+                foreach ($entity as $key=>$foo) {
+                    $this->schema['data']['mapData'][$key] = $key;
+                }
+            }
+
+            // Explore the entity
             foreach ($entity as $key=>$foo) {
                 $key_exist = true;
                 if(isset($this->schema['data']['mapData'][$key])) {
-                    $array_index = explode('.',$this->schema['data']['mapData'][$key]); // Find potental . array separators
+                    $array_index = explode('.',$this->schema['data']['mapData'][$key]); // Find potential . array separators
                     if(isset($data[$array_index[0]])) {
                         $value = $data[$array_index[0]];
                     } else {
@@ -314,6 +323,17 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                 $this->setError('Error validating Data in Model.: '.$dv->field.'. '.$dv->errorMsg);
             }
 
+            return ($entity);
+        }
+
+        function getFormModelWithMapData() {
+            $entity = $this->schema['props']['__model'];
+            foreach ($entity as $key=>$attr) {
+                if(!isset($attr['validation']))
+                    unset($entity[$key]['validation']);
+                elseif(strpos($attr['validation'],'hidden')!==false)
+                    unset($entity[$key]);
+            }
             return ($entity);
         }
 
