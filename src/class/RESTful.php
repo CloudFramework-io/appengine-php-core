@@ -365,10 +365,12 @@ if (!defined("_RESTfull_CLASS_")) {
          * @param null $model
          */
         public function addCodeLib($code, $msg, $error=400, array $model=null) {
+            $this->codeLib[$code] = $msg;
+            $this->codeLibError[$code] = $error;
             if(is_array($model))
                 foreach ($model as $key=>$value) {
 
-                    $this->codeLib[$code.'-'.$key] = $msg.$key;
+                    $this->codeLib[$code.'-'.$key] = $msg.' {'.$key.'}';
                     $this->codeLibError[$code.'-'.$key] = $error;
 
                     // If instead to pass [type=>,validation=>] pass [type,validaton]
@@ -384,9 +386,6 @@ if (!defined("_RESTfull_CLASS_")) {
                     if($value['type']=='model') {
                         $this->addCodeLib($code.'-'.$key,$msg.' '.$key.'.',$error,$value['fields']);
                 }
-            } else {
-                $this->codeLib[$code] = $msg;
-                $this->codeLibError[$code] = $error;
             }
         }
 

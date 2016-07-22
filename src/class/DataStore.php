@@ -246,6 +246,7 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                             $ret->addBoolean($key, $index);
                             break;
                         case "list":
+                        case "emails":
                             $ret->addStringList($key, $index);
                             break;
                         case "geo":
@@ -320,7 +321,7 @@ if (!defined ("_DATASTORE_CLASS_") ) {
             /* @var $dv DataValidation */
             $dv = $this->core->loadClass('DataValidation');
             if(!$dv->validateModel($this->schema['props']['__model'],$entity,$dictionaries,$all)) {
-                $this->setError('Error validating Data in Model.: '.$dv->field.'. '.$dv->errorMsg);
+                $this->setError('Error validating Data in Model.: {'.$dv->field.'}. '.$dv->errorMsg);
             }
 
             return ($entity);

@@ -59,7 +59,7 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
                     // Transform values based on defaultvalue, forcevalue, tolowercase, touppercase,trim
                     $data[$key] = $this->transformValue($data[$key],$value['validation']);
 
-                    if(empty($data[$key])) {
+                    if(((is_string($data[$key]) && !strlen($data[$key])) ||is_array($data[$key]) && !count($data[$key]))) {
                         // OPTIONAL: -- Allow empty values if we have optional in options
                         if(strpos($value['validation'],'optional')!==false)
                             continue;  // OK.. next
@@ -75,7 +75,7 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
                 // Let's valid types and recursive contents..
                 if(!$this->error) {
                     if(!$this->validType($extrakey.$key,$value['type'],$data[$key]))
-                        $this->setError(((empty($data[$key]))?'Empty':'Wrong').' data received for field {'.$extrakey.$key.'} with type {'.$value['type'].'}');
+                        $this->setError(((!strlen($data[$key]))?'Empty':'Wrong').' data received for field {'.$extrakey.$key.'} with type {'.$value['type'].'} ');
                     elseif($value['type']=='model') {
                         // Recursive CALL
                         $this->validateModel($value['fields'],$data[$key],$dictionaries,$all,$extrakey.$key.'-');
@@ -86,7 +86,7 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
 
                 if($this->error) {
                     if(!strlen($this->field ))
-                        $this->field  = $extrakey.$key.': '.$value['validation'];
+                        $this->field  = $extrakey.$key.': ['.$value['type'].']('.$value['validation'].')';
                     return false;
                 }
             }
@@ -110,16 +110,23 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
                 $data = $this->extractOptionValue('forcevalue:',$options);
             }
 
-            if( strpos($options,'tolowercase')!==false) $data = strtolower($data);
-            if( strpos($options,'touppercase')!==false) $data = strtoupper($data);
-            if( strpos($options,'trim')!==false) $data = trim($data);
+            if( strpos($options,'tolowercase')!==false) (is_array($data))?$data = array_map('strtolower',$data):$data = strtolower($data);
+            if( strpos($options,'touppercase')!==false) (is_array($data))?$data = array_map('strtoupper',$data):$data = strtoupper($data);
+            if( strpos($options,'trim')!==false) (is_array($data))?$data = array_map('trim',$data):$data = trim($data);
+            if( strpos($options,'regex_delete:')!==false) {
+                $regex = $this->extractOptionValue("regex_delete:",$options);
+                if(strlen($regex)) {
+                    if(is_array($data)) foreach ($data as &$item) $item = preg_replace("/$regex/",'',$item);
+                    else $data = preg_replace("/$regex/",'',$data);
+                }
+            }
+
             if( strpos($options,'toarray:')!==false && !is_array($data) && is_string($data)) {
                 $sep = $this->extractOptionValue('toarray:',$options);
                 if(strlen($data))
                     $data = explode($sep,$data);
                 else $data = [];
             }
-
             return $data;
         }
 
@@ -130,9 +137,9 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
          * @param $data
          * @return bool
          */
-        public function validType($key, $type, &$data) {
+        public function validType($key, $type,  &$data) {
 
-            if(!is_bool($data) && empty($data)) return false;
+            if(!is_bool($data) && !is_array($data) && !strlen($data)) return false;
 
             switch (strtolower($type)) {
                 case "string": return is_string($data);
@@ -142,8 +149,8 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
                 case "name": return $this->validateName($key,$data);
                 case "ip": return filter_var($data,FILTER_VALIDATE_IP);
                 case "url": return filter_var($data,FILTER_VALIDATE_URL);
-                case "email": return $this->validateEmail($key,$data);
-                case "emails": return $this->validateEmail($key,$data,true);
+                case "email": return is_string($data) && $this->validateEmail($key,"email",$data);
+                case "emails": return is_array($data) && $this->validateEmail($key,"email",$data);
                 case "phone": return is_string($data);
                 case "zip": return is_string($data);
                 case "keyname": return is_string($data);
@@ -153,6 +160,7 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
                 case "currency": return is_float($data);
                 case "boolean": return is_bool($data);
                 case "array": return is_array($data);
+                case "list": return is_array($data);
                 case "float": return is_float(floatval($data));
 
                 default: return false;
@@ -162,18 +170,14 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
         public function validContent($key,$options,&$data, array &$dictionaries=[]) {
 
             if(!strlen(trim($options))) return true;
-            if(strpos($options,'optional')===false && empty($data)) return false;
-
-
-            // converters
-            if(strpos($options,'trim')!== false && is_string($data)) $data = trim($data);
-            if(strpos($options,'lowercase')!== false && is_string($data)) $data = strtolower($data);
-            if(strpos($options,'uppercase')!== false && is_string($data)) $data = strtoupper($data);
+            if(strpos($options,'optional')===false && !strlen($data)) return false;
 
             // Potential Validators
             if(!$this->validateMaxLength($key,$options,$data)) return false;
             if(!$this->validateMinLength($key,$options,$data)) return false;
             if(!$this->validateFixLength($key,$options,$data)) return false;
+            if(!$this->validateEmail($key,$options,$data)) return false;
+            if(!$this->validateRegexMatch($key,$options,$data)) return false;
 
 
             return true;
@@ -238,11 +242,13 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
 
         public function validateMaxLength($key,$options,$data) {
             if(strlen($options) && (is_integer($options) || strpos($options,'maxlength:')!==false)){
-                if(!is_integer($options)) $options = intval($this->extractOptionValue('maxlength:',$options));
-
-                if(strlen($data) > $options) {
-                    $this->errorFields[] = ['key'=>$key,'method'=>__FUNCTION__,'options'=>$options,'data'=>$data];
-                    return false;
+                if(!is_integer($options) ) $options = intval($this->extractOptionValue('maxlength:',$options));
+                if(!is_array($data)) $data = [$data];
+                foreach ($data as $item) {
+                    if(strlen($item) > $options) {
+                        $this->errorFields[] = ['key'=>$key,'method'=>__FUNCTION__,'options'=>$options,'data'=>$data];
+                        return false;
+                    }
                 }
             }
             return true;
@@ -251,10 +257,12 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
         public function validateMinLength($key,$options,$data) {
             if(strlen($options) && (is_integer($options) || strpos($options,'minlength:')!==false)){
                 if(!is_integer($options) ) $options = intval($this->extractOptionValue('minlength:',$options));
-
-                if(strlen($data) < $options) {
-                    $this->errorFields[] = ['key'=>$key,'method'=>__FUNCTION__,'options'=>$options,'data'=>$data];
-                    return false;
+                if(!is_array($data)) $data = [$data];
+                foreach ($data as $item) {
+                    if(strlen($item) < $options) {
+                        $this->errorFields[] = ['key'=>$key,'method'=>__FUNCTION__,'options'=>$options,'data'=>$data];
+                        return false;
+                    }
                 }
             }
             return true;
@@ -263,22 +271,40 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
         public function validateFixLength($key, $options,$data) {
             if(strlen($options) && (is_integer($options) || strpos($options,'fixlength:')!==false)){
                 if(!is_integer($options) ) $options = intval($this->extractOptionValue('fixlength:',$options));
-
-                if(strlen($data) != $options) {
-                    $this->errorFields[] = ['key'=>$key,'method'=>__FUNCTION__,'options'=>$options,'data'=>$data];
-                    return false;
+                if(!is_array($data)) $data = [$data];
+                foreach ($data as $item) {
+                    if(strlen($item) != $options) {
+                        $this->errorFields[] = ['key'=>$key,'method'=>__FUNCTION__,'options'=>$options,'data'=>$data];
+                        return false;
+                    }
                 }
             }
             return true;
         }
 
-        public function validateEmail($key,$data,$multiple=false) {
-            if(!$multiple) $emails = [$data];
-            else $emails = explode(',',$data);
-            foreach ($emails as $email) {
-                if(!filter_var($email,FILTER_VALIDATE_EMAIL)) {
-                    $this->errorFields[] = ['key'=>$key,'method'=>__FUNCTION__,'data'=>$data];
-                    return false;
+        public function validateEmail($key,$options,$data) {
+            if(strlen($options) && strpos($options,'email')!==false){
+                if(!is_array($data)) $data = [$data];
+                foreach ($data as $item) {
+                    if(!filter_var($item,FILTER_VALIDATE_EMAIL)) {
+                        $this->errorFields[] = ['key'=>$key,'method'=>__FUNCTION__,'data'=>$data];
+                        return false;
+                    }
+                }
+            }
+            return true;
+        }
+
+        public function validateRegexMatch($key,$options,$data) {
+            if(strlen($options) && strpos($options,'regex_match')!==false){
+                $regex = $this->extractOptionValue('regex_match:',$options);
+                if(strlen($regex)) {
+                    if (!is_array($data)) return preg_match('/^(['.$regex.'])+$/i', trim($data));
+                    foreach ($data as $item) {
+                        if (!preg_match('/^(['.$regex.'])+$/i', trim($data))) {
+                            return false;
+                        }
+                    }
                 }
             }
             return true;
