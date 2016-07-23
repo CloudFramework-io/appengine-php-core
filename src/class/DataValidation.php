@@ -58,18 +58,18 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
                 if(!$this->error && isset($value['validation'])) {
                     // Transform values based on defaultvalue, forcevalue, tolowercase, touppercase,trim
                     $data[$key] = $this->transformValue($data[$key],$value['validation']);
-
-                    if(((is_string($data[$key]) && !strlen($data[$key])) ||is_array($data[$key]) && !count($data[$key]))) {
+                    if( null===$data[$key] || (is_string($data[$key]) && !strlen($data[$key])) ||  (is_array($data[$key]) && !count($data[$key]))) {
                         // OPTIONAL: -- Allow empty values if we have optional in options
-                        if(strpos($value['validation'],'optional')!==false)
+                        if(strpos($value['validation'],'optional')!==false) {
                             continue;  // OK.. next
-                        else {
+                        }else {
                             if(!key_exists($key,$data))
-                                $this->setError('Missing '.$extrakey.$key);
-                            else
-                                $this->setError('Empty value for '.$extrakey.$key);
+                            $this->setError('Missing '.$extrakey.$key);
+                        else
+                            $this->setError('Empty value for '.$extrakey.$key);
                         }
                     }
+
                 }
 
                 // Let's valid types and recursive contents..
