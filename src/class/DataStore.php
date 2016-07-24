@@ -49,6 +49,8 @@ if (!defined ("_DATASTORE_CLASS_") ) {
         var $types = null;
         var $limit = 0;
         var $page = 0;
+        var $cursor = '';
+        var $last_cursor;
 
         function __construct(Core &$core, $params)
         {
@@ -80,6 +82,8 @@ if (!defined ("_DATASTORE_CLASS_") ) {
         {
             if ($this->error) return false;
             $ret = [];
+            $entities = [];
+
             if (!is_array($data)) $this->setError('No data received');
             else {
                 $this->core->__p->add('createEntities: ', $this->entity_name, 'note');
@@ -122,6 +126,7 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                                 if ($this->schema['props'][$i][1] == 'date' || $this->schema['props'][$i][1] == 'datetime') {
                                     if(strlen($value)) {
                                         if ($this->schema['props'][$i][1] == 'date') $value = substr($value, 0, 10);
+                                        elseif ($this->schema['props'][$i][1] == 'datetime') $value = substr($value, 0, 19);
                                         try {
                                             $value_time = new DateTime($value);
                                             $value = $value_time;
@@ -169,7 +174,9 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                             } elseif(null !== $schema_keyname) {
                                 $entity->setKeyName($schema_keyname);
                             }
-                            $this->store->upsert($entity);
+                            // Add this entity to insert
+                            $entities[] = $entity;
+
                             foreach ($record as $key=>$value)
                                 if($value instanceof Geopoint)
                                     $record[$key] = $value->getLatitude().','.$value->getLongitude();
@@ -189,11 +196,25 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                             $this->setError($e->getMessage());
                             $ret = false;
                         }
+
                     } else {
                         $this->setError('Structure of the data does not match with schema');
                     }
                 }
             }
+
+            // Bulk insertion
+            if(!$this->setError && count($entities)) try {
+                // The limit for bulk inserting is 500 records.
+                $entities = (array_chunk($entities,500));
+                foreach ($entities as &$entity) {
+                    $this->store->upsert($entity);
+                }
+            } catch (Exception $e) {
+                $this->setError($e->getMessage());
+                $ret = false;
+            }
+
             $this->core->__p->add('createEntities: ', '', 'endnote');
             return ($ret);
         }
@@ -318,6 +339,7 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                 if(!$key_exist && !$all ) unset($entity[$key]);
 
             }
+
             /* @var $dv DataValidation */
             $dv = $this->core->loadClass('DataValidation');
             if(!$dv->validateModel($this->schema['props']['__model'],$entity,$dictionaries,$all)) {
@@ -415,18 +437,23 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                 else {
                     $this->store->query($_q, $where);
                     // page size
-                    $blocksOfEntities = 500;  // Maxium group of records per datastore call
+                    $blocksOfEntities = 300;  // Maxium group of records per datastore call
                     $init = false;
 
                     if ($limit > 0 && $limit < $blocksOfEntities) $blocksOfEntities = $limit;
                     $tr = 0;
                     do {
                         if(!$init) {
-                            $data = $this->store->fetchPage($blocksOfEntities, $this->page * $limit);
+                            if(strlen($this->cursor))
+                                $data = $this->store->fetchPage($blocksOfEntities, base64_decode($this->cursor));
+                            else
+                                $data = $this->store->fetchPage($blocksOfEntities, $this->page * $limit);
                             $init = true;
                         } else {
                             $data = $this->store->fetchPage($blocksOfEntities);
                         }
+                        $this->last_cursor = base64_encode($this->store->str_last_cursor);
+
                         if (is_array($data))
                             foreach ($data as $record) {
                                 // GeoData Transformation
@@ -435,6 +462,7 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                                         $record->{$key} = $value->getLatitude().','.$value->getLongitude();
                                     elseif($key=='JSON')
                                         $record->{$key} = json_decode($value,true);
+
                                 $subret = (null !== $record->getKeyId())?['KeyId' => $record->getKeyId()]:['KeyName' => $record->getKeyName()];
                                 $ret[] = array_merge($subret, $record->getData());
                                 $tr++;
@@ -488,23 +516,7 @@ if (!defined ("_DATASTORE_CLASS_") ) {
 
         function fetchCount($where = null)
         {
-            $fields = '__key__';
-            $_q = 'SELECT ' . $fields . ' FROM ' . $this->entity_name;
-
-            // Where construction
-            if (is_array($where)) {
-                $i = 0;
-                foreach ($where as $key => $value) {
-                    if ($i == 0) $_q .= " WHERE $key = @{$key}";
-                    else $_q .= " AND $key = @{$key}";
-                    $i++;
-                }
-            } elseif (strlen($where)) {
-                $_q .= " WHERE $where";
-                $where = null;
-            }
-            $this->store->query($_q, $where);
-            $data = $this->store->fetchAll($_q, $where);
+            $data = $this->fetchAll('__key__',$where);
             return(count($data));
         }
 
@@ -622,7 +634,7 @@ if (!defined ("_DATASTORE_CLASS_") ) {
          *
          * @var string|null
          */
-        private $str_last_cursor = null;
+        var $str_last_cursor = null;
 
         /**
          * Transaction ID
@@ -2452,7 +2464,7 @@ if (!defined ("_DATASTORE_CLASS_") ) {
          */
         protected function extractDatetimeValue($obj_property)
         {
-            return date('Y-m-d H:i:s', $obj_property->getTimestampMicrosecondsValue() / 1000000);
+            return date('Y-m-d H:i:s e', $obj_property->getTimestampMicrosecondsValue() / 1000000);
         }
         /**
          * Extract a String List value

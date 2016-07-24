@@ -235,6 +235,7 @@ if (!defined("_RESTfull_CLASS_")) {
                 if(count($dv->errorFields))
                     $this->core->errors->add($dv->errorFields);
             }
+            return !$this->error;
         }
 
 
@@ -242,14 +243,11 @@ if (!defined("_RESTfull_CLASS_")) {
 
         function checkMandatoryParam($pos, $msg = '',$values = [],$code=null)
         {
-            if (!isset($this->params[$pos]) || !strlen($this->params[$pos])) {
-                $this->setError(($msg == '') ? 'param ' . $pos . ' is mandatory' : $msg,400,$code);
-            } else if(is_array($values) && count($values)){
-                if(!in_array($this->params[$pos], $values)) {
-                    $this->setError(($msg == '') ? 'param ' . $pos . ' is mandatory' : $msg,400,$code);
-                }
+            if (!strlen($this->params[$pos]) || (is_array($values) && count($values) && !in_array($this->params[$pos], $values)) ) {
+                if(!empty($code)) $this->setErrorFromCodelib($code,($msg == '') ? 'param ' . $pos . ' is mandatory' : $msg);
+                else $this->setError(($msg == '') ? 'param ' . $pos . ' is mandatory' : $msg);
             }
-            return ($this->error === 0);
+            return (!$this->error);
         }
 
         function setError($value, $key = 400,$code=null)

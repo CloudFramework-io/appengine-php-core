@@ -57,7 +57,9 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
                 // Transform values and check if we have an empty value
                 if(!$this->error && isset($value['validation'])) {
                     // Transform values based on defaultvalue, forcevalue, tolowercase, touppercase,trim
+
                     $data[$key] = $this->transformValue($data[$key],$value['validation']);
+
                     if( null===$data[$key] || (is_string($data[$key]) && !strlen($data[$key])) ||  (is_array($data[$key]) && !count($data[$key]))) {
                         // OPTIONAL: -- Allow empty values if we have optional in options
                         if(strpos($value['validation'],'optional')!==false) {
@@ -170,7 +172,7 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
         public function validContent($key,$options,&$data, array &$dictionaries=[]) {
 
             if(!strlen(trim($options))) return true;
-            if(strpos($options,'optional')===false && !strlen($data)) return false;
+            if(strpos($options,'optional')===false && is_string($data) && !strlen($data)) return false;
 
             // Potential Validators
             if(!$this->validateMaxLength($key,$options,$data)) return false;
