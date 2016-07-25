@@ -149,55 +149,88 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
 
                     $apifile = $this->system->url['parts'][2];
 
-                    // path to file
-                    if ($apifile[0] == '_' || $apifile == 'queue') {
-                        $pathfile = __DIR__ . "/api/h/{$apifile}.php";
-                        if (!file_exists($pathfile)) $pathfile = '';
-                    } else {
-                        // Every End-point inside the app has priority over the apiPaths
-                        $pathfile = $this->system->app_path . "/api/{$apifile}.php";
-                        if (!file_exists($pathfile)) {
-                            $pathfile = '';
-                            // pathAPI is deprecated..
-                            if (strlen($this->config->get('ApiPath')))
-                                $pathfile = $this->config->get('ApiPath') . "/{$apifile}.php";
-                            elseif (strlen($this->config->get('pathAPI')))
-                                $pathfile = $this->config->get('pathAPI') . "/{$apifile}.php";
-                        }
-                    }
+                    // -----------------------
+                    // Evaluating tests API cases
+                    if($apifile=='_test' && strlen($this->system->url['parts'][3])) {
+                        $testfile = $this->system->url['parts'][3];
+                        $pathfile = $this->system->app_path . "/tests/{$testfile}.php";
+                        if (file_exists($pathfile)) {
+                            // IF NOT EXIST
+                            include_once __DIR__ . '/class/Tests.php';
 
-                    // IF NOT EXIST
-                    include_once __DIR__ . '/class/RESTful.php';
 
-                    try {
-                        if (strlen($pathfile)) {
-                            include_once $pathfile;
-                        }
-                        if (class_exists('API')) {
-                            $api = new API($this);
-                            if ($api->params[0] == '__codes') {
-                                $__codes = $api->codeLib;
-                                foreach ($__codes as $key => $value) {
-                                    $__codes[$key] = $api->codeLibError[$key] . ', ' . $value;
+                            try {
+                                include_once $pathfile;
+                                if (class_exists('Test')) {
+                                    $api = new Test($this);
+                                    $api->main();
+                                    $this->__p->add("Executed Tests->main()", "/tests/{$testfile}.php");
+                                    $api->send();
+
+                                } else {
+                                    $api = new Test($this);
+                                    $api->setError("api $apifile does not include a Test class extended from Tests with method ->main()", 404);
+                                    $api->send();
                                 }
-                                $api->addReturnData($__codes);
-                            } else {
-                                $api->main();
+                            } catch (Exception $e) {
+                                $this->errors->add(error_get_last());
+                                $this->errors->add($e->getMessage());
                             }
-                            $this->__p->add("Executed RESTfull->main()", "/api/{$apifile}.php");
-                            $api->send();
-
-                        } else {
-                            $api = new RESTful($this);
-                            $api->setError("api $apifile does not include a API class extended from RESTFul with method ->main()", 404);
-                            $api->send();
+                            $this->__p->add("Test including Tests.php and {$testfile}.php: ", 'There are ERRORS');
                         }
-                    } catch (Exception $e) {
-                        $this->errors->add(error_get_last());
-                        $this->errors->add($e->getMessage());
                     }
-                    $this->__p->add("API including RESTfull.php and {$apifile}.php: ", 'There are ERRORS');
+                    // -----------------------
+                    // Evaluating API cases
+                    else {
+                        // path to file
+                        if ($apifile[0] == '_' || $apifile == 'queue') {
+                            $pathfile = __DIR__ . "/api/h/{$apifile}.php";
+                            if (!file_exists($pathfile)) $pathfile = '';
+                        } else {
+                            // Every End-point inside the app has priority over the apiPaths
+                            $pathfile = $this->system->app_path . "/api/{$apifile}.php";
+                            if (!file_exists($pathfile)) {
+                                $pathfile = '';
+                                // pathAPI is deprecated..
+                                if (strlen($this->config->get('ApiPath')))
+                                    $pathfile = $this->config->get('ApiPath') . "/{$apifile}.php";
+                                elseif (strlen($this->config->get('pathAPI')))
+                                    $pathfile = $this->config->get('pathAPI') . "/{$apifile}.php";
+                            }
+                        }
 
+                        // IF NOT EXIST
+                        include_once __DIR__ . '/class/RESTful.php';
+
+                        try {
+                            if (strlen($pathfile)) {
+                                include_once $pathfile;
+                            }
+                            if (class_exists('API')) {
+                                $api = new API($this);
+                                if ($api->params[0] == '__codes') {
+                                    $__codes = $api->codeLib;
+                                    foreach ($__codes as $key => $value) {
+                                        $__codes[$key] = $api->codeLibError[$key] . ', ' . $value;
+                                    }
+                                    $api->addReturnData($__codes);
+                                } else {
+                                    $api->main();
+                                }
+                                $this->__p->add("Executed RESTfull->main()", "/api/{$apifile}.php");
+                                $api->send();
+
+                            } else {
+                                $api = new RESTful($this);
+                                $api->setError("api $apifile does not include a API class extended from RESTFul with method ->main()", 404);
+                                $api->send();
+                            }
+                        } catch (Exception $e) {
+                            $this->errors->add(error_get_last());
+                            $this->errors->add($e->getMessage());
+                        }
+                        $this->__p->add("API including RESTfull.php and {$apifile}.php: ", 'There are ERRORS');
+                    }
                     return false;
                 }
             } // Take a LOOK in the menu
@@ -2618,11 +2651,9 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                 $template = str_replace('.htm.twig','',$template);
                 /* @var $rtwig RenderTwig */
                 $rtwig = $this->core->loadClass('RenderTwig');
-
                 if(!$rtwig->error) {
                     $rtwig->addFileTemplate($template,$this->core->system->app_path . '/templates/' . $template);
                     $rtwig->setTwig($template);
-
                     echo $rtwig->render();
                 } else {
                     $this->addError($rtwig->errorMsg);

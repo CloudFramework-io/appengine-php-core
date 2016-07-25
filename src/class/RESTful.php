@@ -296,6 +296,8 @@ if (!defined("_RESTfull_CLASS_")) {
 
         function sendHeaders()
         {
+            if($this->core->is->terminal()) return;
+            
             $header = $this->getResponseHeader();
             if (strlen($header)) header($header);
             foreach ($this->extra_headers as $header) {
@@ -502,7 +504,7 @@ if (!defined("_RESTfull_CLASS_")) {
         }
 
 
-        function send()
+        function send($pretty=false)
         {
             $ret = array();
             $ret['success'] = ($this->core->errors->lines) ? false : true;
@@ -554,7 +556,10 @@ if (!defined("_RESTfull_CLASS_")) {
 
                     // If the API->main does not want to send $ret standard it can send its own data
                     if (count($this->rewrite)) $ret = $this->rewrite;
-                    die(json_encode($ret));
+                    if($pretty)
+                        die(json_encode($ret,JSON_PRETTY_PRINT));
+                    else
+                        die(json_encode($ret));
 
                     break;
                 default:

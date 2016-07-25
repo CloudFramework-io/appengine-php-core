@@ -432,9 +432,21 @@ if (!defined ("_DATASTORE_CLASS_") ) {
 
 
             try {
-                if ($type == 'one')
+                if ($type == 'one') {
                     $data = [$this->store->fetchOne($_q, $where)];
-                else {
+                    if (is_array($data))
+                        foreach ($data as $record) {
+                            // GeoData Transformation
+                            foreach ($record->getData() as $key=>$value)
+                                if($value instanceof Geopoint)
+                                    $record->{$key} = $value->getLatitude().','.$value->getLongitude();
+                                elseif($key=='JSON')
+                                    $record->{$key} = json_decode($value,true);
+
+                            $subret = (null !== $record->getKeyId())?['KeyId' => $record->getKeyId()]:['KeyName' => $record->getKeyName()];
+                            $ret[] = array_merge($subret, $record->getData());
+                        }
+                } else {
                     $this->store->query($_q, $where);
                     // page size
                     $blocksOfEntities = 300;  // Maxium group of records per datastore call
@@ -514,9 +526,9 @@ if (!defined ("_DATASTORE_CLASS_") ) {
             return $ret;
         }
 
-        function fetchCount($where = null)
+        function fetchCount($where = null,$distinct='__key__')
         {
-            $data = $this->fetchAll('__key__',$where);
+            $data = $this->fetchAll($distinct,$where);
             return(count($data));
         }
 
