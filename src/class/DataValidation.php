@@ -141,11 +141,12 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
          */
         public function validType($key, $type,  &$data) {
 
-            if(!is_bool($data) && !is_array($data) && !strlen($data)) return false;
+
+            if(!is_bool($data) && !is_array($data) && is_string($data) && !strlen($data)) return false;
 
             switch (strtolower($type)) {
                 case "string": return is_string($data);
-                case "integer": return is_integer($data);
+                case "integer": if(strval(intval($data))===strval($data)) $data=intval($data);return is_integer($data);
                 case "model": return is_array($data) && !empty($data);
                 case "json": return is_string($data) && is_object(json_encode($data));
                 case "name": return $this->validateName($key,$data);

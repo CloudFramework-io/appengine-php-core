@@ -435,7 +435,7 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                 if ($type == 'one') {
                     $data = [$this->store->fetchOne($_q, $where)];
                     if (is_array($data))
-                        foreach ($data as $record) {
+                        foreach ($data as $record) if(is_object($record)) {
                             // GeoData Transformation
                             foreach ($record->getData() as $key=>$value)
                                 if($value instanceof Geopoint)
@@ -501,19 +501,20 @@ if (!defined ("_DATASTORE_CLASS_") ) {
         function fetchByKeys($keys)
         {
             $keyType = 'key';
+            if(!is_array($keys)) $keys= explode(',',$keys);
 
-            if((is_array($this->schema) && strpos(json_encode($this->schema),'keyname' )!==false) || preg_match('/[^0-9,]/',$keys )) {
+            if((is_array($this->schema) && strpos(json_encode($this->schema),'keyname' )!==false) || preg_match('/[^0-9]/',$keys[0] )) {
                 $keyType='keyname';
             }
             // Are keys or names
             $ret = [];
             try {
                 if($keyType=='key') {
-                    $data = $this->store->fetchByIds(explode(',',$keys));
+                    $data = $this->store->fetchByIds($keys);
                 } else {
                     // DOES NOT SUPPORT keys with ',' as values.
-                    $keys = preg_replace('/(\'|")/','',$keys);
-                    $data = $this->store->fetchByNames(explode(',',$keys));
+                    foreach ($keys as &$key) $key = preg_replace('/(\'|")/','',$key);
+                    $data = $this->store->fetchByNames($keys);
                 }
                 $ret = $this->transformEntities($data);
             } catch (Exception $e) {
