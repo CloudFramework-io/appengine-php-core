@@ -123,10 +123,8 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                         } else {
                             if (is_string($value)) {
                                 // date & datetime values
-                                if ($this->schema['props'][$i][1] == 'date' || $this->schema['props'][$i][1] == 'datetime') {
+                                if ($this->schema['props'][$i][1] == 'date' || $this->schema['props'][$i][1] == 'datetime' || $this->schema['props'][$i][1] == 'datetimeiso') {
                                     if(strlen($value)) {
-                                        if ($this->schema['props'][$i][1] == 'date') $value = substr($value, 0, 10);
-                                        elseif ($this->schema['props'][$i][1] == 'datetime') $value = substr($value, 0, 19);
                                         try {
                                             $value_time = new DateTime($value);
                                             $value = $value_time;
@@ -176,22 +174,6 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                             }
                             // Add this entity to insert
                             $entities[] = $entity;
-
-                            foreach ($record as $key=>$value)
-                                if($value instanceof Geopoint)
-                                    $record[$key] = $value->getLatitude().','.$value->getLongitude();
-                                elseif($this->schema['props'][$key][1]=='json' ) {
-                                    $record[$key] = json_decode($value,true);
-                                }
-
-                            if (null !== $schema_key) {
-                                $record['KeyId'] = $entity->getKeyId();
-                            } elseif(null !== $schema_keyname) {
-                                $record['KeyName'] = $entity->getKeyName();
-                            } else {
-                                $record['KeyId'] = $entity->getKeyId();
-                            }
-                            $ret[] = $record;
                         } catch (Exception $e) {
                             $this->setError($e->getMessage());
                             $ret = false;
@@ -210,6 +192,29 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                 foreach ($entities as &$entity) {
                     $this->store->upsert($entity);
                 }
+                $ret = [];
+                foreach ($entities as &$entities_chunck) {
+                    foreach ($entities_chunck as &$entity) {
+                        $row = $entity->getData();
+                        foreach ($row as $key=>$value) {
+                            if ($value instanceof Geopoint)
+                                $row[$key] = $value->getLatitude() . ',' . $value->getLongitude();
+                            elseif ($key == 'JSON')
+                                $row[$key] = json_decode($value, true);
+                            elseif($value instanceof DateTime) {
+                                if($this->schema['props'][$key][1]=='date')
+                                    $row[$key] = $value->format('Y:m:d');
+                                elseif($this->schema['props'][$key][1]=='datetime')
+                                    $row[$key] = $value->format('Y:m:d H:i:s e');
+                                elseif($this->schema['props'][$key][1]=='datetimeiso')
+                                    $row[$key] = $value->format('c');
+                            }
+
+                        }
+                        $ret[] = $row;
+                    }
+                }
+
             } catch (Exception $e) {
                 $this->setError($e->getMessage());
                 $ret = false;
@@ -257,6 +262,8 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                             break;
                         case "date":
                         case "datetime":
+                        case "datetimeiso":
+                        case "datetimeiso":
                             $ret->addDatetime($key, $index);
                             break;
                         case "float":
@@ -442,6 +449,9 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                                     $record->{$key} = $value->getLatitude().','.$value->getLongitude();
                                 elseif($key=='JSON')
                                     $record->{$key} = json_decode($value,true);
+                                elseif ($this->schema['props'][$key][1] == 'date') $record->{$key} = substr($value, 0, 10);
+                                elseif ($this->schema['props'][$key][1] == 'datetime') $record->{$key} = substr($value, 0, 19);
+                                elseif ($this->schema['props'][$key][1] == 'datetimeiso') $record->{$key} = substr($value, 0, 2);
 
                             $subret = (null !== $record->getKeyId())?['KeyId' => $record->getKeyId()]:['KeyName' => $record->getKeyName()];
                             $ret[] = array_merge($subret, $record->getData());
@@ -474,6 +484,9 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                                         $record->{$key} = $value->getLatitude().','.$value->getLongitude();
                                     elseif($key=='JSON')
                                         $record->{$key} = json_decode($value,true);
+                                    elseif ($this->schema['props'][$key][1] == 'date') $record->{$key} = $value->format('Y-m-d');
+                                    elseif ($this->schema['props'][$key][1] == 'datetime') $record->{$key} = $value->format('Y-m-d H:i:s e');
+                                    elseif ($this->schema['props'][$key][1] == 'datetimeiso') $record->{$key} = $value->format('c');
 
                                 $subret = (null !== $record->getKeyId())?['KeyId' => $record->getKeyId()]:['KeyName' => $record->getKeyName()];
                                 $ret[] = array_merge($subret, $record->getData());
@@ -2477,7 +2490,11 @@ if (!defined ("_DATASTORE_CLASS_") ) {
          */
         protected function extractDatetimeValue($obj_property)
         {
-            return date('Y-m-d H:i:s e', $obj_property->getTimestampMicrosecondsValue() / 1000000);
+            $date =  new DateTime();
+            $date->setTimestamp($obj_property->getTimestampMicrosecondsValue() / 1000000);
+            return($date);
+            // Changed
+            // return date('Y-m-d H:i:s e', $obj_property->getTimestampMicrosecondsValue() / 1000000);
         }
         /**
          * Extract a String List value
