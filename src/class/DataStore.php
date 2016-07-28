@@ -460,9 +460,9 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                                     $record->{$key} = $value->getLatitude().','.$value->getLongitude();
                                 elseif($key=='JSON')
                                     $record->{$key} = json_decode($value,true);
-                                elseif ($this->schema['props'][$key][1] == 'date') $record->{$key} = substr($value, 0, 10);
-                                elseif ($this->schema['props'][$key][1] == 'datetime') $record->{$key} = substr($value, 0, 19);
-                                elseif ($this->schema['props'][$key][1] == 'datetimeiso') $record->{$key} = substr($value, 0, 2);
+                                elseif ($this->schema['props'][$key][1] == 'date') $record->{$key} = $value->format('Y-m-d');
+                                elseif ($this->schema['props'][$key][1] == 'datetime') $record->{$key} = $value->format('Y-m-d H:i:s e');
+                                elseif ($this->schema['props'][$key][1] == 'datetimeiso') $record->{$key} = $value->format('c');
 
                             $subret = (null !== $record->getKeyId())?['KeyId' => $record->getKeyId()]:['KeyName' => $record->getKeyName()];
                             $ret[] = array_merge($subret, $record->getData());
@@ -519,6 +519,8 @@ if (!defined ("_DATASTORE_CLASS_") ) {
             $this->core->__p->add('fetch: ', '', 'endnote');
             return $ret;
         }
+
+
         function fetchKeys($keys) {
             return $this->fetchByKeys($keys);
         }
