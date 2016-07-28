@@ -462,7 +462,7 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                                     $record->{$key} = json_decode($value,true);
                                 elseif ($this->schema['props'][$key][1] == 'date') $record->{$key} = $value->format('Y-m-d');
                                 elseif ($this->schema['props'][$key][1] == 'datetime') $record->{$key} = $value->format('Y-m-d H:i:s e');
-                                elseif ($this->schema['props'][$key][1] == 'datetimeiso') $record->{$key} = $value->format('c');
+                                elseif ($this->schema['props'][$key][1] == 'datetimeiso') $record->{$key} = $value->format('c');cd -
 
                             $subret = (null !== $record->getKeyId())?['KeyId' => $record->getKeyId()]:['KeyName' => $record->getKeyName()];
                             $ret[] = array_merge($subret, $record->getData());
@@ -613,6 +613,9 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                         $record->{$key} = $value->getLatitude().','.$value->getLongitude();
                     elseif($key=='JSON')
                         $record->{$key} = json_decode($value,true);
+                    elseif ($this->schema['props'][$key][1] == 'date') $record->{$key} = $value->format('Y-m-d');
+                    elseif ($this->schema['props'][$key][1] == 'datetime') $record->{$key} = $value->format('Y-m-d H:i:s e');
+                    elseif ($this->schema['props'][$key][1] == 'datetimeiso') $record->{$key} = $value->format('c');
 
                 $subret = (null !== $record->getKeyId())?['KeyId' => $record->getKeyId()]:['KeyName' => $record->getKeyName()];
                 $ret[] = array_merge($subret, $record->getData());

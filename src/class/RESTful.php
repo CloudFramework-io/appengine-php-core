@@ -77,23 +77,25 @@ if (!defined("_RESTfull_CLASS_")) {
                 if (strlen($input)) {
                     $this->formParams['_raw_input_'] = $input;
 
+
                     if (is_object(json_decode($input))) {
                         $input_array = json_decode($input, true);
-                    } else {
+                    } elseif(strpos($input,"\n") === false && strpos(strpos($input,"="))) {
                         parse_str($input, $input_array);
                     }
-                    if (is_array($input_array))
+
+                    if (is_array($input_array)) {
                         $this->formParams = array_merge($this->formParams, $input_array);
-                    else {
-                        $this->setError('Wrong JSON: ' . $input, 400);
+                        unset($input_array);
+
                     }
-                    unset($input_array);
                     /*
                    if(strpos($this->requestHeaders['Content-Type'], 'json')) {
                    }
                      *
                      */
                 }
+
                 // Trimming fields
                 foreach ($this->formParams as $i=>$data) if(is_string($data)) $this->formParams[$i] = trim ($data);
             }
