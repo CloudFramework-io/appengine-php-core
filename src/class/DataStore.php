@@ -51,6 +51,7 @@ if (!defined ("_DATASTORE_CLASS_") ) {
         var $page = 0;
         var $cursor = '';
         var $last_cursor;
+        var $time_zone = 'UTC';
 
         function __construct(Core &$core, $params)
         {
@@ -193,10 +194,14 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                     $this->store->upsert($entity);
                 }
                 $ret = [];
+                /** @var Entity $entity */
                 foreach ($entities as &$entities_chunck) {
                     foreach ($entities_chunck as &$entity) {
                         $row = $entity->getData();
+
                         foreach ($row as $key=>$value) {
+
+                            // Update Types: Geppoint, JSON, Datetime
                             if ($value instanceof Geopoint)
                                 $row[$key] = $value->getLatitude() . ',' . $value->getLongitude();
                             elseif ($key == 'JSON')
@@ -210,7 +215,13 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                                     $row[$key] = $value->format('c');
                             }
 
+
                         }
+                        // Return the Keys
+                        if(null !== $entity->getKeyId())
+                            $row['KeyId'] = $entity->getKeyId();
+                        else
+                            $row['KeyName'] = $entity->getKeyName();
                         $ret[] = $row;
                     }
                 }
