@@ -215,10 +215,21 @@ if (!defined("_RESTfull_CLASS_")) {
          * @param null $data
          * @return bool
          */
-        function checkFormParamsFromModel(array $model, $all=true, $codelibbase='', &$data=null, &$dictionaries=[])
+        function checkFormParamsFromModel($model, $all=true, $codelibbase='', &$data=null, &$dictionaries=[])
         {
+            if(!is_array($model)) {
+                $this->core->logs->add('Passed a non array model in checkFormParamsFromModel(array $model,...)');
+                return false;
+            }
             if($this->error) return false;
             if(null === $data) $data = &$this->formParams;
+
+            /* Control the params of the URL */
+            $params=[];
+            if(isset($model['_params'])) {
+                $params = $model['_params'];
+                unset($model['_params']);
+            }
 
             /* @var $dv DataValidation */
             $dv = $this->core->loadClass('DataValidation');
@@ -237,8 +248,19 @@ if (!defined("_RESTfull_CLASS_")) {
                 if(count($dv->errorFields))
                     $this->core->errors->add($dv->errorFields);
             }
+
+            if(!$this->error && count($params)) {
+                if(!$dv->validateModel($params,$this->params,$dictionaries,$all)) {
+                    if (strlen($codelibbase)) {
+                        $this->setErrorFromCodelib($codelibbase . '-' . $dv->field, $dv->errorMsg);
+                    } else
+                        $this->setError($dv->field . ': ' . $dv->errorMsg);
+                }
+            }
             return !$this->error;
         }
+
+        
 
 
 
@@ -403,7 +425,9 @@ if (!defined("_RESTfull_CLASS_")) {
         function setErrorFromCodelib($code,$extramsg='') {
             if(is_array($extramsg)) $extramsg = json_encode($extramsg,JSON_PRETTY_PRINT);
             if(strlen($extramsg)) $extramsg = " [{$extramsg}]";
-            $this->setError($this->getCodeLib($code).$extramsg,$this->getCodeLibError($code),$code);
+
+            // Delete from code any character :.* to delete potential comments
+            $this->setError($this->getCodeLib($code).$extramsg,$this->getCodeLibError($code),preg_replace('/:.*/','',$code));
         }
 
         function getReturnCode()

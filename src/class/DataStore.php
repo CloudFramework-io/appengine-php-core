@@ -401,30 +401,44 @@ if (!defined ("_DATASTORE_CLASS_") ) {
         
         
 
-        function fetchOne($fields = '*', $where = null, $order = null)
+        function fetchOne($fields = '*', $where = null, $order = null,$transform=true)
         {
-            return $this->fetch('one', $fields, $where, $order);
+            return $this->fetch('one', $fields, $where, $order,$transform);
         }
 
-        function fetchAll($fields = '*', $where = null, $order = null)
+        function fetchAll($fields = '*', $where = null, $order = null,$transform=true)
         {
-            return $this->fetch('all', $fields, $where, $order, null);
+            return $this->fetch('all', $fields, $where, $order, $transform);
         }
 
-        function fetchLimit($fields = '*', $where = null, $order = null, $limit = null)
-        {
-            if (!strlen($limit)) $limit = 100;
-            else $limit = intval($limit);
-            return $this->fetch('all', $fields, $where, $order, $limit);
+        /**
+         * Return the keys_of the entities found
+         *
+         * @param null $where
+         * @return array|bool
+         */
+        function fetchKeys($where = null) {
+            return array_values(array_column($this->fetch('all','__key__', $where),'KeyName'));
         }
 
-        function fetch($type = 'one', $fields = '*', $where = null, $order = null, $limit = null)
+        /**
+         * Generate a Query in a datastore and execute the query returning the data based in the model
+         *
+         * This method also uses the $this->limit & $this->cursor to modify the query
+         *
+         * @param string $type
+         * @param string $fields
+         * @param null $where
+         * @param null $order
+         * @return array|bool
+         */
+        function fetch($type = 'one', $fields = '*', $where = null, $order = null,$transform=true)
         {
             if ($this->error) return false;
-            $this->core->__p->add('fetch: ', $type . ' fields:' . $fields . ' where:' . $where . ' order:' . $order . ' limit:' . $limit, 'note');
-            $ret = [];
+            $this->core->__p->add('fetch: ', $type . ' fields:' . $fields . ' where:' . $where . ' order:' . $order . ' limit:' . $this->limit, 'note');
             if (!strlen($fields)) $fields = '*';
-            if (!strlen($limit)) $limit = $this->limit;
+            $limit = $this->limit;
+            $ret = [];
 
             // FIX when you work on a local environment
             if($this->core->is->development() && $fields!='*') $fields='*';
@@ -446,31 +460,16 @@ if (!defined ("_DATASTORE_CLASS_") ) {
             }
             if (strlen($order)) $_q .= " ORDER BY $order";
 
-            $this->lastQuery = $_q . ((is_array($where)) ? ' ' . json_encode($where) : '') . ' limit=' . $limit.' page='.$this->page;
+            $this->lastQuery = $_q . ((is_array($where)) ? ' ' . json_encode($where) : '') . ' limit=' . $limit.' cursor='.$this->cursor;
 
-
+            $ret=[];
             try {
                 if ($type == 'one') {
-                    $data = [$this->store->fetchOne($_q, $where)];
-                    if (is_array($data))
-                        foreach ($data as $record) if(is_object($record)) {
-                            // GeoData Transformation
-                            foreach ($record->getData() as $key=>$value)
-                                if($value instanceof Geopoint)
-                                    $record->{$key} = $value->getLatitude().','.$value->getLongitude();
-                                elseif($key=='JSON')
-                                    $record->{$key} = json_decode($value,true);
-                                elseif ($this->schema['props'][$key][1] == 'date') $record->{$key} = $value->format('Y-m-d');
-                                elseif ($this->schema['props'][$key][1] == 'datetime') $record->{$key} = $value->format('Y-m-d H:i:s e');
-                                elseif ($this->schema['props'][$key][1] == 'datetimeiso') $record->{$key} = $value->format('c');cd -
-
-                            $subret = (null !== $record->getKeyId())?['KeyId' => $record->getKeyId()]:['KeyName' => $record->getKeyName()];
-                            $ret[] = array_merge($subret, $record->getData());
-                        }
+                    $ret = [$this->store->fetchOne($_q, $where)];
                 } else {
                     $this->store->query($_q, $where);
                     // page size
-                    $blocksOfEntities = 300;  // Maxium group of records per datastore call
+                    $blocksOfEntities = 300;  // Maximum group of records per datastore call
                     $init = false;
 
                     if ($limit > 0 && $limit < $blocksOfEntities) $blocksOfEntities = $limit;
@@ -486,24 +485,10 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                             $data = $this->store->fetchPage($blocksOfEntities);
                         }
                         $this->last_cursor = base64_encode($this->store->str_last_cursor);
+                        if(count($data)) {
+                            $ret = array_merge($ret,$data);
+                        }
 
-                        if (is_array($data))
-                            foreach ($data as $record) {
-                                // GeoData Transformation
-                                foreach ($record->getData() as $key=>$value)
-                                    if($value instanceof Geopoint)
-                                        $record->{$key} = $value->getLatitude().','.$value->getLongitude();
-                                    elseif($key=='JSON')
-                                        $record->{$key} = json_decode($value,true);
-                                    elseif ($this->schema['props'][$key][1] == 'date') $record->{$key} = $value->format('Y-m-d');
-                                    elseif ($this->schema['props'][$key][1] == 'datetime') $record->{$key} = $value->format('Y-m-d H:i:s e');
-                                    elseif ($this->schema['props'][$key][1] == 'datetimeiso') $record->{$key} = $value->format('c');
-
-                                $subret = (null !== $record->getKeyId())?['KeyId' => $record->getKeyId()]:['KeyName' => $record->getKeyName()];
-                                $ret[] = array_merge($subret, $record->getData());
-                                $tr++;
-                                if ($limit > 0 && $tr == $limit) break;
-                            }
                         if ($limit > 0) {
                             if ($tr >= $limit) $data = null;
                             elseif (($tr + $blocksOfEntities) >= $limit) $blocksOfEntities = $limit - $tr;
@@ -517,14 +502,21 @@ if (!defined ("_DATASTORE_CLASS_") ) {
 
             }
             $this->core->__p->add('fetch: ', '', 'endnote');
+            if($transform) $ret = $this->transformEntities($ret);
             return $ret;
         }
 
 
-        function fetchKeys($keys) {
-            return $this->fetchByKeys($keys);
-        }
-        function fetchByKeys($keys)
+        /**
+         * Returns the entities passing the keys
+         *
+         * The keys could be a string, a integer, an array of strings or an array of integers..
+         * If string is passed and contains ',' then is assumed that you are trying to pass a group of keys separated by the symbol
+         *
+         * @param mixed $keys
+         * @return array
+         */
+        function fetchByKeys($keys,$transform=true)
         {
             $keyType = 'key';
             if(!is_array($keys)) $keys= explode(',',$keys);
@@ -540,9 +532,10 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                 } else {
                     // DOES NOT SUPPORT keys with ',' as values.
                     foreach ($keys as &$key) $key = preg_replace('/(\'|")/','',$key);
-                    $data = $this->store->fetchByNames($keys);
+                    $ret = $this->store->fetchByNames($keys);
                 }
-                $ret = $this->transformEntities($data);
+                if($transform)
+                    $ret = $this->transformEntities($ret);
             } catch (Exception $e) {
                 $this->setError($e->getMessage());
                 $this->addError('query');
@@ -560,34 +553,43 @@ if (!defined ("_DATASTORE_CLASS_") ) {
         }
 
         function delete($where){
-            $_q = 'SELECT __key__ FROM ' . $this->entity_name;
 
-            // Where construction
-            if (is_array($where)) {
-                $i = 0;
-                foreach ($where as $key => $value) {
-                    if ($i == 0) $_q .= " WHERE $key = @{$key}";
-                    else $_q .= " AND $key = @{$key}";
-                    $i++;
+            $entities = $this->fetch('all','__key__',$where,null,false);
+            if(!$this->error)
+                if(count($entities)) {
+                    try {
+                        $this->store->delete($entities);
+                        $entities = $this->transformEntities($entities);
+                        return $entities;
+                    } catch (Exception $e) {
+                        $this->setError($e->getMessage());
+                        $this->addError('query');
+
+                    }
+                } else {
+                    $this->core->logs->add('No entities found: '.$this->entity_name);
                 }
-            } elseif (strlen($where)) {
-                $_q .= " WHERE $where";
-                $where = null;
-            }
-            $this->store->query($_q, $where);
-            $this->lastQuery = $this->store->str_last_query;
-            
-            $data = $this->store->fetchAll($_q, $where);
-            if(!count($data)) return [];
-            if($this->store->delete($data)) {
-                return($this->transformEntities($data));
-            } else {
-                return false;
-            }
+            return [];
         }
 
         function deleteByKeys($keys) {
 
+            $entities = $this->fetchByKeys($keys,false);
+            if(!$this->error)
+                if(count($entities)) {
+                    try {
+                        $this->store->delete($entities);
+                        $entities = $this->transformEntities($entities);
+                        return $entities;
+                    } catch (Exception $e) {
+                        $this->setError($e->getMessage());
+                        $this->addError('query');
+
+                    }
+                } else {
+                    $this->core->logs->add('No entities found: '.$this->entity_name);
+                }
+            return [];
         }
 
         function query($q, $data)
@@ -611,7 +613,7 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                 foreach ($record->getData() as $key=>$value)
                     if($value instanceof Geopoint)
                         $record->{$key} = $value->getLatitude().','.$value->getLongitude();
-                    elseif($key=='JSON')
+                    elseif($key=='JSON' || $this->schema['props'][$key][1] == 'json')
                         $record->{$key} = json_decode($value,true);
                     elseif ($this->schema['props'][$key][1] == 'date') $record->{$key} = $value->format('Y-m-d');
                     elseif ($this->schema['props'][$key][1] == 'datetime') $record->{$key} = $value->format('Y-m-d H:i:s e');
