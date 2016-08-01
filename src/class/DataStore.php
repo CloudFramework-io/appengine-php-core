@@ -536,14 +536,15 @@ if (!defined ("_DATASTORE_CLASS_") ) {
             $ret = [];
             try {
                 if($keyType=='key') {
-                    $data = $this->store->fetchByIds($keys);
+                    $ret = $this->store->fetchByIds($keys);
                 } else {
                     // DOES NOT SUPPORT keys with ',' as values.
                     foreach ($keys as &$key) $key = preg_replace('/(\'|")/','',$key);
                     $ret = $this->store->fetchByNames($keys);
                 }
-                if($transform)
+                if(true === $transform)
                     $ret = $this->transformEntities($ret);
+
             } catch (Exception $e) {
                 $this->setError($e->getMessage());
                 $this->addError('query');
