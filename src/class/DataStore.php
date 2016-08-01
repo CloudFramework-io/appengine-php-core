@@ -378,21 +378,29 @@ if (!defined ("_DATASTORE_CLASS_") ) {
             return ($entity);
         }
 
-        function transformEntityInMapData($entity) {
+        /**
+         * @param $entity
+         * @param bool $ret_null
+         * @return array
+         */
+        function transformEntityInMapData($entity, $ret_null = false) {
             $map = $this->schema['data']['mapData'];
             $transform = [];
+
+            $null_empty = '';
+            if($ret_null === true)  $null_empty = null;
 
 
             if(!is_array($map)) $transform = $entity;
             else foreach ($map as $key=>$item) {
                 $array_index = explode('.',$item); // Find potental . array separators
-                if(count($array_index) == 1) $transform[$array_index[0]] = (isset($entity[$key]))?$entity[$key]:'';
+                if(count($array_index) == 1) $transform[$array_index[0]] = (isset($entity[$key]))?$entity[$key]:$null_empty;
                 elseif(!isset($transform[$array_index[0]])) {
                     $transform[$array_index[0]] = [];
                 }
 
                 for($i=1,$tr=count($array_index);$i<$tr;$i++) {
-                    $transform[$array_index[0]][$array_index[$i]] = (isset($entity[$key]))?$entity[$key]:'';
+                    $transform[$array_index[0]][$array_index[$i]] = (isset($entity[$key]))?$entity[$key]:$null_empty;
                 }
 
             }
