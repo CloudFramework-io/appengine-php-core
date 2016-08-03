@@ -17,7 +17,6 @@ if (!defined("_RESTfull_CLASS_")) {
         var $ok = 200;
         var $errorMsg = [];
         var $extra_headers = [];
-        var $requestHeaders = array();
         var $method = '';
         var $contentTypeReturn = 'JSON';
         var $url = '';
@@ -52,7 +51,7 @@ if (!defined("_RESTfull_CLASS_")) {
             }
             $this->core->__p->add("RESTFull: ", __FILE__, 'note');
 
-            // $this->requestHeaders = apache_request_headers();
+            //
             $this->method = (strlen($_SERVER['REQUEST_METHOD'])) ? $_SERVER['REQUEST_METHOD'] : 'GET';
             if ($this->method == 'GET') {
                 $this->formParams = &$_GET;
@@ -73,50 +72,31 @@ if (!defined("_RESTfull_CLASS_")) {
 
 
                 // raw data.
-                $input = file_get_contents("php://input");
-                if (strlen($input)) {
-                    $this->formParams['_raw_input_'] = $input;
+                $this->formParams['_raw_input_'] = file_get_contents("php://input");
+                if (strlen($this->formParams['_raw_input_'])) {
 
-                    if (is_object(json_decode($input))) {
-                        $input_array = json_decode($input, true);
+                    // IF the raw is JSON
+                    $input_array = null;
+                    // FORCING JSON
+                    if(strpos($this->getHeader('Content-Type'), 'json')!==false) {
+                        $input_array = json_decode($this->formParams['_raw_input_'], true);
+                        if(!is_array($input_array)) {
+                            $this->setError('WRONG JSON passed in raw format: '.json_last_error_msg());
+                        }
                     } else {
-                        parse_str($input, $input_array);
-                    }
-                    if (is_array($input_array))
-                        $this->formParams = array_merge($this->formParams, $input_array);
-                    else {
-                        $this->setError('Wrong JSON: ' . $input, 400);
-                    }
-                    unset($input_array);
-                    /*
-                   if(strpos($this->requestHeaders['Content-Type'], 'json')) {
-                   }
-                     *
-                     */
-                }
-                /*
-                if (strlen($input)) {
-                    $this->formParams['_raw_input_'] = $input;
-
-
-                    if (is_object(json_decode($input))) {
-                        $input_array = json_decode($input, true);
-                    } elseif(strpos($input,"\n") === false && strpos(strpos($input,"="))) {
-                        parse_str($input, $input_array);
+                        // Try to read a JSON
+                        $input_array = json_decode($this->formParams['_raw_input_'], true);
+                        if(!is_array($input_array)) {
+                            parse_str($this->formParams['_raw_input_'], $input_array);
+                        }
                     }
 
                     if (is_array($input_array)) {
                         $this->formParams = array_merge($this->formParams, $input_array);
                         unset($input_array);
-
                     }
 
-                   //if(strpos($this->requestHeaders['Content-Type'], 'json')) {
-                   //}
-
-
                 }
-                */
                 // Trimming fields
                 foreach ($this->formParams as $i=>$data) if(is_string($data)) $this->formParams[$i] = trim ($data);
             }
@@ -322,21 +302,7 @@ if (!defined("_RESTfull_CLASS_")) {
             }
         }
 
-        function getRequestHeader($str)
-        {
-            $str = strtoupper($str);
-            $str = str_replace('-', '_', $str);
-            return ((isset($_SERVER['HTTP_' . $str])) ? $_SERVER['HTTP_' . $str] : '');
-        }
 
-        function getResponseHeaders()
-        {
-            $ret = array();
-            foreach ($_SERVER as $key => $value) if (strpos($key, 'HTTP_') === 0) {
-                $ret[str_replace('HTTP_', '', $key)] = $value;
-            }
-            return ($ret);
-        }
 
 
         function sendHeaders()
@@ -433,7 +399,6 @@ if (!defined("_RESTfull_CLASS_")) {
                 }
             }
         }
-
 
 
 
@@ -566,7 +531,7 @@ if (!defined("_RESTfull_CLASS_")) {
                 $ret['header'] = $this->getResponseHeader();
                 $ret['session'] = session_id();
                 $ret['ip'] = $this->core->system->ip;
-                $ret['user_agent'] = ($this->core->system->user_agent != null) ? $this->core->system->user_agent : $this->requestHeaders['User-Agent'];
+                $ret['user_agent'] = ($this->core->system->user_agent != null) ? $this->core->system->user_agent : $this->getHeader('User-Agent');
                 $ret['urlParams'] = $this->params;
                 $ret['form-raw Params'] = $this->formParams;
             }
@@ -616,6 +581,13 @@ if (!defined("_RESTfull_CLASS_")) {
             }
         }
 
+        /**
+         * Return a Requested header by the caller
+         *
+         * The method apache_request_headers() does not work in appengine
+         * @param $str
+         * @return string
+         */
         function getHeader($str)
         {
             $str = strtoupper($str);
@@ -623,6 +595,11 @@ if (!defined("_RESTfull_CLASS_")) {
             return ((isset($_SERVER['HTTP_' . $str])) ? $_SERVER['HTTP_' . $str] : '');
         }
 
+        /**
+         * Return an array with the Headers sent by the caller
+         *
+         * @return array
+         */
         function getHeaders()
         {
             $ret = array();
@@ -631,6 +608,10 @@ if (!defined("_RESTfull_CLASS_")) {
             }
             return ($ret);
         }
+
+
+
+
         function useFunction($function) {
             if(method_exists($this,$function)) {
                 $this->$function();
