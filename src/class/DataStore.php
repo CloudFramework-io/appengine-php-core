@@ -200,13 +200,17 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                         $row = $entity->getData();
 
                         foreach ($row as $key=>$value) {
-
                             // Update Types: Geppoint, JSON, Datetime
                             if ($value instanceof Geopoint)
                                 $row[$key] = $value->getLatitude() . ',' . $value->getLongitude();
-                            elseif ($key == 'JSON')
-                                $row[$key] = json_decode($value, true);
-                            elseif($value instanceof DateTime) {
+                            elseif ($key == 'JSON') {
+                                if(null !== $value)
+                                    if(is_string($value)) {
+                                        $row[$key] = json_decode($value, true);
+                                    } else {
+                                        $this->setError($key . ' is expected as JSON but his type is not a string');
+                                    }
+                            } elseif($value instanceof DateTime) {
                                 if($this->schema['props'][$key][1]=='date')
                                     $row[$key] = $value->format('Y:m:d');
                                 elseif($this->schema['props'][$key][1]=='datetime')
@@ -557,6 +561,7 @@ if (!defined ("_DATASTORE_CLASS_") ) {
 
         function fetchCount($where = null,$distinct='__key__')
         {
+
             $data = $this->fetchAll($distinct,$where);
             return(count($data));
         }

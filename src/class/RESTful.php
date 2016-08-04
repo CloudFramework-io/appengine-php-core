@@ -127,6 +127,8 @@ if (!defined("_RESTfull_CLASS_")) {
                 $this->addCodeLib('params-error','Wrong paramaters.',400);
                 $this->addCodeLib('form-params-error','Wrong form paramaters.',400);
                 $this->addCodeLib('system-error','There is a problem in th platform.',503);
+                $this->addCodeLib('datastore-error','There is a problem in th platform.',503);
+                $this->addCodeLib('db-error','There is a problem in th platform.',503);
                 $this->addCodeLib('security-error','You don\'t have access.',401);
                 $this->addCodeLib('not-found','Inserted succesfully',404);
 
