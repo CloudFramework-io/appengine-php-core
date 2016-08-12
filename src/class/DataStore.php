@@ -622,6 +622,7 @@ if (!defined ("_DATASTORE_CLASS_") ) {
         }
         private function transformEntities(&$data) {
             $ret = [];
+            if(is_array($data) && is_object($data[0]))
             foreach ($data as $record) {
                 // GeoData Transformation
                 foreach ($record->getData() as $key=>$value)
@@ -649,6 +650,7 @@ if (!defined ("_DATASTORE_CLASS_") ) {
         function addError($value)
         {
             $this->error = true;
+            if(is_string($value)) $value = $this->entity_name.': '.$value;
             $this->errorMsg[] = $value;
             $this->core->errors->add(['DataStore'=>$value]);
         }
