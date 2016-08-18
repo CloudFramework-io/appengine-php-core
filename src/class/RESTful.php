@@ -17,6 +17,7 @@ if (!defined("_RESTfull_CLASS_")) {
         var $ok = 200;
         var $errorMsg = [];
         var $extra_headers = [];
+        var $requestHeaders = array();
         var $method = '';
         var $contentTypeReturn = 'JSON';
         var $url = '';
@@ -51,7 +52,7 @@ if (!defined("_RESTfull_CLASS_")) {
             }
             $this->core->__p->add("RESTFull: ", __FILE__, 'note');
 
-            //
+            // $this->requestHeaders = apache_request_headers();
             $this->method = (strlen($_SERVER['REQUEST_METHOD'])) ? $_SERVER['REQUEST_METHOD'] : 'GET';
             if ($this->method == 'GET') {
                 $this->formParams = &$_GET;
@@ -72,31 +73,29 @@ if (!defined("_RESTfull_CLASS_")) {
 
 
                 // raw data.
-                $this->formParams['_raw_input_'] = file_get_contents("php://input");
-                if (strlen($this->formParams['_raw_input_'])) {
+                $input = file_get_contents("php://input");
+                if (strlen($input)) {
+                    $this->formParams['_raw_input_'] = $input;
 
-                    // IF the raw is JSON
-                    $input_array = null;
-                    // FORCING JSON
-                    if(strpos($this->getHeader('Content-Type'), 'json')!==false) {
-                        $input_array = json_decode($this->formParams['_raw_input_'], true);
-                        if(!is_array($input_array)) {
-                            $this->setError('WRONG JSON passed in raw format: '.json_last_error_msg());
-                        }
-                    } else {
-                        // Try to read a JSON
-                        $input_array = json_decode($this->formParams['_raw_input_'], true);
-                        if(!is_array($input_array)) {
-                            parse_str($this->formParams['_raw_input_'], $input_array);
-                        }
+
+                    if (is_object(json_decode($input))) {
+                        $input_array = json_decode($input, true);
+                    } elseif(strpos($input,"\n") === false && strpos(strpos($input,"="))) {
+                        parse_str($input, $input_array);
                     }
 
                     if (is_array($input_array)) {
                         $this->formParams = array_merge($this->formParams, $input_array);
                         unset($input_array);
-                    }
 
+                    }
+                    /*
+                   if(strpos($this->requestHeaders['Content-Type'], 'json')) {
+                   }
+                     *
+                     */
                 }
+
                 // Trimming fields
                 foreach ($this->formParams as $i=>$data) if(is_string($data)) $this->formParams[$i] = trim ($data);
             }
@@ -124,11 +123,9 @@ if (!defined("_RESTfull_CLASS_")) {
 
                 $this->addCodeLib('ok','OK',200);
                 $this->addCodeLib('inserted','Inserted succesfully',201);
-                $this->addCodeLib('params-error','Wrong parameters.',400);
-                $this->addCodeLib('form-params-error','Wrong form parameters.',400);
+                $this->addCodeLib('params-error','Wrong paramaters.',400);
+                $this->addCodeLib('form-params-error','Wrong form paramaters.',400);
                 $this->addCodeLib('system-error','There is a problem in th platform.',503);
-                $this->addCodeLib('datastore-error','There is a problem in th platform.',503);
-                $this->addCodeLib('db-error','There is a problem in th platform.',503);
                 $this->addCodeLib('security-error','You don\'t have access.',401);
                 $this->addCodeLib('not-found','Inserted succesfully',404);
 
@@ -304,7 +301,21 @@ if (!defined("_RESTfull_CLASS_")) {
             }
         }
 
+        function getRequestHeader($str)
+        {
+            $str = strtoupper($str);
+            $str = str_replace('-', '_', $str);
+            return ((isset($_SERVER['HTTP_' . $str])) ? $_SERVER['HTTP_' . $str] : '');
+        }
 
+        function getResponseHeaders()
+        {
+            $ret = array();
+            foreach ($_SERVER as $key => $value) if (strpos($key, 'HTTP_') === 0) {
+                $ret[str_replace('HTTP_', '', $key)] = $value;
+            }
+            return ($ret);
+        }
 
 
         function sendHeaders()
@@ -401,6 +412,7 @@ if (!defined("_RESTfull_CLASS_")) {
                 }
             }
         }
+
 
 
 
@@ -518,13 +530,16 @@ if (!defined("_RESTfull_CLASS_")) {
         }
 
 
-        function send($pretty=false)
+        function send($pretty=false,$return=false,$argv=[])
         {
             $ret = array();
             $ret['success'] = ($this->core->errors->lines) ? false : true;
             $ret['status'] = $this->getReturnStatus();
             $ret['code'] = $this->getReturnCode();
-            $ret['url'] = (($_SERVER['HTTPS'] == 'on') ? 'https://' : 'http://') . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
+            if($this->core->is->terminal())
+                $ret['exec'] = '['.$_SERVER['PWD']. '] php '.implode(' ',$argv);
+            else
+                $ret['url'] = (($_SERVER['HTTPS'] == 'on') ? 'https://' : 'http://') . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
             $ret['method'] = $this->method;
             $ret['ip'] = $this->core->system->ip;
 
@@ -533,7 +548,7 @@ if (!defined("_RESTfull_CLASS_")) {
                 $ret['header'] = $this->getResponseHeader();
                 $ret['session'] = session_id();
                 $ret['ip'] = $this->core->system->ip;
-                $ret['user_agent'] = ($this->core->system->user_agent != null) ? $this->core->system->user_agent : $this->getHeader('User-Agent');
+                $ret['user_agent'] = ($this->core->system->user_agent != null) ? $this->core->system->user_agent : $this->requestHeaders['User-Agent'];
                 $ret['urlParams'] = $this->params;
                 $ret['form-raw Params'] = $this->formParams;
             }
@@ -570,26 +585,26 @@ if (!defined("_RESTfull_CLASS_")) {
 
                     // If the API->main does not want to send $ret standard it can send its own data
                     if (count($this->rewrite)) $ret = $this->rewrite;
-                    if($pretty)
-                        die(json_encode($ret,JSON_PRETTY_PRINT));
-                    else
-                        die(json_encode($ret));
+
+                    // JSON conversion
+                    if($pretty) $ret = json_encode($ret,JSON_PRETTY_PRINT);
+                    else $ret = json_encode($ret);
 
                     break;
                 default:
-                    if ($this->core->errors->lines) _printe($this->core->errors->data);
-                    else die($this->returnData['data']);
+                    if ($this->core->errors->lines) $ret=&$this->core->errors->data;
+                    else $ret = &$this->returnData['data'];
                     break;
+            }
+
+            // ending script
+            if($return) return $ret;
+            else {
+                if(is_string($ret)) die($ret);
+                else die(json_encode($ret,JSON_PRETTY_PRINT));
             }
         }
 
-        /**
-         * Return a Requested header by the caller
-         *
-         * The method apache_request_headers() does not work in appengine
-         * @param $str
-         * @return string
-         */
         function getHeader($str)
         {
             $str = strtoupper($str);
@@ -597,11 +612,6 @@ if (!defined("_RESTfull_CLASS_")) {
             return ((isset($_SERVER['HTTP_' . $str])) ? $_SERVER['HTTP_' . $str] : '');
         }
 
-        /**
-         * Return an array with the Headers sent by the caller
-         *
-         * @return array
-         */
         function getHeaders()
         {
             $ret = array();
@@ -610,10 +620,6 @@ if (!defined("_RESTfull_CLASS_")) {
             }
             return ($ret);
         }
-
-
-
-
         function useFunction($function) {
             if(method_exists($this,$function)) {
                 $this->$function();
