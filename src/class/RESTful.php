@@ -77,10 +77,9 @@ if (!defined("_RESTfull_CLASS_")) {
                 if (strlen($input)) {
                     $this->formParams['_raw_input_'] = $input;
 
-
                     if (is_object(json_decode($input))) {
                         $input_array = json_decode($input, true);
-                    } elseif(strpos($input,"\n") === false && strpos(strpos($input,"="))) {
+                    } elseif(strpos($input,"\n") === false && strpos($input,"=")) {
                         parse_str($input, $input_array);
                     }
 
