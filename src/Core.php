@@ -2460,8 +2460,14 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
 
             try {
                 $ret = @file_get_contents($rute, false, $context);
-                $this->responseHeaders = $http_response_header;
-                if ($ret === false) $this->addError(error_get_last());
+
+                // Return response headers
+                if(isset($http_response_header)) $this->responseHeaders = $http_response_header;
+                else $this->responseHeaders = ['$http_response_header'=>'undefined'];
+
+                // If we have an error
+                if ($ret === false)
+                    $this->addError(error_get_last());
                 else {
                     $code = $this->getLastResponseCode();
                     if ($code === null) {
@@ -2603,7 +2609,10 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
          */
         function __construct(Core &$core)
         {
+            // Singleton of core
             $this->core = $core;
+
+            // Params
             $this->method = (strlen($_SERVER['REQUEST_METHOD'])) ? $_SERVER['REQUEST_METHOD'] : 'GET';
             if ($this->method == 'GET') {
                 $this->formParams = &$_GET;
@@ -2611,32 +2620,35 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             } else {
                 if (count($_GET)) $this->formParams = (count($this->formParams)) ? array_merge($this->formParam, $_GET) : $_GET;
                 if (count($_POST)) $this->formParams = (count($this->formParams)) ? array_merge($this->formParams, $_POST) : $_POST;
-                if (isset($_POST['_raw_input_']) && strlen($_POST['_raw_input_'])) $this->formParams = (count($this->formParams)) ? array_merge($this->formParams, json_decode($_POST['_raw_input_'], true)) : json_decode($_POST['_raw_input_'], true);
-                if (isset($_GET['_raw_input_']) && strlen($_GET['_raw_input_'])) $this->formParams = (count($this->formParams)) ? array_merge($this->formParams, json_decode($_GET['_raw_input_'], true)) : json_decode($_GET['_raw_input_'], true);
-
-                // raw data.
+                // POST
+                $raw = null;
+                if(isset($_POST['_raw_input_']) && strlen($_POST['_raw_input_'])) $raw = json_decode($_POST['_raw_input_'],true);
+                if (is_array($raw)) $this->formParams = (count($this->formParams)) ? array_merge($this->formParams, $raw) : $raw;
+                // GET
+                $raw = null;
+                if(isset($_GET['_raw_input_']) && strlen($_GET['_raw_input_'])) $raw = json_decode($_GET['_raw_input_'],true);
+                if (is_array($raw)) $this->formParams = (count($this->formParams)) ? array_merge($this->formParams, $raw) : $raw;
+                // RAW DATA
                 $input = file_get_contents("php://input");
                 if (strlen($input)) {
                     $this->formParams['_raw_input_'] = $input;
 
                     if (is_object(json_decode($input))) {
                         $input_array = json_decode($input, true);
-                    } else {
+                    } elseif(strpos($input,"\n") === false && strpos($input,"=")) {
                         parse_str($input, $input_array);
                     }
-                    if (is_array($input_array))
+
+                    if (is_array($input_array)) {
                         $this->formParams = array_merge($this->formParams, $input_array);
-                    else {
-                        $this->setError('Wrong JSON: ' . $input, 400);
+                        unset($input_array);
+
                     }
-                    unset($input_array);
-                    /*
-                   if(strpos($this->requestHeaders['Content-Type'], 'json')) {
-                   }
-                     *
-                     */
                 }
+                // Trimming fields
+                foreach ($this->formParams as $i=>$data) if(is_string($data)) $this->formParams[$i] = trim ($data);
             }
+
             $this->params = &$this->core->system->url['parts'];
 
         }
@@ -2679,5 +2691,16 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             $this->core->errors->add($value);
             $this->errorMsg[] = $value;
         }
+    }
+
+    class Scripts extends CoreLogic
+    {
+        var $tests;
+
+        function sendTerminal($info) {
+            if(is_string($info)) echo $info."\n";
+            else print_r($info);
+        }
+
     }
 }
