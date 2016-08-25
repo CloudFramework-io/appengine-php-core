@@ -699,13 +699,20 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             $this->spacename = preg_replace('/[^A-z_-]/', '', 'CloudFrameWork_' . $this->type . $name);
         }
 
-        function set($str, $data)
+        /**
+         * @param $str
+         * @param $data
+         * @param string $hash Allow to set the info based in a hash to determine if it is valid when read it.
+         * @return bool
+         */
+        function set($str, $data, $hash='')
         {
             if (null === $this->cache) $this->init();
             if (null === $this->cache) return false;
 
             if (!strlen(trim($str))) return false;
             $info['_microtime_'] = microtime(true);
+            $info['_hash_'] = $hash;
             $info['_data_'] = gzcompress(serialize($data));
             $this->cache->set($this->spacename . '-' . $str, serialize($info));
             unset($info);
@@ -728,7 +735,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
          * @param int $expireTime The default value es -1. If you want to expire, you can use a value in seconds.
          * @return bool|mixed|null
          */
-        function get($str, $expireTime = -1)
+        function get($str, $expireTime = -1, $hash = '')
         {
             if (null === $this->cache) $this->init();
             if (null === $this->cache) return false;
@@ -743,13 +750,38 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                 if ($expireTime >= 0 && microtime(true) - $info['_microtime_'] >= $expireTime) {
                     $this->cache->delete($this->spacename . '-' . $str);
                     return null;
-                } else {
+                }
+                // Hash Cache
+                elseif ('' != $hash && $hash != $info['_hash_']) {
+                    $this->cache->delete($this->spacename . '-' . $str);
+                    return null;
+                }
+                // Normal return
+                else {
                     return (unserialize(gzuncompress($info['_data_'])));
                 }
             } else {
                 return null;
             }
         }
+
+        /**
+         * Return a cache based in a hash previously assigned in set
+         * @param $str
+         * @param $hash
+         * @return bool|mixed|null
+         */
+        public function getByHash($str, $hash) { return $this->get($str,-1, $hash); }
+
+
+        /**
+         * Return a cache based in the Expiration time = TimeToSave + $seconds
+         * @param string $str
+         * @param int $seconds
+         * @return bool|mixed|null
+         */
+        public function getByExpireTime($str, $seconds) { return $this->get($str,$seconds); }
+
 
         function getTime($str, $expireTime = -1)
         {
