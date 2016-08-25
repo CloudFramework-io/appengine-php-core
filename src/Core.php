@@ -96,8 +96,11 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             $this->errors = new CoreLog();
             $this->is = new CoreIs();
             $this->cache = new CoreCache();
+
+
             $this->__p->add('Construct Class with objects (__p,session[started=' . (($this->session->start) ? 'true' : 'false') . '],system,logs,errors,is,cache):' . __CLASS__, __FILE__);
             $this->security = new CoreSecurity($this);
+
             $this->user = new CoreUser($this);
             $this->config = new CoreConfig($this, __DIR__ . '/config.json');
             $this->request = new CoreRequest($this);
@@ -107,6 +110,9 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             if ($this->is->development() && is_file($this->system->root_path . '/local_config.json'))
                 $this->config->readConfigJSONFile($this->system->root_path . '/local_config.json');
             $this->__p->add('Loaded security,user,config,request objects with __session[started=' . (($this->session->start) ? 'true' : 'false') . ']: ,', __METHOD__);
+
+            // Config objects based in config
+            $this->cache->setSpaceName($this->config->get('cacheSpacename'));
 
         }
 
@@ -557,23 +563,59 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
     {
         var $lines = 0;
         var $data = [];
+        var $syslog_type = LOG_DEBUG;
 
-        function set($data)
+        /**
+         * Reset the log and add an entry in the log.. if syslog_title is passed, also insert a LOG_DEBUG
+         * @param $data
+         * @param string $syslog_title
+         */
+        function set($data,$syslog_title=null, $syslog_type=null)
         {
             $this->lines = 0;
             $this->data = [];
-            $this->add($data);
+            $this->add($data,$syslog_title, $syslog_type);
         }
 
-        function add($data)
+        /**
+         * Add an entry in the log.. if syslog_title is passed, also insert a LOG_DEBUG
+         * @param $data
+         * @param string $syslog_title
+         */
+        function add($data, $syslog_title=null, $syslog_type=null)
         {
+            // Evaluate to write in syslog
+            if(null !==  $syslog_title) {
+
+                if(null==$syslog_type) $syslog_type = $this->syslog_type;
+                syslog($syslog_type, $syslog_title.': '. json_encode($data,JSON_FORCE_OBJECT));
+
+                // Change the data sent to say that the info has been sent to syslog
+                if(is_string($data))
+                    $data = 'SYSLOG '.$syslog_title.': '.$data;
+                else
+                    $data = ['SYSLOG '.$syslog_title=>$data];
+            }
+
+            // Store in local var.
             $this->data[] = $data;
             $this->lines++;
+
         }
 
-        function get()
-        {
-            return $this->data;
+        /**
+         * return the current data stored in the log
+         * @return array
+         */
+        function get() { return $this->data; }
+
+        /**
+         * store all the data inside a syslog
+         * @param $title
+         */
+        function sendToSysLog($title,$syslog_type=null) {
+            if(null==$syslog_type=null) $syslog_type = $this->syslog_type;
+            syslog($syslog_type, $title. json_encode($this->data,JSON_FORCE_OBJECT));
         }
 
     }
@@ -642,12 +684,18 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
         var $dir = '';
         var $error = false;
         var $errorMsg = [];
+        var $log = null;
+        var $debug = false;
 
         function __construct($spacename = '', $type = 'memory')
         {
+            $this->log = new CoreLog();
             if (!strlen(trim($spacename))) $spacename = (isset($_SERVER['HTTP_HOST'])) ? $_SERVER['HTTP_HOST'] : $_SERVER['PWD'];
             $this->setSpaceName($spacename);
             if ($type == 'memory') $this->type = 'memory';
+
+            // Activate debug by default in development
+            if(stripos($_SERVER['SERVER_SOFTWARE'], 'Development') !== false) $this->debug = true;
 
         }
 
@@ -686,6 +734,9 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
 
         function init()
         {
+            if($this->debug)
+                $this->log->add("init(). type: {$this->type} spacename: {$this->spacename}",'CoreCache');
+
             if ($this->type == 'memory') {
                 if (class_exists('MemCache'))
                     $this->cache = new Memcache;
@@ -695,8 +746,10 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
 
         function setSpaceName($name)
         {
-            if (strlen($name)) $name = '_' . trim($name);
-            $this->spacename = preg_replace('/[^A-z_-]/', '', 'CloudFrameWork_' . $this->type . $name);
+            if (strlen($name)) {
+                $name = '_' . trim($name);
+                $this->spacename = preg_replace('/[^A-z_-]/', '', 'CloudFrameWork_' . $this->type . $name);
+            }
         }
 
         /**
@@ -715,6 +768,10 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             $info['_hash_'] = $hash;
             $info['_data_'] = gzcompress(serialize($data));
             $this->cache->set($this->spacename . '-' . $str, serialize($info));
+
+            if($this->debug)
+                $this->log->add("set({$str}). token: ".$this->spacename . '-' . $str.(($hash)?' with hash: '.$hash:''),'CoreCache');
+
             unset($info);
             return true;
         }
@@ -726,6 +783,10 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
 
             if (!strlen(trim($str))) return false;
             $this->cache->delete($this->spacename . '-' . $str);
+
+            if($this->debug)
+                $this->log->add("delete(). token: ".$this->spacename . '-' . $str,'CoreCache');
+
             return true;
         }
 
@@ -745,22 +806,31 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
 
             $info = $this->cache->get($this->spacename . '-' . $str);
             if (strlen($info) && $info !== null) {
+
                 $info = unserialize($info);
                 // Expire Caché
                 if ($expireTime >= 0 && microtime(true) - $info['_microtime_'] >= $expireTime) {
                     $this->cache->delete($this->spacename . '-' . $str);
+                    if($this->debug)
+                        $this->log->add("get($str). failed (beacause expiration: $expireTime < ".(microtime(true) - $info['_microtime_']).") token: ".$this->spacename . '-' . $str,'CoreCache');
                     return null;
                 }
                 // Hash Cache
-                elseif ('' != $hash && $hash != $info['_hash_']) {
+                if ('' != $hash && $hash != $info['_hash_']) {
                     $this->cache->delete($this->spacename . '-' . $str);
+                    if($this->debug)
+                        $this->log->add("get($str). failed (beacause hash:{$hash} does not match with {$info['_hash_']}) token: ".$this->spacename . '-' . $str,'CoreCache');
                     return null;
                 }
                 // Normal return
-                else {
-                    return (unserialize(gzuncompress($info['_data_'])));
-                }
+
+                if($this->debug)
+                    $this->log->add("get($str). successful returned token: ".$this->spacename . '-' . $str.(($hash)?' with hash: '.$hash:'').(($expireTime>=0)?' with expireTime: '.$expireTime:''),'CoreCache');
+                return (unserialize(gzuncompress($info['_data_'])));
+
             } else {
+                if($this->debug)
+                    $this->log->add("get($str). failed (beacause it does not exist) token: ".$this->spacename . '-' . $str,'CoreCache');
                 return null;
             }
         }
@@ -1197,13 +1267,15 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
         }
 
         /**
-         * Get a config var value
-         * @param $var string Config variable
+         * Get a config var value. $var is empty return the array with all values.
+         * @param string $var  Config variable
          * @return mixed|null
          */
-        public function get($var)
+        public function get($var='')
         {
-            return (key_exists($var, $this->data)) ? $this->data[$var] : null;
+            if(strlen($var))
+                return (key_exists($var, $this->data)) ? $this->data[$var] : null;
+            else return $this->data;
         }
 
         /**
@@ -2000,10 +2072,15 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
         protected $core;
         var $data = [];
         var $wapploca = [];
+        private $init = false;
 
         function __construct(Core &$core)
         {
             $this->core = $core;
+
+        }
+
+        function init() {
 
             // Maintain compatibilty with old variable
             if (!strlen($this->core->config->get('localizeCachePath')) && strlen($this->core->config->get('LocalizePath')))
@@ -2031,6 +2108,8 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
          */
         function get($locFile, $code, $config = [])
         {
+            if(!$this->init) $this->init();
+
             // Check syntax of $locFile & $code
             if (!$this->checkLocFileAndCode($locFile, $code)) return 'Err in: [' . $locFile . "{{$code}}" . ']';
             $lang = $this->core->config->getLang();
@@ -2094,6 +2173,8 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
          */
         private function readFromFile($locFile, $lang = '')
         {
+            if(!$this->init) $this->init();
+
             if (!strlen($this->core->config->get('localizeCachePath'))) return false;
             if (!strlen($lang)) $lang = $this->core->config->getLang();
             $ok = true;
@@ -2123,6 +2204,8 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
 
         private function writeLocalization($locFile, $lang = '')
         {
+            if(!$this->init) $this->init();
+
             if (!strlen($this->core->config->get('localizeCachePath'))) return false;
             if (!isset($this->data[$locFile])) return false;
             if (!strlen($lang)) $lang = $this->core->config->getLang();
@@ -2155,6 +2238,8 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
          */
         private function readFromWAPPLOCA($locFile, $code, $lang = '')
         {
+            if(!$this->init) $this->init();
+
             if (empty($this->core->config->get('WAPPLOCA'))) return false;
             if (!strlen($lang)) $lang = $this->core->config->getLang();
 
@@ -2204,6 +2289,8 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
          */
         private function checkLocFileAndCode(&$locFile, &$code)
         {
+            if(!$this->init) $this->init();
+
             $locFile = preg_replace('/[^A-z_\-]/', '', $locFile);
             if (!strlen($locFile)) {
                 $this->core->errors->set('Localization has received a wrong spacename: ');

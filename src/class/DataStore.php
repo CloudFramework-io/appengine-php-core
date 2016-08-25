@@ -53,14 +53,14 @@ if (!defined ("_DATASTORE_CLASS_") ) {
         var $last_cursor;
         var $time_zone = 'UTC';
         var $cache = null;
+        var $cacheTotals = null;
         var $namespace = 'default';
 
         function __construct(Core &$core, $params)
         {
             
             $this->core = $core;
-            $this->cache = new CoreCache();
-            $this->cache->setSpaceName('CF_DATASTORE');
+            $this->cache = new CoreCache('CF_DATASTORE');
 
             $entity = $params[0];
             $namespace = (isset($params[1]))?$params[1]:null;
@@ -565,20 +565,26 @@ if (!defined ("_DATASTORE_CLASS_") ) {
         function fetchCount($where = null,$distinct='__key__')
         {
             $hash = sha1(json_encode($where).$distinct);
-            $totals = $this->cache->get($this->entity_name.'_'.$this->namespace.'_totals');
-            if(is_array($totals) && isset($totals[$hash])) {
-                $this->core->logs->add('Returning from cache: count from '.$this->entity_name.' where '.json_encode($where));
-                return($totals[$hash]);
+
+            // Read from cache
+            if(null === $this->cacheTotals)
+                $this->cacheTotals = $this->cache->get($this->entity_name.'_'.$this->namespace.'_totals');
+
+            if(!is_array($this->cacheTotals)) $this->cacheTotals = [];
+
+            if(isset($this->cacheTotals[$hash])) {
+                return($this->cacheTotals[$hash]);
             } else {
                 $data = $this->fetchAll($distinct,$where);
-                $totals[$hash] = count($data);
-                $this->cache->set($this->entity_name.'_'.$this->namespace.'_totals',$totals);
-                return($totals[$hash]);
+                $this->cacheTotals[$hash] = count($data);
+                $this->cache->set($this->entity_name.'_'.$this->namespace.'_totals',$this->cacheTotals);
+                return($this->cacheTotals[$hash]);
             }
         }
 
         function deleteCache() {
             $this->cache->delete($this->entity_name.'_'.$this->namespace.'_totals');
+            $this->cacheTotals = [];
         }
 
         function delete($where){
