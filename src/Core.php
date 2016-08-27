@@ -686,20 +686,41 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
         var $errorMsg = [];
         var $log = null;
         var $debug = false;
+        var $lastHash = null;
+        var $lastExpireTime = null;
+        var $atom = null;
 
-        function __construct($spacename = '', $type = 'memory')
+        /**
+         * CoreCache constructor. If $type==CacheInDirectory a writable $path is required
+         * @param string $spacename
+         * @param string $path if != null the it assumes the cache will be store in files
+         */
+        function __construct($spacename = '',  $path=null, $debug = null)
         {
+            // Asign a CoreLog Class to log
             $this->log = new CoreLog();
+
+            // Initialize $this->spacename
             if (!strlen(trim($spacename))) $spacename = (isset($_SERVER['HTTP_HOST'])) ? $_SERVER['HTTP_HOST'] : $_SERVER['PWD'];
             $this->setSpaceName($spacename);
-            if ($type == 'memory') $this->type = 'memory';
 
-            // Activate debug by default in development
-            if(stripos($_SERVER['SERVER_SOFTWARE'], 'Development') !== false) $this->debug = true;
+            // Activate debug based on $debug or if I am in development
+            if(null !== $debug)
+                $this->debug = true === $debug;
+            else
+                if(stripos($_SERVER['SERVER_SOFTWARE'], 'Development') !== false) $this->debug = true;
+
+            // Activate CacheInDirectory
+            if (null !== $path) {
+                $this->activateCacheFile($path);
+            }
+
+
 
         }
 
         /**
+         * Activate cache in files.. It requires that the path will be writtable
          * @param string $path dir path to keep files.
          * @param string $spacename
          * @return bool
@@ -723,27 +744,39 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
 
         }
 
-
         /**
          * DEPRECATED
          */
-        function activeDirPath($path, $spacename = '')
-        {
-            return $this->activateCacheFile();
-        }
+        function activeDirPath($path, $spacename = '') { return $this->activateCacheFile(); }
 
+        /**
+         * Initialiated Cache Memory object.. If previously it has been called it just returns true.. if there is an error it returns false..
+         * @return bool
+         */
         function init()
         {
+            if(null !== $this->cache) return(is_object($this->cache));
+
             if($this->debug)
                 $this->log->add("init(). type: {$this->type} spacename: {$this->spacename}",'CoreCache');
 
             if ($this->type == 'memory') {
-                if (class_exists('MemCache'))
+                if (class_exists('MemCache')) {
                     $this->cache = new Memcache;
+                } else {
+                    $this->cache = false;
+                    $this->log->add("init(). Failed because MemCache does not exist",'CoreCache');
+                }
             } else
                 $this->cache = new CoreCacheFile($this->dir);
+
+            return(is_object($this->cache));
         }
 
+        /**
+         * Set a $spacename to set/get $objects
+         * @param $name
+         */
         function setSpaceName($name)
         {
             if (strlen($name)) {
@@ -753,84 +786,88 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
         }
 
         /**
-         * @param $str
-         * @param $data
+         * Set an object on cache based on $key
+         * @param $key
+         * @param mixed $object
          * @param string $hash Allow to set the info based in a hash to determine if it is valid when read it.
          * @return bool
          */
-        function set($str, $data, $hash='')
+        function set($key, $object, $hash=null)
         {
-            if (null === $this->cache) $this->init();
-            if (null === $this->cache) return false;
+            if(!$this->init() || !strlen(trim($key))) return null;
 
-            if (!strlen(trim($str))) return false;
             $info['_microtime_'] = microtime(true);
             $info['_hash_'] = $hash;
-            $info['_data_'] = gzcompress(serialize($data));
-            $this->cache->set($this->spacename . '-' . $str, serialize($info));
+            $info['_data_'] = gzcompress(serialize($object));
+            $this->cache->set($this->spacename . '-' . $key, serialize($info));
 
             if($this->debug)
-                $this->log->add("set({$str}). token: ".$this->spacename . '-' . $str.(($hash)?' with hash: '.$hash:''),'CoreCache');
+                $this->log->add("set({$key}). token: ".$this->spacename . '-' . $key.(($hash)?' with hash: '.$hash:''),'CoreCache');
 
             unset($info);
             return true;
         }
 
-        function delete($str)
+        /**
+         * delete a $key from cache
+         * @param $key
+         * @return true|null
+         */
+        function delete($key)
         {
-            if (null === $this->cache) $this->init();
-            if (null === $this->cache) return false;
+            if(!$this->init() || !strlen(trim($key))) return null;
 
-            if (!strlen(trim($str))) return false;
-            $this->cache->delete($this->spacename . '-' . $str);
+            if (!strlen(trim($key))) return false;
+            $this->cache->delete($this->spacename . '-' . $key);
 
             if($this->debug)
-                $this->log->add("delete(). token: ".$this->spacename . '-' . $str,'CoreCache');
+                $this->log->add("delete(). token: ".$this->spacename . '-' . $key,'CoreCache');
 
             return true;
         }
 
         /**
          * Return an object from Cache.
-         * @param $str
+         * @param $key
          * @param int $expireTime The default value es -1. If you want to expire, you can use a value in seconds.
+         * @param string $hash if != '' evaluate if the $hash match with hash stored in cache.. If not, delete the cache and return false;
          * @return bool|mixed|null
          */
-        function get($str, $expireTime = -1, $hash = '')
+        function get($key, $expireTime = -1, $hash = '')
         {
-            if (null === $this->cache) $this->init();
-            if (null === $this->cache) return false;
+            if(!$this->init() || !strlen(trim($key))) return null;
+
             if (!strlen($expireTime)) $expireTime = -1;
 
-            if (!strlen(trim($str))) return false;
-
-            $info = $this->cache->get($this->spacename . '-' . $str);
+            $info = $this->cache->get($this->spacename . '-' . $key);
             if (strlen($info) && $info !== null) {
 
                 $info = unserialize($info);
+                $this->lastExpireTime = microtime(true) - $info['_microtime_'];
+                $this->lastHash = $info['_hash_'];
+
                 // Expire Caché
                 if ($expireTime >= 0 && microtime(true) - $info['_microtime_'] >= $expireTime) {
-                    $this->cache->delete($this->spacename . '-' . $str);
+                    $this->cache->delete($this->spacename . '-' . $key);
                     if($this->debug)
-                        $this->log->add("get($str). failed (beacause expiration: $expireTime < ".(microtime(true) - $info['_microtime_']).") token: ".$this->spacename . '-' . $str,'CoreCache');
+                        $this->log->add("get('$key',$expireTime,'$hash') failed (beacause expiration) token: ".$this->spacename . '-' . $key.' [hash='.$this->lastHash.',since='.round($this->lastExpireTime,2).' secs.]','CoreCache');
                     return null;
                 }
                 // Hash Cache
                 if ('' != $hash && $hash != $info['_hash_']) {
-                    $this->cache->delete($this->spacename . '-' . $str);
+                    $this->cache->delete($this->spacename . '-' . $key);
                     if($this->debug)
-                        $this->log->add("get($str). failed (beacause hash:{$hash} does not match with {$info['_hash_']}) token: ".$this->spacename . '-' . $str,'CoreCache');
+                        $this->log->add("get('$key',$expireTime,'$hash') failed (beacause hash does not match) token: ".$this->spacename . '-' . $key.' [hash='.$this->lastHash.',since='.round($this->lastExpireTime,2).' secs.]','CoreCache');
                     return null;
                 }
                 // Normal return
 
                 if($this->debug)
-                    $this->log->add("get($str). successful returned token: ".$this->spacename . '-' . $str.(($hash)?' with hash: '.$hash:'').(($expireTime>=0)?' with expireTime: '.$expireTime:''),'CoreCache');
+                    $this->log->add("get('$key',$expireTime,'$hash'). successful returned token: ".$this->spacename . '-' . $key.' [hash='.$this->lastHash.',since='.round($this->lastExpireTime,2).' secs.]','CoreCache');
                 return (unserialize(gzuncompress($info['_data_'])));
 
             } else {
-                if($this->debug)
-                    $this->log->add("get($str). failed (beacause it does not exist) token: ".$this->spacename . '-' . $str,'CoreCache');
+                if($this->debug) $this->log->add("get($key,$expireTime,$hash) failed (beacause it does not exist) token: ".$this->spacename . '-' . $key,'CoreCache');
                 return null;
             }
         }
@@ -852,20 +889,99 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
          */
         public function getByExpireTime($str, $seconds) { return $this->get($str,$seconds); }
 
+        /**
+         * Initialiated Atom Memory object.. If previously it has been called it just returns true.. if there is an error it returns false..
+         * @return bool
+         */
+        public function initAtom() {
+            if(null !== $this->atom) return(is_object($this->atom));
 
-        function getTime($str, $expireTime = -1)
-        {
-            if (null === $this->cache) $this->init();
-            if (!strlen(trim($str))) return false;
-            $info = $this->cache->get($this->spacename . '-' . $str);
-            if (strlen($info) && $info !== null) {
-                $info = unserialize($info);
-                return (microtime(true) - $info['_microtime_']);
+            if($this->debug)
+                $this->log->add("initAtom(). spacename: {$this->spacename}_ATOM_Cache",'CoreCache');
+
+            if (class_exists('MemCache')) {
+                $this->atom = new Memcache;
             } else {
-                return null;
+                $this->atom = false;
+                $this->log->add("initAtom(). Failed because MemCache does not exist",'CoreCache');
             }
+
+            return(is_object($this->atom));
+
         }
 
+        /**
+         * get Atom Id based in $key.. If not found return false
+         * @param string $key
+         * @param init $expireTime
+         * @return null|false|string
+         */
+        public function getAtom($key,$expireTime) {
+            // Check initAtom has been called at least once with no errors
+            if(!$this->initAtom() || !strlen(trim($key))) return null;
+            $spacename = $this->spacename.'_ATOM_Cache';
+            $microtime = $this->atom->get($spacename . '-' . $key);
+
+            if($microtime)  {
+                if(microtime(true) - $microtime >= $expireTime) {
+                    $microtime = null;
+                    $this->atom->delete($spacename . '-' . $key);
+                    if($this->debug)
+                        $this->log->add("getAtom('{$key}',{$expireTime}). deleted because expiration. running since ".(round(microtime(true) - $microtime,2))." secs. ".$spacename . '-' . $key,'CoreCache');
+                } else {
+                    $this->log->add("getAtom('{$key}',{$expireTime}) running since ".(round(microtime(true) - $microtime,2)).' secs. '.$spacename . '-' . $key,'CoreCache');
+                }
+            } else {
+                if($this->debug)
+                    $this->log->add("getAtom('{$key}',{$expireTime}) not found. ".$spacename . '-' . $key,'CoreCache');
+            }
+
+            if(!$microtime) return false;
+            else return($spacename . '-' . $key.': '.$microtime);
+        }
+
+        /**
+         * Set an ATOM key content.. Return the String generated of null if $this->atom is not initiated.
+         * @param $key
+         * @return string|null
+         */
+        public function setAtom($key) {
+            // Check initAtom has been called at least once with no errors
+            if(!$this->initAtom() || !strlen(trim($key))) return null;
+            $spacename = $this->spacename.'_ATOM_Cache';
+
+            $microtime = microtime(true);
+            $this->atom->set($spacename . '-' . $key, $microtime);
+
+            if($this->debug)
+                $this->log->add("setAtom('{$key}'). microtime: {$microtime}".$spacename . '-' . $key,'CoreCache');
+
+            return($spacename . '-' . $key.': '.$microtime);
+        }
+
+        /**
+         * delete an ATOM key. If the $key does not exist it returns true too.
+         * @param $key
+         * @return true|null
+         */
+        public function deleteAtom($key) {
+            // Check initAtom has been called at least once with no errors
+            if(!$this->initAtom() || !strlen(trim($key))) return null;
+            $spacename = $this->spacename.'_ATOM_Cache';
+
+            $this->atom->delete($spacename . '-' . $key);
+
+            if($this->debug)
+                $this->log->add("deleteAtom('{$key}'). ".$spacename . '-' . $key,'CoreCache');
+
+            return true;
+
+        }
+
+        /**
+         * Set error in the class
+         * @param $value
+         */
         function addError($value)
         {
             $this->error = true;
