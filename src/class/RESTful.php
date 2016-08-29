@@ -556,6 +556,7 @@ if (!defined("_RESTfull_CLASS_")) {
 
             if ($this->core->logs->lines) {
                 $ret['logs'] = $this->core->logs->data;
+                syslog(LOG_INFO, 'CloudFramework RESTFul: '. json_encode($this->core->logs->data,JSON_FORCE_OBJECT));
             }
 
             // If I have been called from a queue the response has to be 200 to avoid loops
@@ -567,6 +568,7 @@ if (!defined("_RESTfull_CLASS_")) {
                 }
             } elseif ($this->core->errors->lines) {
                 $ret['errors'] = $this->core->errors->data;
+                syslog(LOG_ERR, 'CloudFramework RESTFul: '. json_encode($this->core->errors->data,JSON_FORCE_OBJECT));
             }
 
 

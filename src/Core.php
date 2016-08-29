@@ -212,8 +212,12 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                             if (strlen($pathfile)) {
                                 include_once $pathfile;
                             }
-                            if (class_exists('API')) {
-                                $api = new API($this);
+
+                            // By default the ClassName will be called API.. if the include set $api_class var, we will use that class name
+                            if(!isset($api_class)) $api_class = 'API';
+
+                            if (class_exists($api_class)) {
+                                $api = new $api_class($this);
                                 if ($api->params[0] == '__codes') {
                                     $__codes = $api->codeLib;
                                     foreach ($__codes as $key => $value) {
@@ -228,7 +232,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
 
                             } else {
                                 $api = new RESTful($this);
-                                $api->setError("api $apifile does not include a API class extended from RESTFul with method ->main()", 404);
+                                $api->setError("api $apifile does not include a {$api_class} class extended from RESTFul with method ->main()", 404);
                                 $api->send();
                             }
                         } catch (Exception $e) {
@@ -616,6 +620,15 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
         function sendToSysLog($title,$syslog_type=null) {
             if(null==$syslog_type=null) $syslog_type = $this->syslog_type;
             syslog($syslog_type, $title. json_encode($this->data,JSON_FORCE_OBJECT));
+        }
+
+        /**
+         * Reset the log
+         */
+        function reset()
+        {
+            $this->lines = 0;
+            $this->data = [];
         }
 
     }
@@ -2838,6 +2851,8 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
         /** @var array $errorMsg Keep the error messages  */
         public $errorMsg = [];
 
+
+
         /**
          * CoreLogic constructor.
          * @param Core $core
@@ -2930,7 +2945,22 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
 
     class Scripts extends CoreLogic
     {
+        /** @var array $argv Keep the arguments passed to the logic if it runs as a script  */
+        public $argv = null;
         var $tests;
+
+        /**
+         * Scripts constructor.
+         * @param Core $core
+         * @param null $argv
+         */
+        function __construct(Core $core, $argv=null)
+        {
+            parent::__construct($core);
+            $this->argv = $argv;
+        }
+
+
 
         function sendTerminal($info) {
             if(is_string($info)) echo $info."\n";
