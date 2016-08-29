@@ -1536,7 +1536,6 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                             if ($key == '--') continue; // comment
                             // Recursive call to analyze subelements
                             if (strpos($key, ':')) {
-
                                 $this->processConfigData([$key => $value]);
                             } else {
                                 // Assign conf var values converting {} tags

@@ -936,6 +936,101 @@ if (!defined ("_MYSQLI_CLASS_") ) {
             return(md5(implode('', $arr)));
         }
 
+        /**
+         * Return the CloudFrameWork-io Model from a DB table
+         * @param $table
+         * @return array where array['model'] is the JSON model if array['table_exists]===true
+         */
+        function getModelFromTable($table) {
+            if($this->tableExists($table)) {
+                $tmp['explain'] = $this->getDataFromQuery("SHOW FULL COLUMNS FROM %s", $table);
+                $tmp['index'] = $this->getDataFromQuery('SHOW INDEX FROM %s;',array($table));
+                $tmp['SQL'] = $this->getDataFromQuery('SHOW CREATE TABLE %s;',array($table))[0];
+                $tmp['SCHEMA'] = $this->getDataFromQuery('SELECT * FROM information_schema.TABLES WHERE TABLE_NAME = "%s"',array($table))[0];
+                //$tmp['TRIGGERS'] = $this->getDataFromQuery('SHOW TRIGGERS IN %s;',array($table));
+
+                foreach ($tmp['explain'] as $key => $value) {
+
+                    // TYPE OF THE FIELD
+                    $tmp['Fields'][$value['Field']]['type'] = $value['Type'];
+
+                    // IS NULLABLE
+                    if ($value['Null'] == 'NO')
+                        $tmp['Fields'][$value['Field']]['null'] = false;
+
+                    // Let's see if the field is Key, Unique or Index
+                    if (strlen($value['Key']))
+                        if ($value['Key'] == 'PRI') $tmp['Fields'][$value['Field']]['key'] = true;
+                        elseif($value['Key'] == 'MUL') $tmp['Fields'][$value['Field']]['index'] = true;
+                        elseif($value['Key'] == 'UNI') $tmp['Fields'][$value['Field']]['unique'] = true;
+
+                    // Default value
+                    if(!($value['Null'] == 'NO' && $value['Default']===null))
+                        $tmp['Fields'][$value['Field']]['default'] = $value['Default'];
+
+                    if (strlen($value['Extra']))
+                        $tmp['Fields'][$value['Field']]['extra'] = $value['Extra'];
+
+                    // Comment field
+                    $tmp['Fields'][$value['Field']]['description'] = $value['Comment'];
+                }
+
+                // CHECK if there is multiple Uniques id's
+                $indexes = [];
+                foreach($tmp['index'] as $index=>$indexValues) {
+                    if($indexValues['Key_name']=='PRIMARY') $indexes[$indexValues['Column_name']]['primary'][] = $indexValues['Column_name'];
+                    elseif($indexValues['Non_unique']=="0") $indexes[$indexValues['Key_name']]['unique'][] = $indexValues['Column_name'];
+                    elseif($indexValues['Non_unique']=="1") $indexes[$indexValues['Key_name']]['index'][] = $indexValues['Column_name'];
+                }
+                if(count($indexes))
+                    foreach($indexes as $index=>$indexValues) {
+                        if(count($indexValues['unique'])>1)
+                            foreach($indexValues['unique'] as $i=>$indexField)
+                                $tmp['Fields'][$indexField]['unique'] = $index;
+                        elseif(count($indexValues['index'])>1)
+                            foreach($indexValues['index'] as $i=>$indexField)
+                                $tmp['Fields'][$indexField]['index'] = $index;
+                    }
+
+                return (['table_exists'=>true,'model'=>['table' => $table
+                    , 'description' => $tmp['SCHEMA']['TABLE_COMMENT']
+                    , 'engine' => $tmp['SCHEMA']['ENGINE']
+                    , 'fields' => $tmp['Fields']
+                ]
+                    , 'Schema' => $tmp['SCHEMA']
+                    , 'explain' => $tmp['explain']
+                    , 'indexes' => $tmp['index']
+                    , 'SQL' => $tmp['SQL']['Create Table']
+                    , 'TRIGGERS' => $tmp['TRIGGERS']
+                    //, 'indexes' => $tmp['index']
+                ]);
+            } else
+                return(['table_exists'=> false]);
+        }
+
+        function getSimpleModelFromTable($table) {
+            $table = $this->getModelFromTable($table);
+            $fields = [];
+            if(isset($table['model']['fields'])) foreach ($table['model']['fields'] as $field=>$values) {
+                $fields['model'][$field][0] = $values['type'];
+                $fields['model'][$field][1] = (preg_match('/(varchar|varbinary|char)/',$values['type']))?'string':((preg_match('/(timestamp|datetime)/',$values['type']))?'datetime':((preg_match('/(date)/',$values['type']))?'date':'integer'));
+
+                if($values['key']) $fields['model'][$field][1].='|isKey';
+                if($values['null']===false) $fields['model'][$field][1].='|mandatory';
+                else $fields['model'][$field][1].='|allowNull';
+
+                if(strpos($values['type'],'varchar')!==false)
+                    $fields['model'][$field][1].='|maxlength='.preg_replace('/[^0-9]/','',explode('varchar',$values['type'],2)[1]);
+                if(strpos($values['type'],'varbinary')!==false)
+                    $fields['model'][$field][1].='|maxlength='.preg_replace('/[^0-9]/','',explode('varbinary',$values['type'],2)[1]);
+
+                if($values['index']) $fields['model'][$field][1].='|isIndex';
+                if(strlen($values['default'])) $fields['model'][$field][1].='|defaultvalue='.$values['default'];
+                $fields['model'][$field][1].='|description='.$values['description'];
+            }
+            return $fields;
+        }
+
 
 
 	}
