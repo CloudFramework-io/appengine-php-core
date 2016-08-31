@@ -2225,6 +2225,8 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                 $this->wapploca = $this->core->cache->get('Core:Localization:WAPPLOCA', $this->core->config->get('wapploca_cache_expiration_time'));
                 if (!is_array($this->wapploca)) $this->wapploca = [];
             }
+
+            $this->init = true;
         }
 
         /**
@@ -2252,15 +2254,20 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                     $this->readFromFile($locFile, $lang);
                 }
 
+
+
                 // Trying read from CloudServe
                 $wapploca_readed = false;
                 if (!isset($this->data[$locFile][$lang])) {
 
                     if ($this->readFromWAPPLOCA($locFile, $code, $lang) && isset($this->data[$locFile][$lang][$code])) {
+
                         // Writting Local file.
                         $file_readed = true;
                         $wapploca_readed = true;
                         $this->writeLocalization($locFile, $lang);
+
+
                     }
                 }
                 // If this localization file exists but the $code does not exist because the cache
@@ -2334,6 +2341,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
         {
             if(!$this->init) $this->init();
 
+
             if (!strlen($this->core->config->get('localizeCachePath'))) return false;
             if (!isset($this->data[$locFile])) return false;
             if (!strlen($lang)) $lang = $this->core->config->getLang();
@@ -2377,11 +2385,11 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                 return false;
             }
             $ok = true;
-
+            $lang = strtoupper($lang);
             $key = "$org/$app/$cat?lang=" . $lang;
             // Read From CloudService the info and put the cats into $this->wapploca
             $url = $this->core->config->get('wapploca_api_url');
-            if (!isset($this->wapploca[$key])) {
+            if (!isset($this->wapploca[$key][$lang])) {
                 $ret = $this->core->request->get($url . '/dics/' . $key);
                 if (!$this->core->request->error) {
                     $ret = json_decode($ret, true);
@@ -2400,9 +2408,10 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                 } else $ok = false;
             }
 
+
             // Return the code required
-            if (isset($this->wapploca[$key][$code]))
-                $this->data[$locFile][$lang][$code] = $this->wapploca[$key][$code];
+            if (isset($this->wapploca[$key][$lang][$code]))
+                $this->data[$locFile][$lang][$code] = $this->wapploca[$key][$lang][$code];
             else
                 $this->data[$locFile][$lang][$code] = $code;
             return $ok;
