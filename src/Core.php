@@ -2491,7 +2491,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             $_qHash = hash('md5', $rute . json_encode($data) . $verb);
             $ret = $this->core->cache->get($_qHash);
             if (isset($_GET['refreshCache']) || $ret === false || $ret === null) {
-                $ret = $this->get($rute, $data, $verb, $extraheaders, $raw);
+                $ret = $this->get($rute, $data, $extraheaders, $raw);
                 // Only cache successful responses.
                 if (is_array($this->responseHeaders) && isset($headers[0]) && strpos($headers[0], 'OK')) {
                     $this->core->cache->set($_qHash, $ret);
