@@ -617,6 +617,23 @@ if (!defined ("_DATASTORE_CLASS_") ) {
 
         function deleteByKeys($keys) {
 
+            $entities = $this->fetchByKeys($keys,false);
+            if(!$this->error)
+                if(count($entities)) {
+                    try {
+                        $this->store->delete($entities);
+                        $this->deleteCache();
+                        $entities = $this->transformEntities($entities);
+                        return $entities;
+                    } catch (Exception $e) {
+                        $this->setError($e->getMessage());
+                        $this->addError('query');
+
+                    }
+                } else {
+                    $this->core->logs->add('No entities found: '.$this->entity_name);
+                }
+            return [];
         }
 
         function query($q, $data)
