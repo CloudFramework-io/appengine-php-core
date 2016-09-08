@@ -616,6 +616,35 @@ if (!defined ("_DATASTORE_CLASS_") ) {
         }
 
         function deleteByKeys($keys) {
+            $keyType = 'key';
+            if(!is_array($keys)) $keys= explode(',',$keys);
+
+            if((is_array($this->schema) && strpos(json_encode($this->schema),'keyname' )!==false) || preg_match('/[^0-9]/',$keys[0] )) {
+                $keyType='keyname';
+            }
+            // Are keys or names
+            $ret = [];
+            try {
+                if($keyType=='key') {
+                    $data = $this->store->fetchByIds($keys);
+                } else {
+                    // DOES NOT SUPPORT keys with ',' as values.
+                    foreach ($keys as &$key) $key = preg_replace('/(\'|")/','',$key);
+                    $data = $this->store->fetchByNames($keys);
+                }
+                if(!count($data)) return [];
+                if($this->store->delete($data)) {
+                    $this->deleteCache();
+                    return($this->transformEntities($data));
+                } else {
+                    return false;
+                }
+            } catch (Exception $e) {
+                $this->setError($e->getMessage());
+                $this->addError('query');
+
+            }
+            return false;
 
         }
 
