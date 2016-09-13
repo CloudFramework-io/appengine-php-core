@@ -20,24 +20,33 @@ if (!defined ("_Instagram_CLASS_") ) {
         }
 
         public function getUserRecent($user_id='', $maxId = '', $minId = '', $maxTimestamp = '', $minTimestamp = '') {
+            $data = null;
             if(!strlen($user_id)) $user_id=$this->user_id;
             if(strlen($user_id) && strlen($this->access_token)) {
-                $s = 'https://api.instagram.com/v1/users/%s/media/recent/';
+
                 $params['access_token'] = $this->access_token;
                 $params['max_id'] = $maxId;
                 $params['min_id'] = $minId;
                 $params['max_timestamp'] = $maxTimestamp;
                 $params['min_timestamp'] = $minTimestamp;
-
-                $url = sprintf($s,$user_id);
+                $url = 'https://api.instagram.com/v1/users/self';
                 $ret = $this->core->request->get($url,$params);
                 if(strlen($ret) && !$this->core->request->error) {
-                    return json_decode($ret,true);
-                } else {
-                    $this->addError($this->core->request->errorMsg);
-                    return null;
+                    $ret = json_decode($ret,true);
+                    if($ret['meta']['code']==200) {
+                        $data = ['user'=>$ret['data']];
+                        $s = 'https://api.instagram.com/v1/users/%s/media/recent/';
+                        $url = sprintf($s,$user_id);
+                        $ret = $this->core->request->get($url,$params);
+                        if(strlen($ret) && !$this->core->request->error) {
+                            $data['media'] =json_decode($ret,true);
+                        } else {
+                            $this->addError($this->core->request->errorMsg);
+                        }
+                    }
                 }
             }
+            return $data;
         }
 
         function addError($value)
