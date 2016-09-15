@@ -439,6 +439,12 @@ class Insightly {
         return $request->body($opportunity)->asJSON();
     }
 
+    public function addProjectPipeline($id_project,$pipeline){
+        $url_path = "/v2.2/projects/".$id_project."/Pipeline";
+        $request = $this->PUT($url_path);
+        return $request->body($pipeline)->asJSON();
+    }
+
     public function updateCustomField($opportunity){
         $url_path = "/v2.2/Opportunities/".$opportunity["OPPORTUNITY_ID"]."/CustomFields/".$opportunity["CUSTOM_FIELD_ID"];
         $request = $this->PUT($url_path);
