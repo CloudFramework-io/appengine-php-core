@@ -444,7 +444,7 @@ if (!defined ("_DATASTORE_CLASS_") ) {
             // Where construction
             if (is_array($where)) {
                 $i = 0;
-                foreach ($where as $key => $value) {
+                foreach ($where as $key => &$value) {
                     if ($i == 0) $_q .= " WHERE $key = @{$key}";
                     else $_q .= " AND $key = @{$key}";
                     $i++;
@@ -456,8 +456,6 @@ if (!defined ("_DATASTORE_CLASS_") ) {
             if (strlen($order)) $_q .= " ORDER BY $order";
 
             $this->lastQuery = $_q . ((is_array($where)) ? ' ' . json_encode($where) : '') . ' limit=' . $limit.' page='.$this->page;
-
-
             try {
                 if ($type == 'one') {
                     $data = [$this->store->fetchOne($_q, $where)];
@@ -493,9 +491,9 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                             $init = true;
                         } else {
                             $data = $this->store->fetchPage($blocksOfEntities);
+
                         }
                         $this->last_cursor = base64_encode($this->store->str_last_cursor);
-
                         if (is_array($data))
                             foreach ($data as $record) {
                                 // GeoData Transformation
@@ -513,11 +511,13 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                                 $tr++;
                                 if ($limit > 0 && $tr == $limit) break;
                             }
-                        if ($limit > 0) {
+
+                        // Control END OF LOOK
+                        if($tr < $blocksOfEntities) $data = null;
+                        else if ($limit > 0) {
                             if ($tr >= $limit) $data = null;
                             elseif (($tr + $blocksOfEntities) >= $limit) $blocksOfEntities = $limit - $tr;
                         }
-
                     } while ($data);
                 }
             } catch (Exception $e) {
