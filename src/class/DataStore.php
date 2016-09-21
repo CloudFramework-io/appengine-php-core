@@ -440,13 +440,24 @@ if (!defined ("_DATASTORE_CLASS_") ) {
 
 
             $_q = 'SELECT ' . $fields . ' FROM ' . $this->entity_name;
-
             // Where construction
             if (is_array($where)) {
                 $i = 0;
-                foreach ($where as $key => &$value) {
-                    if ($i == 0) $_q .= " WHERE $key = @{$key}";
-                    else $_q .= " AND $key = @{$key}";
+                foreach ($where as $key => $value) {
+                    $comp = '=';
+                    if(preg_match('/[=><]/',$key)) {
+                        unset($where[$key]);
+                        if(strpos($key,'>=')==0 || strpos($key,'>=')!==0) {
+                            $comp = substr($key,0,2);
+                            $key = trim(substr($key,2));
+                        } else {
+                            $comp = substr($key,0,1);
+                            $key = trim(substr($key,1));
+                        }
+                        $where[$key] = $value;
+                    }
+                    if ($i == 0) $_q .= " WHERE $key {$comp} @{$key}";
+                    else $_q .= " AND $key {$comp} @{$key}";
                     $i++;
                 }
             } elseif (strlen($where)) {
