@@ -512,14 +512,17 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                         if (is_array($data))
                             foreach ($data as $record) {
                                 // GeoData Transformation
-                                foreach ($record->getData() as $key=>$value)
-                                    if($value instanceof Geopoint)
-                                        $record->{$key} = $value->getLatitude().','.$value->getLongitude();
-                                    elseif($key=='JSON')
-                                        $record->{$key} = json_decode($value,true);
-                                    elseif ($this->schema['props'][$key][1] == 'date') $record->{$key} = $value->format('Y-m-d');
-                                    elseif ($this->schema['props'][$key][1] == 'datetime') $record->{$key} = $value->format('Y-m-d H:i:s e');
-                                    elseif ($this->schema['props'][$key][1] == 'datetimeiso') $record->{$key} = $value->format('c');
+                                foreach ($record->getData() as $key=>$value){
+                                    if(!is_null($value)) {
+                                        if($value instanceof Geopoint)
+                                            $record->{$key} = $value->getLatitude().','.$value->getLongitude();
+                                        elseif($key=='JSON')
+                                            $record->{$key} = json_decode($value,true);
+                                        elseif ($this->schema['props'][$key][1] == 'date') $record->{$key} = $value->format('Y-m-d');
+                                        elseif ($this->schema['props'][$key][1] == 'datetime') $record->{$key} = $value->format('Y-m-d H:i:s e');
+                                        elseif ($this->schema['props'][$key][1] == 'datetimeiso') $record->{$key} = $value->format('c');
+                                    }
+                                }
 
                                 $subret = (null !== $record->getKeyId())?['KeyId' => $record->getKeyId()]:['KeyName' => $record->getKeyName()];
                                 $ret[] = array_merge($subret, $record->getData());
