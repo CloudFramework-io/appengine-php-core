@@ -456,12 +456,14 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                         }
                         if(!array_key_exists($key,$where)){
                             $idkey =  null;
-                            $where[$key] = $value;
+                            $where[$key.$idkey] = $value;
                         } else {
                             $idkey = "_2";
                             $where[$key.$idkey] = $value;
 
                         }
+                    }else{
+                        $idkey =  null;
                     }
                     $fieldname = $key;
                     $key = $key.$idkey;
