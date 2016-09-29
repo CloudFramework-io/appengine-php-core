@@ -24,7 +24,7 @@ if (!defined ("_SmartDate_CLASS_") ) {
          * Return an array of Dates
          * @param int $init
          * @param int $end
-         * @param string $type
+         * @param string $type Valid values: day,month,year
          * @param null $format
          * @return array
          */
@@ -48,19 +48,19 @@ if (!defined ("_SmartDate_CLASS_") ) {
 
         /**
          * Return an array of dates calling getArray where the date is the key and filling it with $value
-         * @param int $value
+         * @param mixed $fillArrayWithThisvalue
          * @param int $init
          * @param int $end
-         * @param string $type
+         * @param string $type Valid values: day,month,year
          * @param null $format
          * @return array
          */
-        public function getArrayInKeys($value = 0, $init = -1, $end = 0, $type = 'day', $format = null)
+        public function getArrayInKeys($fillArrayWithThisvalue = 0, $init = -1, $end = 0, $type = 'day', $format = null)
         {
             $dates = $this->getArray($init, $end, $type, $format);
             $ret = [];
             if (is_array($dates)) foreach ($dates as $date) {
-                $ret[$date] = $value;
+                $ret[$date] = $fillArrayWithThisvalue;
             }
             return $ret;
         }
