@@ -454,10 +454,21 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                             $comp = substr($key,0,1);
                             $key = trim(substr($key,1));
                         }
-                        $where[$key] = $value;
+                        if(!array_key_exists($key,$where)){
+                            $idkey =  null;
+                            $where[$key.$idkey] = $value;
+                        } else {
+                            $idkey = "_2";
+                            $where[$key.$idkey] = $value;
+
+                        }
+                    }else{
+                        $idkey =  null;
                     }
-                    if ($i == 0) $_q .= " WHERE $key {$comp} @{$key}";
-                    else $_q .= " AND $key {$comp} @{$key}";
+                    $fieldname = $key;
+                    $key = $key.$idkey;
+                    if ($i == 0) $_q .= " WHERE $fieldname {$comp} @{$key}";
+                    else $_q .= " AND $fieldname {$comp} @{$key}";
                     $i++;
                 }
             } elseif (strlen($where)) {
