@@ -2549,7 +2549,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                     $options['http']['content'] = $build_data;
 
                     // You have to calculate the Content-Length to run as script
-                    $options['http']['header'][] = sprintf('Content-Length: %d', strlen($build_data));
+                    // $options['http']['header'][] = sprintf('Content-Length: %d', strlen($build_data));
                 }
             }
 
@@ -2707,7 +2707,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                     $options['http']['content'] = $build_data;
 
                     // You have to calculate the Content-Length to run as script
-                    $options['http']['header'] .= sprintf('Content-Length: %d', strlen($build_data)) . "\r\n";
+                    //$options['http']['header'] .= sprintf('Content-Length: %d', strlen($build_data)) . "\r\n";
                 }
 
             // Context creation
