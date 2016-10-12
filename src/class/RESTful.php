@@ -122,7 +122,7 @@ if (!defined("_RESTfull_CLASS_")) {
 
                 $this->addCodeLib('ok','OK',200);
                 $this->addCodeLib('inserted','Inserted succesfully',201);
-                $this->addCodeLib('method-error','Wrong method.',400);
+                $this->addCodeLib('method-error','Wrong method.',405);
                 $this->addCodeLib('params-error','Wrong paramaters.',400);
                 $this->addCodeLib('form-params-error','Wrong form paramaters.',400);
                 $this->addCodeLib('system-error','There is a problem in the platform.',503);
@@ -170,7 +170,7 @@ if (!defined("_RESTfull_CLASS_")) {
         {
             if (strpos(strtoupper($methods), $this->method) === false) {
                 if (!strlen($msg)) $msg = 'Method ' . $this->method . ' is not supported';
-                $this->setError($msg, 405);
+                $this->setErrorFromCodelib('method-error',$msg);
             }
             return ($this->error === 0);
         }
