@@ -187,6 +187,7 @@ if (!defined("_RESTfull_CLASS_")) {
             ) {
                 if (!strlen($msg))
                     $msg = "{{$key}}" . ((!isset($this->formParams[$key])) ? ' form-param missing ' : ' form-params\' length is less than: ' . $min_length);
+                if(!$code) $code='form-params-error';
                 $this->setError($msg,400,$code);
             }
             return ($this->error === 0);
@@ -432,11 +433,23 @@ if (!defined("_RESTfull_CLASS_")) {
             $this->setError($this->getCodeLib($code).$extramsg,$this->getCodeLibError($code),preg_replace('/:.*/','',$code));
         }
 
+        /**
+         * Return the code applied with setError and defined in __codes
+         * @return int|string
+         */
         function getReturnCode()
         {
+            // if there is no code and status == 200 then 'ok'
+            if(null === $this->code &&  $this->getReturnStatus()==200) $this->code='ok';
+
+            // Return the code or the status number if code is null
             return (($this->code!==null) ? $this->code : $this->getReturnStatus());
         }
 
+        /**
+         * Assign a code
+         * @param $code
+         */
         function setReturnCode($code)
         {
             $this->code = $code;
@@ -624,9 +637,15 @@ if (!defined("_RESTfull_CLASS_")) {
             }
             return ($ret);
         }
-        function useFunction($function) {
-            if(method_exists($this,$function)) {
-                $this->$function();
+
+        /**
+         * Excute a method if $method is defined.
+         * @param string $method name of the method
+         * @return bool
+         */
+        function useFunction($method) {
+            if(method_exists($this,$method)) {
+                $this->$method();
                 return true;
             } else {
                 return false;
