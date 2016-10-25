@@ -447,9 +447,10 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                     $comp = '=';
                     if(preg_match('/[=><]/',$key)) {
                         unset($where[$key]);
-                        if(strpos($key,'>=')==0 || strpos($key,'>=')!==0) {
+                        if(strpos($key,'>=')==0 || strpos($key,'<=')==0) {
                             $comp = substr($key,0,2);
                             $key = trim(substr($key,2));
+
                         } else {
                             $comp = substr($key,0,1);
                             $key = trim(substr($key,1));
@@ -466,6 +467,13 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                         $idkey =  null;
                     }
                     $fieldname = $key;
+
+                    // In the WHERE Conditions we have to transform date formats into date objects.
+                    if (in_array($this->schema['props'][$key][1],['date','datetime','datetimeiso'])) {
+                        $transformDate = new DateTime($value);
+                        $where[$key.$idkey] = $transformDate;
+                    }
+
                     $key = $key.$idkey;
                     if ($i == 0) $_q .= " WHERE $fieldname {$comp} @{$key}";
                     else $_q .= " AND $fieldname {$comp} @{$key}";
@@ -476,6 +484,7 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                 $where = null;
             }
             if (strlen($order)) $_q .= " ORDER BY $order";
+
 
             $this->lastQuery = $_q . ((is_array($where)) ? ' ' . json_encode($where) : '') . ' limit=' . $limit.' page='.$this->page;
             try {
