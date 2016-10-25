@@ -1322,7 +1322,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
     }
 
     /**
-     * Class to manage CloudFramework configuration
+     * Class to manage CloudFramework configuration.
      * @package Core
      */
     class CoreConfig
@@ -1338,15 +1338,20 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             $this->core = $core;
             $this->readConfigJSONFile($path);
 
-            if (strlen($this->get('LocalizatonDefaultLang'))) $this->setLang($this->get('LocalizatonDefaultLang'));
+            // Set lang for the system
+            if (strlen($this->get('localizatonDefaultLang'))) $this->setLang($this->get('localizatonDefaultLang'));
 
-            // Session value for lang
-            if (!empty($_GET['_lang'])) $this->core->session->set('_CloudFrameWorkLang_', $_GET['_lang']);
-            $lang = $this->core->session->get('_CloudFrameWorkLang_');
-            if (strlen($lang))
-                if (!$this->setLang($lang)) {
-                    $this->core->session->delete('_CloudFrameWorkLang_');
-                }
+            // localizatonFieldParamName allow to change the lang by URL
+            if (strlen($this->get('localizatonFieldParamName'))) {
+                $field = $this->get('localizatonFieldParamName');
+                if (!empty($_GET[$field])) $this->core->session->set('_CloudFrameWorkLang_', $_GET[$field]);
+                $lang = $this->core->session->get('_CloudFrameWorkLang_');
+                if (strlen($lang))
+                    if (!$this->setLang($lang)) {
+                        $this->core->session->delete('_CloudFrameWorkLang_');
+                    }
+            }
+
         }
 
         /**
@@ -1384,10 +1389,10 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                 $this->core->logs->add('Warning config->setLang. Trying to pass an incorrect Lang: ' . $lang);
                 return false;
             }
-            if (strlen($this->get('LocalizatonAllowedLangs'))
-                && !preg_match('/(^|,)' . $lang . '(,|$)/', preg_replace('/[^A-z,]/', '', $this->get('LocalizatonAllowedLangs')))
+            if (strlen($this->get('localizatonAllowedLangs'))
+                && !preg_match('/(^|,)' . $lang . '(,|$)/', preg_replace('/[^A-z,]/', '', $this->get('localizatonAllowedLangs')))
             ) {
-                $this->core->logs->add('Warning in config->setLang. ' . $lang . ' is not included in {{LocalizatonAllowedLangs}}');
+                $this->core->logs->add('Warning in config->setLang. ' . $lang . ' is not included in {{localizatonAllowedLangs}}');
                 return false;
             }
 
@@ -2302,6 +2307,35 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
         }
 
         /**
+         * Set a Localization code into a localization file
+         * @param $locFile
+         * @param $code
+         * @param $content
+         * @param array $config
+         * @return mixed|string
+         */
+        function set($locFile, $code, $content,$config = [])
+        {
+            if(!$this->init) $this->init();
+
+            // Check syntax of $locFile & $code
+            if (!$this->checkLocFileAndCode($locFile, $code)) return 'Err in: [' . $locFile . "{{$code}}" . ']';
+            $lang = strtoupper($this->core->config->getLang());
+            if (isset($config['lang']) && strlen($config['lang']) == 2) $lang = strtoupper($config['lang']);
+
+            // Trying read from file
+            if (!isset($this->data[$locFile][$lang])) {
+                $file_readed = true;
+                $this->readFromFile($locFile, $lang);
+            }
+
+            if (!isset($this->data[$locFile][$lang]) || !isset($this->data[$locFile][$lang][$code]) || $this->data[$locFile][$lang][$code]!=$content) {
+                $this->data[$locFile][$lang][$code]=$content;
+                $this->writeLocalization($locFile,$lang);
+            }
+        }
+
+        /**
          * Read from a file the localizations and store the content into: $this->data[$locFile][$lang]
          * @param $locFile
          * @return bool
@@ -2355,6 +2389,8 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                     $ok = false;
                     $this->core->logs->add('Error writting ' . $filename);
                     $this->core->logs->add(error_get_last());
+                } else {
+                    $this->core->logs->add('Writting ' . $lang . '_Core_' . $locFile . '.json');
                 }
             } catch (Exception $e) {
                 $ok = false;
@@ -2549,7 +2585,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                     $options['http']['content'] = $build_data;
 
                     // You have to calculate the Content-Length to run as script
-                    $options['http']['header'][] = sprintf('Content-Length: %d', strlen($build_data));
+                    // $options['http']['header'][] = sprintf('Content-Length: %d', strlen($build_data));
                 }
             }
 
@@ -2707,7 +2743,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                     $options['http']['content'] = $build_data;
 
                     // You have to calculate the Content-Length to run as script
-                    $options['http']['header'] .= sprintf('Content-Length: %d', strlen($build_data)) . "\r\n";
+                    //$options['http']['header'] .= sprintf('Content-Length: %d', strlen($build_data)) . "\r\n";
                 }
 
             // Context creation
