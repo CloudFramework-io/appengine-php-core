@@ -77,7 +77,7 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
                 // Let's valid types and recursive contents..
                 if(!$this->error) {
                     if(!$this->validType($extrakey.$key,$value['type'],$data[$key]))
-                        $this->setError(((!strlen($data[$key]))?'Empty':'Wrong').' data received for field {'.$extrakey.$key.'} with type {'.$value['type'].'} ');
+                        $this->setError(((!is_string($data[$key]) || !strlen($data[$key]))?'Empty':'Wrong').' data received for field {'.$extrakey.$key.'} with type {'.$value['type'].'} ');
                     elseif($value['type']=='model') {
                         // Recursive CALL
                         $this->validateModel($value['fields'],$data[$key],$dictionaries,$all,$extrakey.$key.'-');
@@ -148,7 +148,7 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
                 case "string": return is_string($data);
                 case "integer": if(strval(intval($data))===strval($data)) $data=intval($data);return is_integer($data);
                 case "model": return is_array($data) && !empty($data);
-                case "json": return is_string($data) && is_object(json_encode($data));
+                case "json": return is_string($data) && is_object(json_decode($data));
                 case "name": return $this->validateName($key,$data);
                 case "ip": return filter_var($data,FILTER_VALIDATE_IP);
                 case "url": return filter_var($data,FILTER_VALIDATE_URL);
