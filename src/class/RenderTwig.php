@@ -145,14 +145,23 @@ if (!defined ("_RenderTwig_CLASS_") ) {
                     return $this->core->config->getLang();
                 });
                 $this->twig->addFunction($function);
+
                 $function = new \Twig_SimpleFunction('setLang', function ($lang) {
                     return $this->core->config->setLang($lang);
                 });
                 $this->twig->addFunction($function);
+
                 $function = new \Twig_SimpleFunction('system', function ($var) {
                     if(property_exists($this->core->system,$var)) return $this->core->system->{$var};
                 });
                 $this->twig->addFunction($function);
+
+                $function = new \Twig_SimpleFunction('getData', function () { return $this->core->getData(); });
+                $this->twig->addFunction($function);
+
+                $function = new \Twig_SimpleFunction('getDataKey', function ($key) { return $this->core->getDataKey($key); });
+                $this->twig->addFunction($function);
+
                 $this->index = $index;
             }
             $this->core->__p->add('RenderTwig->setTwig: ', '', 'endnote');

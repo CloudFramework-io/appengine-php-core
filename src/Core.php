@@ -80,6 +80,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
         public $config;
         public $localization;
         var $_version = '20160522';
+        var $data = null;
 
         /**
          * @var array $loadedClasses control the classes loaded
@@ -287,6 +288,16 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             }
             return $ret;
         }
+
+
+        /**
+         * Info to manage Data in general.
+         * @param $data
+         */
+        function setData($data) { $this->data = $data; }
+        function getData() { return($this->data); }
+        function getDataKey($key) { return(isset($this->data[$key])?$this->data[$key]:null); }
+        function setDataKey($key,$data) { $this->data[$key] = $data; }
 
         function activateCacheFile()
         {
