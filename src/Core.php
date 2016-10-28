@@ -158,37 +158,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
 
                     // -----------------------
                     // Evaluating tests API cases
-                    if($apifile=='_test' && strlen($this->system->url['parts'][3])) {
-                        $testfile = $this->system->url['parts'][3];
-                        $pathfile = $this->system->app_path . "/tests/{$testfile}.php";
-                        if (file_exists($pathfile)) {
-                            // IF NOT EXIST
-                            include_once __DIR__ . '/class/Tests.php';
 
-
-                            try {
-                                include_once $pathfile;
-                                if (class_exists('Test')) {
-                                    $api = new Test($this);
-                                    $api->main();
-                                    $this->__p->add("Executed Tests->main()", "/tests/{$testfile}.php");
-                                    $api->send();
-
-                                } else {
-                                    $api = new Test($this);
-                                    $api->setError("api $apifile does not include a Test class extended from Tests with method ->main()", 404);
-                                    $api->send();
-                                }
-                            } catch (Exception $e) {
-                                $this->errors->add(error_get_last());
-                                $this->errors->add($e->getMessage());
-                            }
-                            $this->__p->add("Test including Tests.php and {$testfile}.php: ", 'There are ERRORS');
-                        }
-                    }
-                    // -----------------------
-                    // Evaluating API cases
-                    else {
                         // path to file
                         if ($apifile[0] == '_' || $apifile == 'queue') {
                             $pathfile = __DIR__ . "/api/h/{$apifile}.php";
@@ -243,7 +213,6 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                         $this->__p->add("API including RESTfull.php and {$apifile}.php: ", 'There are ERRORS');
                     }
                     return false;
-                }
             } // Take a LOOK in the menu
             elseif ($this->config->inMenuPath()) {
                 if (!empty($this->config->get('logic'))) {

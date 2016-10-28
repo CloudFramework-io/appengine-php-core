@@ -8,8 +8,12 @@ class API extends RESTful
 		$this->checkMethod('GET');
 		// Checking by vars
 		$showConfig = false;
-		if(strpos($this->core->system->url['host'],'localhost:')!==0 && !$this->core->security->checkBasicAuthWithConfig())
-			return($this->setError('Required right Authorization header. Add in config {"authorizations":{"{{your user}}":{"password":"{{your password}}"}}'));
+		if( !$this->core->security->checkBasicAuthWithConfig()) {
+		    if($this->core->is->production())
+                return($this->setErrorFromCodelib('security-error','Required right Authorization header. Add in config {"authorizations":{"{{your user}}":{"password":"{{your password}}"}}'));
+            else
+                $this->core->logs->add('missing BasicAuth security');
+        }
 
 		$check = [];
 
