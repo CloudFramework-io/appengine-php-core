@@ -34,8 +34,6 @@ if (!defined ("_RenderTwig_CLASS_") ) {
                 }
             }
             $this->config = $config;
-
-
         }
 
         function addFileTemplate($index,$path) {
@@ -104,8 +102,15 @@ if (!defined ("_RenderTwig_CLASS_") ) {
             }
             if(is_object($loader)) {
 
+                /*
                 $this->twig = new Twig_Environment($loader, array(
                     "cache" => $this->config['twigCachePath'],
+                    "debug" => (bool)$this->core->is->development(),
+                    "auto_reload" => true,
+                ));
+                */
+
+                $this->twig = new Twig_Environment($loader, array(
                     "debug" => (bool)$this->core->is->development(),
                     "_auto_reload" => true,
                 ));
@@ -172,9 +177,8 @@ if (!defined ("_RenderTwig_CLASS_") ) {
             else {
                 $this->core->__p->add('RenderTwig->render: ', $this->index, 'note');
                 if($this->templates[$this->index]['type']=='file') {
-                    $template = $this->twig->loadTemplate(basename($this->index.'.htm.twig'));
                     if(!is_array($data)) $data = [$data];
-                    $ret = $template->render($data);
+                    $ret = $this->twig->render(basename($this->index.'.htm.twig'),$data);
                 } else {
                     $ret = $this->twig->render($this->index,$data);
                 }

@@ -238,16 +238,29 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                 // Templates
                 if (!empty($this->config->get('template'))) {
                     $logic->render($this->config->get('template'));
-                } else {
-                    $this->errors->add('Not template assigned');
-                    _printe($this->errors->data);
                 }
-            } else {
+                // No template assigned.
+                else {
+                    // If there is no logic and no template, then ERROR
+                    if(empty($this->config->get('logic'))) {
+                        $this->errors->add('No logic neither template assigned');
+                        _print($this->errors->data);
+                    }
+                }
+            }
+            // URL not found in the menu.
+            else {
                 $this->errors->add('URL has not exist in config-menu');
                 _printe($this->errors->data);
             }
         }
 
+        /**
+         * Use this method to run JSON and get the RROR message it it happens.
+         * @param $string
+         * @param bool $as_array
+         * @return mixed
+         */
         function jsonDecode($string, $as_array = false)
         {
             $ret = json_decode($string, $as_array);
@@ -338,7 +351,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             }
 
             if (isset($_GET['__p']) && $_GET['__p'] == $this->data['lastIndex']) {
-                __sp();
+                _printe($this->data);
                 exit;
             }
 
@@ -2185,6 +2198,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
         protected $core;
         var $data = [];
         var $wapploca = [];
+        var $files_readed = [];
         private $init = false;
 
         function __construct(Core &$core)
@@ -2206,7 +2220,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             }
 
             // $this->core->config->get('wapploca_cache_expiration_time') default 3600
-            if (!isset($_GET['_nocacheDics'])) {
+            if ($this->core->config->get('WAPPLOCA') && !isset($_GET['_nocacheDics'])) {
                 $this->wapploca = $this->core->cache->get('Core:Localization:WAPPLOCA', $this->core->config->get('wapploca_cache_expiration_time'));
                 if (!is_array($this->wapploca)) $this->wapploca = [];
             }
@@ -2228,48 +2242,29 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             // Check syntax of $locFile & $code
             if (!$this->checkLocFileAndCode($locFile, $code)) return 'Err in: [' . $locFile . "{{$code}}" . ']';
             $lang = $this->core->config->getLang();
-            if (isset($config['lang']) && strlen($config['lang']) == 2) $lang = strtoupper($config['lang']);
+            if (isset($config['lang']) && strlen($config['lang']) == 2) $lang = $config['lang'];
             // The $locFile does not exist
             if (!isset($_GET['_debugDics'])) {
 
                 // Trying read from file
-                $file_readed = false;
-                if (!isset($this->data[$locFile][$lang]) && !isset($_GET['_reloadDics'])) {
-                    $file_readed = true;
+                if (!isset($this->data[$locFile][$lang]) && !isset($this->files_readed[$locFile][$lang])  ) {
                     $this->readFromFile($locFile, $lang);
                 }
 
-
-
-                // Trying read from CloudServe
+                // Trying read from WAPPLOCA
                 $wapploca_readed = false;
-                if (!isset($this->data[$locFile][$lang])) {
-
+                if ($this->core->config->get('WAPPLOCA') && !isset($this->data[$locFile][$lang])) {
                     if ($this->readFromWAPPLOCA($locFile, $code, $lang) && isset($this->data[$locFile][$lang][$code])) {
-
                         // Writting Local file.
-                        $file_readed = true;
-                        $wapploca_readed = true;
                         $this->writeLocalization($locFile, $lang);
-
+                        $this->files_readed[$locFile][$lang] = true;
 
                     }
                 }
+
                 // If this localization file exists but the $code does not exist because the cache
-                if (isset($this->data[$locFile][$lang]) && !isset($this->data[$locFile][$lang][$code])) {
-                    // Rewrite Cache.
-                    if (!$file_readed) {
-                        $this->readFromFile($locFile, $lang);
-                    }
-
-                    // If still does not exist
-                    if (!$wapploca_readed && !isset($this->data[$locFile][$lang][$code])) {
-                        // Reload from WAPPLOCA the code.
-                        if ($this->readFromWAPPLOCA($locFile, $code, $lang) && isset($this->data[$locFile][$lang][$code])) {
-                            $this->writeLocalization($locFile, $lang);
-                        }
-                    }
-
+                if (isset($this->data[$locFile][$lang]) && !isset($this->data[$locFile][$lang][$code]) && !isset($this->files_readed[$locFile][$lang]) ) {
+                        // $this->readFromFile($locFile, $lang);
                 }
             }
 
@@ -2278,7 +2273,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             } else if (isset($this->data[$locFile][$lang][$code])) {
                 $ret = $this->data[$locFile][$lang][$code];
             } else {
-                $this->core->logs->add('Missing configuration for Localizations');
+                $this->core->logs->add("Missing configuration for Localizations: {$locFile}-{$lang}-{$code}");
                 $this->core->logs->add('WAPPLOCA: ' . ((empty($this->core->config->get('WAPPLOCA'))) ? 'empty' : '***'));
                 $this->core->logs->add('localizeCachePath: ' . ((empty($this->core->config->get('localizeCachePath'))) ? 'empty' : '***'));
             }
@@ -2287,7 +2282,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
         }
 
         /**
-         * Set a Localization code into a localization file
+         * Set a Localization code
          * @param $locFile
          * @param $code
          * @param $content
@@ -2300,20 +2295,13 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
 
             // Check syntax of $locFile & $code
             if (!$this->checkLocFileAndCode($locFile, $code)) return 'Err in: [' . $locFile . "{{$code}}" . ']';
-            $lang = strtoupper($this->core->config->getLang());
-            if (isset($config['lang']) && strlen($config['lang']) == 2) $lang = strtoupper($config['lang']);
-
-            // Trying read from file
-            if (!isset($this->data[$locFile][$lang])) {
-                $file_readed = true;
-                $this->readFromFile($locFile, $lang);
-            }
+            if (isset($config['lang']) && strlen($config['lang']) == 2) $lang = $config['lang'];
 
             if (!isset($this->data[$locFile][$lang]) || !isset($this->data[$locFile][$lang][$code]) || $this->data[$locFile][$lang][$code]!=$content) {
                 $this->data[$locFile][$lang][$code]=$content;
-                $this->writeLocalization($locFile,$lang);
             }
         }
+
 
         /**
          * Read from a file the localizations and store the content into: $this->data[$locFile][$lang]
@@ -2327,16 +2315,20 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             if (!strlen($this->core->config->get('localizeCachePath'))) return false;
             if (!strlen($lang)) $lang = $this->core->config->getLang();
             $ok = true;
-            $this->core->__p->add('Localization->readFromFile: ', $locFile, 'note');
+            $this->core->__p->add('Localization->readFromFile: ', strtoupper($lang)."-{$locFile}", 'note');
             // First read from local directory if {{localizeCachePath}} is defined.
+            $this->files_readed[$locFile][$lang] = true;
             if (strlen($this->core->config->get('localizeCachePath'))) {
-                $filename = $this->core->config->get('localizeCachePath') . '/' . $lang . '_Core_' . $locFile . '.json';
+                $filename = $this->core->config->get('localizeCachePath') . '/' . strtoupper($lang) . '_Core_' . $locFile . '.json';
                 try {
                     $ret = @file_get_contents($filename);
                     if ($ret !== false) {
                         $this->data[$locFile][$lang] = json_decode($ret, true);
                         $this->core->cache->set('Core:Localization:Data', $this->data);
+                        $this->core->__p->add('Success reading ' . strtoupper($lang) . '_Core_' . $locFile . '.json');
+
                     } else {
+                        $this->core->__p->add('Error reading ' .  strtoupper($lang) . '_Core_' . $locFile . '.json');
                         $this->core->logs->add('Error reading ' . $filename);
                         $this->core->logs->add(error_get_last());
                         $ok = false;
@@ -2351,7 +2343,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             return $ok;
         }
 
-        private function writeLocalization($locFile, $lang = '')
+        public function writeLocalization($locFile, $lang = '')
         {
             if(!$this->init) $this->init();
 
@@ -2360,17 +2352,19 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             if (!isset($this->data[$locFile])) return false;
             if (!strlen($lang)) $lang = $this->core->config->getLang();
             $ok = true;
-            $this->core->__p->add('Localization->writeLocalization: ', $lang . '_Core_' . $locFile . '.json', 'note');
+            $this->core->__p->add('Localization->writeLocalization: ', strtoupper($lang) . '_Core_' . $locFile . '.json', 'note');
 
-            $filename = $this->core->config->get('localizeCachePath') . '/' . $lang . '_Core_' . $locFile . '.json';
+            $filename = $this->core->config->get('localizeCachePath') . '/' . strtoupper($lang) . '_Core_' . $locFile . '.json';
             try {
                 $ret = @file_put_contents($filename, json_encode($this->data[$locFile][$lang], JSON_PRETTY_PRINT));
                 if ($ret === false) {
                     $ok = false;
+                    $this->core->__p->add('Error writting ' . strtoupper($lang) . '_Core_' . $locFile . '.json');
                     $this->core->logs->add('Error writting ' . $filename);
                     $this->core->logs->add(error_get_last());
                 } else {
-                    $this->core->logs->add('Writting ' . $lang . '_Core_' . $locFile . '.json');
+                    $this->core->__p->add('Success Writting ' . strtoupper($lang) . '_Core_' . $locFile . '.json');
+                    $this->core->cache->set('Core:Localization:Data', $this->data);
                 }
             } catch (Exception $e) {
                 $ok = false;
@@ -2939,6 +2933,8 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                 $rtwig = $this->core->loadClass('RenderTwig');
                 if(!$rtwig->error) {
                     $rtwig->addFileTemplate($template,$this->core->system->app_path . '/templates/' . $template);
+                    //$rtwig->addStringTemplate($template,file_get_contents($this->core->system->app_path . '/templates/' . $template.'.htm.twig'));
+
                     $rtwig->setTwig($template);
                     echo $rtwig->render();
                 } else {
