@@ -787,7 +787,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
         {
             if (strlen($name)) {
                 $name = '_' . trim($name);
-                $this->spacename = preg_replace('/[^A-z_-]/', '', 'CloudFrameWork_' . $this->type . $name);
+                $this->spacename = preg_replace('/[^A-z_-]/', '_', 'CloudFrameWork_' . $this->type . $name);
             }
         }
 
@@ -2932,7 +2932,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                 /* @var $rtwig RenderTwig */
                 $rtwig = $this->core->loadClass('RenderTwig');
                 if(!$rtwig->error) {
-                    $rtwig->addFileTemplate($template,$this->core->system->app_path . '/templates/' . $template);
+                    $rtwig->addFileTemplate($template,$this->core->system->app_path . 'templates/' . $template);
                     //$rtwig->addStringTemplate($template,file_get_contents($this->core->system->app_path . '/templates/' . $template.'.htm.twig'));
 
                     $rtwig->setTwig($template);

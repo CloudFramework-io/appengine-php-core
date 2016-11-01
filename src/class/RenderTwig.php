@@ -3,6 +3,99 @@
 if (!defined ("_RenderTwig_CLASS_") ) {
     define("_RenderTwig_CLASS_", TRUE);
 
+    require_once dirname(__FILE__).'/../lib/Twig/CacheInterface.php';
+
+    /**
+     * Adaptation of cache for Cloudframework compatible with
+     *
+     * @author Adrian Martinez <amartinez@adnbp.com>
+     */
+
+    class CloudFrameWork_Twig_Cache implements Twig_CacheInterface
+    {
+        private $directory;
+        private $cache = null;
+        private $templates = [];
+
+        /**
+         * @param $directory string The root cache directory
+         */
+        public function __construct($directory)
+        {
+            $this->directory = rtrim($directory, '\/').'/';
+            $this->cache = new CoreCache('TWIG_CLOUDFRAMEWORK_'.$directory);
+            // $this->cache->debug=false;
+
+        }
+
+        /**
+         * {@inheritdoc}
+         */
+        public function generateKey($name, $className)
+        {
+            //$hash = hash('sha256', $className);
+            return $this->directory.$name.'.php';
+        }
+
+        /**
+         * {@inheritdoc}
+         */
+        public function load($key)
+        {
+            if(!isset($this->templates[$key])) $this->templates[$key] = $this->cache->get($key);
+            if(is_array($this->templates[$key])) {
+                return eval(str_replace('<?php','',$this->templates[$key]['code']));
+            }
+
+        }
+
+        /**
+         * {@inheritdoc}
+         */
+        public function write($key, $content)
+        {
+            $templates = $this->cache->get('templates');
+            if(!isset($templates[$key])) {
+                $templates[$key] = true;
+                $this->cache->set('templates',$templates);
+            }
+            $template = ['timestamp'=>time(),'code'=>$content];
+            return( $this->cache->set($key,$template));
+            return;
+
+        }
+
+        /**
+         * {@inheritdoc}
+         */
+        public function getTimestamp($key)
+        {
+            if(!isset($this->templates[$key])) $this->templates[$key] = $this->cache->get($key);
+            if(is_array($this->templates[$key])) return $this->templates[$key]['timestamp'];
+            else return 0;
+        }
+
+        function getTemplates() {
+            return($this->cache->get('templates'));
+        }
+
+        function cleanTemplates() {
+            $templates = $this->cache->get('templates');
+            if(is_array($templates)) {
+                foreach ($templates as $key=>$true) {
+                    $this->cache->delete($key);
+                }
+                $this->templates = [];
+                $this->cache->delete('templates');
+            }
+        }
+    }
+
+    /**
+     * Cloudframework Rendertwig for Cloudframework
+     *
+     * @author Adrian Martinez <amartinez@adnbp.com>
+     */
     class RenderTwig
     {
         private $core;
@@ -20,10 +113,9 @@ if (!defined ("_RenderTwig_CLASS_") ) {
         {
             $this->core = $core;
             spl_autoload_register(array(__CLASS__, 'autoload'), true, false);
-            if(!isset($config['twigCachePath']) && !strlen($this->core->config->get('twigCachePath'))) {
-                $this->addError('Missing twigCachePath config var');
-            } else {
-                if(!isset($config['twigCachePath'])) $config['twigCachePath'] = $this->core->config->get('twigCachePath');
+
+            if(!isset($config['twigCachePath']) && $this->core->config->get('twigCachePath')) $config['twigCachePath'] = $this->core->config->get('twigCachePath');
+            if(isset($config['twigCachePath'])) {
                 if($this->core->is->development()) {
                     if(!is_dir($config['twigCachePath'])) {
                         @mkdir($config['twigCachePath']);
@@ -33,6 +125,7 @@ if (!defined ("_RenderTwig_CLASS_") ) {
                     }
                 }
             }
+
             $this->config = $config;
         }
 
@@ -66,7 +159,9 @@ if (!defined ("_RenderTwig_CLASS_") ) {
             $this->core->__p->add('RenderTwig->setTwig: ', $index, 'note');
             switch ($this->templates[$index]['type']) {
                 case "file":
-                    $loader = new \Twig_Loader_Filesystem(dirname($this->templates[$index]['template']));
+                    // Convert the path into relative path to generate the same keys
+                    $path = dirname($this->templates[$index]['template']);
+                    $loader = new \Twig_Loader_Filesystem($path);
                     break;
                 case "url":
                     $template = '';  // Raw content of the HTML
@@ -102,18 +197,19 @@ if (!defined ("_RenderTwig_CLASS_") ) {
             }
             if(is_object($loader)) {
 
-                /*
-                $this->twig = new Twig_Environment($loader, array(
-                    "cache" => $this->config['twigCachePath'],
-                    "debug" => (bool)$this->core->is->development(),
-                    "auto_reload" => true,
-                ));
-                */
+                // Twig paramters
+                $params = array("debug" => (bool)$this->core->is->development());
+                if($this->core->config->get('twigCacheInMemory')) {
+                    $spacename = ($this->config['twigCachePath'])?$this->config['twigCachePath']:$this->core->system->app_path;
+                    $cache = new CloudFrameWork_Twig_Cache($spacename);
+                    $params['cache'] = $cache;
+                    if(isset($_GET['_cleanTwig'])) $cache->cleanTemplates();
 
-                $this->twig = new Twig_Environment($loader, array(
-                    "debug" => (bool)$this->core->is->development(),
-                    "_auto_reload" => true,
-                ));
+                } else if(isset($this->config['twigCachePath'])) {
+                    $params['cache'] = $this->config['twigCachePath'];
+                }
+
+                $this->twig = new Twig_Environment($loader, $params);
 
                 $function = new \Twig_SimpleFunction('getConf', function ($key) {
                     return $this->core->config->get($key);
