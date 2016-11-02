@@ -263,7 +263,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
          */
         function jsonDecode($string, $as_array = false)
         {
-            $ret = json_decode($string, $as_array);
+            $ret = @json_decode($string, $as_array);
             if (json_last_error() != JSON_ERROR_NONE) {
                 $this->errors->add('Error decoding JSON: ' . $string);
                 $this->errors->add(json_last_error_msg());
