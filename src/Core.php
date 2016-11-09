@@ -2114,10 +2114,13 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             $dschema['JSONZIP'] = ['string'];
             $dschema['fingerprint'] = ['string'];
             $dschema['prefix'] = ['string', 'index'];
+            $dschema['secondsToExpire'] = ['integer'];
+            $dschema['status'] = ['integer','index'];
             $spacename = $this->core->config->get('DataStoreSpaceName');
             if (!strlen($spacename)) $spacename = "cloudframework";
             $this->dsToken = $this->core->loadClass('DataStore', ['CloudFrameWorkAuthTokens', $spacename, $dschema]);
             if ($this->dsToken->error) $this->core->errors->add(['setDSToken' => $this->dsToken->errorMsg]);
+            return(!$this->dsToken->error);
 
         }
 
@@ -2137,36 +2140,97 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                 return $ret;
             }
             // Check if object has been created
-            if (null === $this->dsToken) $this->createDSToken();
+            if (null === $this->dsToken) if(!$this->createDSToken()) return;
 
 
-            // If not error continue
-            if (!$this->core->errors->lines) {
-                $retToken = $this->dsToken->fetchByKeys($token);
+            $retToken = $this->dsToken->fetchByKeys($token);
 
-                // Allow to rewrite the fingerprint it it is passed
-                if(!$this->dsToken->error && !strlen($fingerprint_hash)) $fingerprint_hash = $this->core->system->getRequestFingerPrint()['hash'];
-
-                if ($this->dsToken->error)
-                    $this->core->errors->add(['getDSToken' => $this->dsToken->errorMsg]);
-                elseif ($fingerprint_hash != $retToken[0]['fingerprint']) {
-                    $this->core->errors->add(['getDSToken' => 'Token fingerprint does not match. Security violation.']);
-                } elseif ($time > 0 && ((new DateTime())->getTimestamp()) - (new DateTime($retToken[0]['dateInsert']))->getTimestamp() >= $time) {
-                    $this->core->errors->add(['getDSToken' => 'Token expired']);
-                } elseif (isset($retToken[0]['JSONZIP'])) {
-                    $ret = json_decode(gzuncompress(utf8_decode($retToken[0]['JSONZIP'])), true);
-                }
+            // Allow to rewrite the fingerprint it it is passed
+            if (!$this->dsToken->error && !strlen($fingerprint_hash)) $fingerprint_hash = $this->core->system->getRequestFingerPrint()['hash'];
+            if ($this->dsToken->error) {
+                $this->core->errors->add(['getDSToken' => $this->dsToken->errorMsg]);
+            } elseif (!count($retToken)) {
+                $this->core->errors->add(['getDSToken' => 'Token not found.']);
+            } elseif (!$retToken[0]['status']) {
+                $this->core->errors->add(['getDSToken' => 'Token is no longer active.']);
+            } elseif ($fingerprint_hash != $retToken[0]['fingerprint']) {
+                $this->core->errors->add(['getDSToken' => 'Token fingerprint does not match. Security violation.']);
+            } elseif ($time > 0 && ((new DateTime())->getTimestamp()) - (new DateTime($retToken[0]['dateInsert']))->getTimestamp() >= $time) {
+                $this->core->errors->add(['getDSToken' => 'Token expired']);
+            } elseif (isset($retToken[0]['JSONZIP'])) {
+                $ret = json_decode(gzuncompress(utf8_decode($retToken[0]['JSONZIP'])), true);
             }
+
             return $ret;
         }
 
-        function setDSToken($data, $prefix = '', $fingerprint_hash = '')
+        /**
+         * Delete the entity with KeyName=$token
+         * @param $token
+         * @return array|bool|void If the deletion is right it return the array with the recored deleted
+         */
+        function deleteDSToken($token)
+        {
+            $ret = null;
+
+            // Check if object has been created
+            if (null === $this->dsToken) if(!$this->createDSToken()) return;
+
+            // Return deleted records
+            return($this->dsToken->deleteByKeys($token));
+        }
+
+        /**
+         * Delete phically a token taking the $token key name.
+         * @param $token
+         * @return array|bool|void If the deletion is right it return the array with the recored deleted
+         */
+        function updateDSToken($token,$data)
+        {
+            // Check if object has been created
+            if (null === $this->dsToken) if(!$this->createDSToken()) return;
+
+            $retToken = $this->dsToken->fetchByKeys($token);
+            if(count($retToken)) {
+                $retToken[0]['JSONZIP'] = utf8_encode(gzcompress(json_encode($data)));
+                $ret = $this->dsToken->createEntities($retToken[0]);
+                if(count($ret)) {
+                    return(json_decode(gzuncompress(utf8_decode($ret[0]['JSONZIP'])), true));
+                }
+            }
+            return [];
+
+        }
+
+        /**
+         * Change the status = 0
+         * @param $token
+         * @return array|bool|void If the deletion is right it return the array with the recored deleted
+         */
+        function deactivateDSToken($token)
+        {
+            // Check if object has been created
+            if (null === $this->dsToken) if(!$this->createDSToken()) return;
+
+            $retToken = $this->dsToken->fetchByKeys($token);
+            if(count($retToken)) {
+                $retToken[0]['status'] = 0;
+                $ret = $this->dsToken->createEntities($retToken[0]);
+                if(count($ret)) {
+                    return(true);
+                }
+            }
+            return false;
+
+        }
+
+        function setDSToken($data, $prefix = '', $fingerprint_hash = '',$time_expiration=0)
         {
             $ret = null;
             if (!strlen(trim($prefix))) $prefix = 'default';
 
             // Check if object has been created
-            if (null === $this->dsToken) $this->createDSToken();
+            if (null === $this->dsToken) if(!$this->createDSToken()) return;
 
             // If not error continue
             if (!$this->core->errors->lines) {
@@ -2175,6 +2239,8 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                 $record['fingerprint'] = $fingerprint_hash;
                 $record['JSONZIP'] = utf8_encode(gzcompress(json_encode($data)));
                 $record['prefix'] = $prefix;
+                $record['secondsToExpire'] = $time_expiration;
+                $record['status'] = 1;
                 $record['token'] = $this->core->config->get('DataStoreSpaceName') . '__' . $prefix . '__' . sha1(json_encode($record) . date('Ymdhis'));
 
                 $retEntity = $this->dsToken->createEntities($record);
