@@ -1710,7 +1710,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                         break;
                     case "false":
                     case "true":
-                        $ret = trim(strtolower($tagcode));
+                        $ret = trim(strtolower($tagcode))=='true';
                         break;
                     default:
                         $this->core->errors->add('unknown tag: |' . $tagcode . '|');
