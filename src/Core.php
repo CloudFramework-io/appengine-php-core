@@ -2144,9 +2144,9 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
 
 
             $retToken = $this->dsToken->fetchByKeys($token);
-
             // Allow to rewrite the fingerprint it it is passed
             if (!$this->dsToken->error && !strlen($fingerprint_hash)) $fingerprint_hash = $this->core->system->getRequestFingerPrint()['hash'];
+
             if ($this->dsToken->error) {
                 $this->core->errors->add(['getDSToken' => $this->dsToken->errorMsg]);
             } elseif (!count($retToken)) {
