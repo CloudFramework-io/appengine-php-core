@@ -23,14 +23,15 @@ if (!defined("_Trace_CLASS_")) {
                         "Trace_cat": ["string", "index"],
                         "Trace_subcat": ["string", "index"],
                         "Trace_title": ["string", "index"],
+                        "Trace_status": ["string", "index"],
                         "Trace_info": ["json"],
-                        "Trace_kp1": ["string", "index"],
-                        "Trace_kp2": ["string", "index"],
-                        "Trace_kp3": ["string", "index"],
-                        "Trace_kp4": ["string", "index"],
+                        "Trace_kpi1": ["string", "index"],
+                        "Trace_kpi2": ["string", "index"],
+                        "Trace_kpi3": ["string", "index"],
+                        "Trace_kpi4": ["string", "index"],
                         "Trace_ip": ["string", "index"],
                         "Trace_isoCountry": ["string", "index"],
-                        "Trace_fingerPrint": ["string"],
+                        "Trace_fingerPrint": ["json"],
                         "Trace_timeStamp": ["datetime", "Index"]
              }';
             $this->ds = $this->core->loadClass('DataStore',['CloudFrameWorkTraces', $spacename, json_decode($schema,true)]);
