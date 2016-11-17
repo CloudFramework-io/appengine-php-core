@@ -26,15 +26,14 @@ if (!defined ("_Google_CLASS_") ) {
             } else {
                 $client_secret = $this->core->config->get('Google_Client');
 
-                if(!is_array($client_secret))
-                    return($this->addError('Missing Google_Client config var with the credentials from Google. Get JSON OAUTH 2.0 credentials file from: https://console.developers.google.com/apis/credentials'));
-
-
-                require_once $this->core->system->root_path . '/vendor/autoload.php';
-                $this->client = new Google_Client();
-                $this->client->setApplicationName('GoogleCloudFrameWork');
-                $this->client->setScopes(Google_Service_Drive::DRIVE);
-                $this->client->setAuthConfig($client_secret);
+                if(!is_array($client_secret)) {
+                    $this->addError('Missing Google_Client config var with the credentials from Google. Get JSON OAUTH 2.0 credentials file from: https://console.developers.google.com/apis/credentials');
+                } else {
+                    require_once $this->core->system->root_path . '/vendor/autoload.php';
+                    $this->client = new Google_Client();
+                    $this->client->setApplicationName('GoogleCloudFrameWork');
+                    $this->client->setAuthConfig($client_secret);
+                }
             }
         }
 
