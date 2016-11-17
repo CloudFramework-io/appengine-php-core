@@ -19,9 +19,22 @@ if (!defined ("_Google_CLASS_") ) {
             if(!is_dir($this->core->system->root_path.'/vendor/google')) {
                 $this->addError('Missing Google Client libreries. Execute from your document root: php composer.phar require google/apiclient:^2.0');
                 $this->addError('You can find composer.phar from: https://getcomposer.org/composer.phar');
+                $this->addError('You can reduce extra files and docs with: find vendor -type d -name tests  -exec rm -rf {} \;');
+                $this->addError('You can reduce extra files and docs with: find vendor -type d -name examples  -exec rm -rf {} \;');
+                $this->addError('You can reduce extra files and docs with: find vendor -type d -name doc  -exec rm -rf {} \;');
+                $this->addError('You can reduce extra files and docs with: find vendor -type f -name "*.md"  -exec rm -rf {} \;');
             } else {
+                $client_secret = $this->core->config->get('Google_Client');
+
+                if(!is_array($client_secret))
+                    return($this->addError('Missing Google_Client config var with the credentials from Google. Get JSON OAUTH 2.0 credentials file from: https://console.developers.google.com/apis/credentials'));
+
+
                 require_once $this->core->system->root_path . '/vendor/autoload.php';
                 $this->client = new Google_Client();
+                $this->client->setApplicationName('GoogleCloudFrameWork');
+                $this->client->setScopes(Google_Service_Drive::DRIVE);
+                $this->client->setAuthConfig($client_secret);
             }
         }
 
