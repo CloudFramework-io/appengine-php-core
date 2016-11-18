@@ -26,7 +26,7 @@ if (!defined ("_MYSQLI_CLASS_") ) {
         var $selectFields = '';
         var $order = '';
         var $extraWhere = '';
-        
+
         function CloudSQLQueryObject ($data,$table='') {
             $this->data = $data;
             $this->table = $table;
@@ -65,6 +65,8 @@ if (!defined ("_MYSQLI_CLASS_") ) {
 		var $_cloudFilterWhereFields = array();
 		var $_cloudFilterToAvoidCalculation = array();
 		var $_queryFieldTypes = array();
+        var $cfmode = true;
+
         protected $core = null;
                 
         protected $_dblink=false;                // Database Connection Link
@@ -528,7 +530,8 @@ if (!defined ("_MYSQLI_CLASS_") ) {
                     $table = $mixValue;
                     $mixValue='';
                 // If not we have to find out the name of table from data
-                } else {
+                }
+                else {
                     // In CloudFramWorkd all fields has to have the following structure: (tableName-no-ending-with-s)_fieldname.
                     // if there is no _ we assum it is a table
                     list($tmpTable,$foo) = explode("_",$allFields[0],2);
@@ -576,7 +579,7 @@ if (!defined ("_MYSQLI_CLASS_") ) {
             
             if($action == 'insert' || $action == "replace" || $action == 'update' || $action == 'delete'
             || $action == 'insertRecord' || $action == "replaceRecord"  ||  $action == "updateRecord" || $action =="getFieldTypes")
-                $table ="CF_".$table;
+                if($this->cfmode) $table ="CF_".$table;
 
             // Field Types of the table
             if(!isset($this->_queryFieldTypes[$table])) {
@@ -597,10 +600,10 @@ if (!defined ("_MYSQLI_CLASS_") ) {
 				   $foo = explode("_", $types[$k]['Field'],3);
 				   if(strlen($foo[2]) && $foo[2]=='Id') {
 				   	
-				   		$fieldTypes[$types[$k]['Field']][isRel] = true;
-				   		$fieldTypes[$types[$k]['Field']][relField] = $foo[1].'_'.$foo[2];
+				   		$fieldTypes[$types[$k]['Field']]['isRel'] = true;
+				   		$fieldTypes[$types[$k]['Field']]['relField'] = $foo[1].'_'.$foo[2];
 						
-				   } else $fieldTypes[$types[$k]['Field']][isRel] = false;
+				   } else $fieldTypes[$types[$k]['Field']]['isRel'] = false;
             }  
             
             // analyze if the Where has _anyfield
