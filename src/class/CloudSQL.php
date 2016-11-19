@@ -593,17 +593,20 @@ if (!defined ("_MYSQLI_CLASS_") ) {
             $types = $this->_queryFieldTypes[$table];                     
             
             for($k=0,$tr3=count($types);$k<$tr3;$k++) {
-                   $fieldTypes[$types[$k]['Field']]['type'] = $types[$k]['Type'];
-                   $fieldTypes[$types[$k]['Field']]['isNum'] = (preg_match("/(int|numb|deci|bit|double|real|float)/i", $types[$k]['Type']));
-                   $fieldTypes[$types[$k]['Field']]['isKey'] = ($types[$k][Key]=="PRI");
-				   
-				   $foo = explode("_", $types[$k]['Field'],3);
-				   if(strlen($foo[2]) && $foo[2]=='Id') {
-				   	
-				   		$fieldTypes[$types[$k]['Field']]['isRel'] = true;
-				   		$fieldTypes[$types[$k]['Field']]['relField'] = $foo[1].'_'.$foo[2];
-						
-				   } else $fieldTypes[$types[$k]['Field']]['isRel'] = false;
+                $fieldTypes[$types[$k]['Field']]['type'] = $types[$k]['Type'];
+                $fieldTypes[$types[$k]['Field']]['isNum'] = (preg_match("/(int|numb|deci|bit|double|real|float)/i", $types[$k]['Type']));
+                $fieldTypes[$types[$k]['Field']]['isKey'] = ($types[$k]['Key']=="PRI");
+
+                // IN CFMODE the '_' char has a meaning
+                $foo = explode("_", $types[$k]['Field'],3);
+
+                if($this->cfmode && strlen($foo[2]) && $foo[2]=='Id') {
+
+                    $fieldTypes[$types[$k]['Field']]['isRel'] = true;
+                    $fieldTypes[$types[$k]['Field']]['relField'] = $foo[1].'_'.$foo[2];
+
+               } else $fieldTypes[$types[$k]['Field']]['isRel'] = false;
+
             }  
             
             // analyze if the Where has _anyfield
@@ -617,15 +620,15 @@ if (!defined ("_MYSQLI_CLASS_") ) {
             if(strlen($_where)) $tables[$table]['selectWhere'] = $_where;
               
                                
-            $tables[$table][init] = 1;
-            
+            $tables[$table]['init'] = 1;
+
             if(!$_tableInFirstField)
             for($i=-1,$j=0,$tr2=count($allFields);$j<$tr2;$j++) if($allFields[$j] != $table) {
                 
                 $field = $allFields[$j];
                 
                 if(!$fieldTypes[$field]['type']) {
-                    $this->setError("Wrong data array. $field doesn't exist in ".$keys[$i][table]);
+                    $this->setError("Wrong data array. $field doesn't exist in ".implode(',',array_keys($fieldTypes)));
                     return(false);
                 }
 				
@@ -633,7 +636,7 @@ if (!defined ("_MYSQLI_CLASS_") ) {
                 $and = ((strlen($tables[$table]['selectWhere']))?" AND ":"");
 
                 
-                if(strlen($data[$field]) && $data[$field] !='NULL')
+                if(strlen($data[$field]) && $data[$field] !=='NULL')
                     $tables[$table]['updateFields'] .= $sep.$field."=".(($fieldTypes[$field]['isNum'])?"%s":"'%s'");
                 else {
                     $data[$field] = 'NULL';
@@ -641,41 +644,41 @@ if (!defined ("_MYSQLI_CLASS_") ) {
                 }
 				
                 $tables[$table]['insertFields'] .= $sep.$field;
-                $tables[$table]['insertPercents'] .= $sep.(($fieldTypes[$field]['isNum'])?"%s":(($data[$field] == 'NULL')?"%s":"'%s'"));
+                $tables[$table]['insertPercents'] .= $sep.(($fieldTypes[$field]['isNum'])?"%s":(($data[$field] === 'NULL')?"%s":"'%s'"));
                 
                 if($fieldTypes[$field]['isKey']) {
                     if(strlen($tables[$table]['updateWhereFields'])) $tables[$table]['updateWhereFields'].=',';
                     $tables[$table]['updateWhereFields'] .= $field."=".(($fieldTypes[$field]['isNum'])?"%s":"'%s'");
                     $tables[$table]['updateWhereValues'][] = $data[$field];
                 }
-				
                 // SELECT WHERE CONSTRUCTION
-                if($data[$field] !='%') {
+
+                if(strval($data[$field]) !='%') {
+
                     $_extra='';
-                    if($data[$field]=="_empty_") {
+                    if(strval($data[$field])=="_empty_") {
                         $tables[$table]['selectWhere'] .= $and." ($field IS NULL OR LENGTH($field)=0) ";
-                    } else if($data[$field]=="_noempty_") {
+                    } else if(strval($data[$field])=="_noempty_") {
                         $tables[$table]['selectWhere'] .= $and." ($field IS NOT NULL AND LENGTH($field)>0) ";
                     } else {
-                        
                         // Allow especial query values
-                        if(stripos($data[$field],'[[')===0) {
+                        if(stripos(strval($data[$field]),'[[')===0) {
                             list($joint,$data[$field]) = explode(' ', $data[$field],2);
                             $joint = ' '.$this->getSecuredSqlString($joint).' ';
                         } else {
         					$joint = ' = ';
         					$_selecWhereFieldError = false;
-        					if(strpos($data[$field], '%')!==false) $joint = ' LIKE ';
+        					if(strpos(strval($data[$field]), '%')!==false) $joint = ' LIKE ';
         					else if($fieldTypes[$field]['isNum']) {
-        						if(!is_numeric(trim($data[$field]))) {
+        						if(!is_numeric(trim(strval($data[$field])))) {
         							$joint=' ';
         						}
         					}
                         }
                         
                         // Evaluating OR values
-                        while(strpos($data[$field],' _or_')!== false) {
-                            list($orvalue,$data[$field]) = explode(' _or_', $data[$field],2);
+                        while(strpos(strval($data[$field]),' _or_')!== false) {
+                            list($orvalue,$data[$field]) = explode(' _or_', strval($data[$field]),2);
                             $tables[$table]['values'][] = $orvalue;
                             $_extra.=$field.$joint.(($fieldTypes[$field]['isNum'])?"%s":"'%s'").' OR ';
                             list($joint,$data[$field]) = explode(' ', $data[$field],2);
@@ -684,8 +687,8 @@ if (!defined ("_MYSQLI_CLASS_") ) {
                         }
                         
                         // Evaluating AND values
-                        while(strpos($data[$field],' _and_')!== false) {
-                            list($orvalue,$data[$field]) = explode(' _and_', $data[$field],2);
+                        while(strpos(strval($data[$field]),' _and_')!== false) {
+                            list($orvalue,$data[$field] ) = explode(' _and_', strval($data[$field]),2);
                             $tables[$table]['values'][] = $orvalue;
                             $_extra.=$field.$joint.(($fieldTypes[$field]['isNum'])?"%s":"'%s'").' AND ';
                             list($joint,$data[$field]) = explode(' ', $data[$field],2);
@@ -697,10 +700,13 @@ if (!defined ("_MYSQLI_CLASS_") ) {
                             $tables[$table]['selectWhere'] .= $and.'('.$_extra.$field.$joint.(($fieldTypes[$field]['isNum'])?"%s":"'%s'").')';
                             $tables[$table]['values'][] = $data[$field];
                         }
+
                     }
                 }
+
             }
-            //_printe($tables[$table]);
+
+            // -- Execute the commands
             foreach ($tables as $key => $value) {
                 switch ($action) {
                     case 'getFieldTypes':

@@ -18,8 +18,12 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
             $error = '';
             foreach ($model as $key=>$value) {
 
-                // Ignore those fields that does not exist in $data if $onlyexisting=true
+                // because $all==false Ignore those fields that does not exist in $data and they are not mandatory
                 if(!$all && !key_exists($key,$data) && (!isset($value['validation']) || strpos($value['validation'], 'mandatory') === false)) continue;
+
+                //  because $all==false  Ignore those fields that does not exist in $data and are optional
+                if($all && !key_exists($key,$data) && (isset($value['validation']) && strpos($value['validation'], 'optional') !== false)) continue;
+
 
                 // Does type field exist?.. If not return false and break the loop
                 if(!isset($value['type'])) {
@@ -56,8 +60,8 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
 
                 // Transform values and check if we have an empty value
                 if(!$this->error && isset($value['validation'])) {
-                    // Transform values based on defaultvalue, forcevalue, tolowercase, touppercase,trim
 
+                    // Transform values based on defaultvalue, forcevalue, tolowercase, touppercase,trim
                     $data[$key] = $this->transformValue($data[$key],$value['validation']);
 
                     if( null===$data[$key] || (is_string($data[$key]) && !strlen($data[$key])) ||  (is_array($data[$key]) && !count($data[$key]))) {
@@ -77,7 +81,7 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
                 // Let's valid types and recursive contents..
                 if(!$this->error) {
                     if(!$this->validType($extrakey.$key,$value['type'],$data[$key]))
-                        $this->setError(((!is_string($data[$key]) || !strlen($data[$key]))?'Empty':'Wrong').' data received for field {'.$extrakey.$key.'} with type {'.$value['type'].'} ');
+                        $this->setError(((is_string($data[$key]) && !strlen($data[$key]))?'Empty':'Wrong').' data received for field {'.$extrakey.$key.'} with type {'.$value['type'].'} value=['.json_encode($data[$key]).']');
                     elseif($value['type']=='model') {
                         // Recursive CALL
                         $this->validateModel($value['fields'],$data[$key],$dictionaries,$all,$extrakey.$key.'-');
@@ -109,7 +113,7 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
             if(strpos($options,'forcevalue:')!==false) {
                 $data = $this->extractOptionValue('forcevalue:',$options);
             }elseif(strpos($options,'defaultvalue:')!==false && !strlen($data)) {
-                $data = $this->extractOptionValue('forcevalue:',$options);
+                $data = $this->extractOptionValue('defaultvalue:',$options);
             }
 
             if( strpos($options,'tolowercase')!==false) (is_array($data))?$data = array_map('strtolower',$data):$data = strtolower($data);
@@ -147,6 +151,8 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
             switch (strtolower($type)) {
                 case "string": return is_string($data);
                 case "integer": if(strval(intval($data))===strval($data)) $data=intval($data);return is_integer($data);
+                case "float": if(strval(floatval($data))===strval($data)) $data=floatval($data);return is_float($data);
+                case "bit": if(strval(intval($data))===strval($data)) $data=intval($data);return ($data==0 || $data==1);
                 case "model": return is_array($data) && !empty($data);
                 case "json": return is_string($data) && is_object(json_decode($data));
                 case "name": return $this->validateName($key,$data);
@@ -164,8 +170,6 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
                 case "boolean": return is_bool($data);
                 case "array": return is_array($data);
                 case "list": return is_array($data);
-                case "float": return is_float(floatval($data));
-
                 default: return false;
             }
         }
@@ -181,6 +185,8 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
             if(!$this->validateFixLength($key,$options,$data)) return false;
             if(!$this->validateEmail($key,$options,$data)) return false;
             if(!$this->validateRegexMatch($key,$options,$data)) return false;
+            if(!$this->validateRange($key,$options,$data)) return false;
+            if(!$this->validateUnsigned($key,$options,$data)) return false;
 
 
             return true;
@@ -298,6 +304,30 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
             return true;
         }
 
+        public function validateRange($key,$options,$data) {
+            if(strlen($options) && (strpos($options,'range:')!==false)){
+                $options = explode(',',($this->extractOptionValue('range:',$options)));
+                $ok=true;
+                if(isset($options[0]) && strlen($options[0])) $ok = $data >= $options[0];
+                if($ok && isset($options[1]) && strlen($options[1])) $ok = $data >= $options[0];
+                if(!$ok) {
+                    $this->errorFields[] = ['key'=>$key,'method'=>__FUNCTION__,'options'=>$options,'data'=>$data];
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        public function validateUnsigned($key,$options,$data) {
+            if(strlen($options) && (strpos($options,'unsigned')!==false)){
+                if(intval($data) < 0) {
+                    $this->errorFields[] = ['key'=>$key,'method'=>__FUNCTION__,'options'=>$options,'data'=>$data];
+                    return false;
+                }
+            }
+            return true;
+        }
+
         public function validateRegexMatch($key,$options,$data) {
             if(strlen($options) && strpos($options,'regex_match')!==false){
                 $regex = $this->extractOptionValue('regex_match:',$options);
@@ -305,6 +335,7 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
                     if (!is_array($data)) return preg_match('/^(['.$regex.'])+$/i', trim($data));
                     foreach ($data as $item) {
                         if (!preg_match('/^(['.$regex.'])+$/i', trim($data))) {
+                            $this->errorFields[] = ['key'=>$key,'method'=>__FUNCTION__,'data'=>$data];
                             return false;
                         }
                     }
