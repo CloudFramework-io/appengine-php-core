@@ -216,7 +216,15 @@ if (!defined("_RESTfull_CLASS_")) {
          * @param null $data
          * @return bool
          */
-        function checkFormParamsFromModel($model, $all=true, $codelibbase='', &$data=null, &$dictionaries=[])
+        function validatePostData($model,$codelibbase='error-form-params',$data=null,&$dictionaries=[]) {
+            if(null===$data) $data = &$this->formParams;
+            return($this->checkFormParamsFromModel($model,true,$codelibbase,$data,$dictionaries));
+        }
+        function validatePutData($model,$codelibbase='error-form-params',$data=null,&$dictionaries=[]) {
+            if(null===$data) $data = &$this->formParams;
+            return($this->checkFormParamsFromModel($model,false,$codelibbase,$data,$dictionaries));
+        }
+        function checkFormParamsFromModel(&$model, $all=true, $codelibbase='', &$data=null, &$dictionaries=[])
         {
             if(!is_array($model)) {
                 $this->core->logs->add('Passed a non array model in checkFormParamsFromModel(array $model,...)');
@@ -237,9 +245,9 @@ if (!defined("_RESTfull_CLASS_")) {
             if(!$dv->validateModel($model,$data,$dictionaries,$all)) {
                 if($dv->typeError=='field') {
                     if (strlen($codelibbase))
-                        $this->setErrorFromCodelib($codelibbase . '-' . $dv->field, $dv->errorMsg);
+                        $this->setErrorFromCodelib($codelibbase . '-' . $dv->field, $dv->errorMsg,400,$codelibbase . '-' . $dv->field);
                     else
-                        $this->setError($dv->field . ': ' . $dv->errorMsg);
+                        $this->setError($dv->field . ': ' . $dv->errorMsg,400);
                 } else {
                     if (strlen($codelibbase))
                         $this->setError($this->getCodeLib($codelibbase) . '-' . $dv->field.': '. $dv->errorMsg,503);

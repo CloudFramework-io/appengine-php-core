@@ -21,7 +21,7 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
                 // because $all==false Ignore those fields that does not exist in $data and they are not mandatory
                 if(!$all && !key_exists($key,$data) && (!isset($value['validation']) || strpos($value['validation'], 'mandatory') === false)) continue;
 
-                //  because $all==false  Ignore those fields that does not exist in $data and are optional
+                //  because $all==true  Ignore those fields that does not exist in $data and are optional
                 if($all && !key_exists($key,$data) && (isset($value['validation']) && strpos($value['validation'], 'optional') !== false)) continue;
 
 
@@ -66,7 +66,7 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
 
                     if( null===$data[$key] || (is_string($data[$key]) && !strlen($data[$key])) ||  (is_array($data[$key]) && !count($data[$key]))) {
                         // OPTIONAL: -- Allow empty values if we have optional in options
-                        if(strpos($value['validation'],'optional')!==false) {
+                        if(strpos($value['validation'],'allownull')!==false) {
                             continue;  // OK.. next
                         }else {
                             if(!key_exists($key,$data))
@@ -154,7 +154,7 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
                 case "float": if(strval(floatval($data))===strval($data)) $data=floatval($data);return is_float($data);
                 case "bit": if(strval(intval($data))===strval($data)) $data=intval($data);return ($data==0 || $data==1);
                 case "model": return is_array($data) && !empty($data);
-                case "json": return is_string($data) && is_object(json_decode($data));
+                case "json": return is_string($data) && is_array(json_decode($data,true));
                 case "name": return $this->validateName($key,$data);
                 case "ip": return filter_var($data,FILTER_VALIDATE_IP);
                 case "url": return filter_var($data,FILTER_VALIDATE_URL);
