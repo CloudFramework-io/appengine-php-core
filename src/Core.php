@@ -2853,6 +2853,61 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             }
             return $ret;
         }
+        /**
+         * @param string $url
+         * @param int $format
+         * @desc Fetches all the headers
+         * @return array
+         */
+        function getUrlHeaders($url,$format=0)
+        {
+            $url_info=parse_url($url);
+
+            if (isset($url_info['scheme']) && $url_info['scheme'] == 'https') {
+                $port = 443;
+                $fp=fsockopen('ssl://'.$url_info['host'], $port, $errno, $errstr, 30);
+            } else {
+                $port = isset($url_info['port']) ? $url_info['port'] : 80;
+                $fp=fsockopen($url_info['host'], $port, $errno, $errstr, 30);
+            }
+
+            if($fp)
+            {
+                $head = "HEAD ".@$url_info['path']."?".@$url_info['query']." HTTP/1.0\r\nHost: ".@$url_info['host']."\r\n\r\n";
+                fputs($fp, $head);
+                while(!feof($fp))
+                {
+                    if($header=trim(fgets($fp, 1024)))
+                    {
+                        if($format == 1)
+                        {
+                            $key = array_shift(explode(':',$header));
+                            // the first element is the http header type, such as HTTP 200 OK,
+                            // it doesn't have a separate name, so we have to check for it.
+                            if($key == $header)
+                            {
+                                $headers[] = $header;
+                            }
+                            else
+                            {
+                                $headers[$key]=substr($header,strlen($key)+2);
+                            }
+                            unset($key);
+                        }
+                        else
+                        {
+                            $headers[] = $header;
+                        }
+                    }
+                }
+                fclose($fp);
+                return $headers;
+            }
+            else
+            {
+                return false;
+            }
+        }
 
         function addError($value)
         {
