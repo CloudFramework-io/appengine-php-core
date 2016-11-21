@@ -17,13 +17,11 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
 
             $error = '';
             foreach ($model as $key=>$value) {
+                //  because $all==true  Ignore those fields that does not exist in $data and are optional
+                if($all && !key_exists($key,$data) && (isset($value['validation']) && (strpos($value['validation'], 'optional') !== false || strpos($value['validation'], 'internal') !== false))) continue;
 
                 // because $all==false Ignore those fields that does not exist in $data and they are not mandatory
                 if(!$all && !key_exists($key,$data) && (!isset($value['validation']) || strpos($value['validation'], 'mandatory') === false)) continue;
-
-                //  because $all==true  Ignore those fields that does not exist in $data and are optional
-                if($all && !key_exists($key,$data) && (isset($value['validation']) && strpos($value['validation'], 'optional') !== false)) continue;
-
 
                 // Does type field exist?.. If not return false and break the loop
                 if(!isset($value['type'])) {
@@ -241,6 +239,7 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
                     $value_time = new DateTime($data);
                     return true;
                 } catch (Exception $e) {
+                    $this->errorFields[] = [$e.$this->errorMsg];
                     // Is not a valida Date
                 }
             }

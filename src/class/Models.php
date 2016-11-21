@@ -89,13 +89,29 @@ if (!defined ("_Models_CLASS_") ) {
             foreach ($data as $key=>$value) {
                 if (isset($this->models[$model]['mapping'][$key])
                     && $this->models[$model]['mapping'][$key]['field']
-                    && strpos($this->models[$model]['mapping'][$key]['validation'], 'internal') === false
+                    && (strpos($this->models[$model]['mapping'][$key]['validation'], 'internal') === false || strpos($this->models[$model]['mapping'][$key]['validation'], 'hidden') === false )
                 )
                     $record[$this->models[$model]['mapping'][$key]['field']] = $value;
             }
             return $record;
         }
+        /**
+         * Return the array with the mapping
+         * @param $model
+         * @return Array
+         */
+        public function getSQLRecordToInsert($model,&$data) {
+            if(!isset($this->models[$model]) || !is_array($this->models[$model]['mapping'])) return($this->addError("getSQLRecordToInsert. model ({$model}) does not exist os has a wrong structure."));
+            $record = [];
+            foreach ($this->models[$model]['mapping'] as $key=>$value) if($value['field']){
+                if (strpos($value['validation'], 'trigger') !== false ) continue;
+                if (strpos($value['validation'], 'key') !== false ) continue;
+                if (!isset($data[$key]) && strpos($value['validation'], 'optional') !== false ) continue;
 
+                $record[$value['field']] = (strpos($value['validation'], 'internal') !== false)?null:$data[$key];
+            }
+            return $record;
+        }
         /**
          * Output mapped field in the output with APIDOC format
          * @param $model
