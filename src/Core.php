@@ -1416,6 +1416,16 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
         }
 
         /**
+         * Set a config vars bases in an Array {"key":"value"}
+         * @param $data Array
+         */
+        public function bulkSet(Array $data)
+        {
+            foreach ($data as $key=>$item) {
+                $this->data[$key] = $item;
+            }
+        }
+        /**
          * Add a menu line
          * @param $var
          */
