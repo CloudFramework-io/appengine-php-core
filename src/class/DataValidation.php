@@ -308,7 +308,7 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
                 $options = explode(',',($this->extractOptionValue('range:',$options)));
                 $ok=true;
                 if(isset($options[0]) && strlen($options[0])) $ok = $data >= $options[0];
-                if($ok && isset($options[1]) && strlen($options[1])) $ok = $data >= $options[0];
+                if($ok && isset($options[1]) && strlen($options[1])) $ok = $data <= $options[0];
                 if(!$ok) {
                     $this->errorFields[] = ['key'=>$key,'method'=>__FUNCTION__,'options'=>$options,'data'=>$data];
                     return false;
