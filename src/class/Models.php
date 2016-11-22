@@ -104,11 +104,12 @@ if (!defined ("_Models_CLASS_") ) {
             if(!isset($this->models[$model]) || !is_array($this->models[$model]['mapping'])) return($this->addError("getSQLRecordToInsert. model ({$model}) does not exist os has a wrong structure."));
             $record = [];
             foreach ($this->models[$model]['mapping'] as $key=>$value) if($value['field']){
-                if (strpos($value['validation'], 'trigger') !== false ) continue;
-                if (strpos($value['validation'], 'key') !== false ) continue;
-                if (!isset($data[$key]) && strpos($value['validation'], 'optional') !== false ) continue;
+                if(preg_match('/(\||^)trigger(\||$)/',$value['validation'])) continue;
 
-                $record[$value['field']] = (strpos($value['validation'], 'internal') !== false)?null:$data[$key];
+                if(preg_match('/(\||^)key(\||$)/',$value['validation'])) continue;
+                if (!isset($data[$key]) && preg_match('/(\||^)optional(\||$)/',$value['validation']) ) continue;
+
+                $record[$value['field']] = (preg_match('/(\||^)internal(\||$)/',$value['validation']))?null:$data[$key];
             }
             return $record;
         }

@@ -164,7 +164,7 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
                 case "date": return $this->validateDate($data);
                 case "datetime": return $this->validateDateTime($data);
                 case "datetimeiso": return $this->validateDateTimeISO($data);
-                case "currency": return is_float($data);
+                case "currency": return is_numeric($data);
                 case "boolean": return is_bool($data);
                 case "array": return is_array($data);
                 case "list": return is_array($data);
