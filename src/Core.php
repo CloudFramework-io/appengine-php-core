@@ -1080,7 +1080,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
         function init($namespace = '')
         {
             if (strlen($namespace)) $this->namespace = $namespace;
-
+            $this->core->session->init();
             // LOGOUT with $_REQUEST paramter
 
             if (isset($_GET['_logout']) || isset($_POST['_logout'])) $this->core->session->delete("_User_" . $this->namespace);
@@ -2743,6 +2743,17 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             // Automatic send header for X-CLOUDFRAMEWORK-SECURITY if it is defined in config
             if (strlen($this->core->config->get("CloudServiceId")) && strlen($this->core->config->get("CloudServiceSecret")))
                 $options['http']['header'] .= 'X-CLOUDFRAMEWORK-SECURITY: ' . $this->generateCloudFrameWorkSecurityString($this->core->config->get("CloudServiceId"), microtime(true), $this->core->config->get("CloudServiceSecret")) . "\r\n";
+
+            // Add Server Key if we have it.
+            if (strlen($this->core->config->get("CloudServerKey")))
+                $options['http']['header'] .= 'X-SERVER-KEY: ' .$this->core->config->get("CloudServerKey"). "\r\n";
+
+            // Add Server Key if we have it.
+            if (strlen($this->core->config->get("X-DS-TOKEN")))
+                $options['http']['header'] .= 'X-DS-TOKEN: ' .$this->core->config->get("X-DS-TOKEN"). "\r\n";
+
+            if (strlen($this->core->config->get("X-EXTRA-INFO")))
+                $options['http']['header'] .= 'X-EXTRA-INFO: ' .$this->core->config->get("X-EXTRA-INFO"). "\r\n";
 
             // Extra Headers
             if ($extra_headers !== null && is_array($extra_headers)) {
