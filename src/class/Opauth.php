@@ -396,6 +396,13 @@ class OpauthStrategy{
      */
     public static function httpRequest($url, $options = null, &$responseHeaders = null){
         $context = null;
+
+        // Patch of ssl connections
+        $options['ssl'] =  array('verify_peer' => false);
+        $options['http']['ignore_errors'] = '1';
+        $options['http']['header'] = 'Connection: close' . "\r\n";
+
+        $context = stream_context_create($options);
         if (!empty($options) && is_array($options)){
             $context = stream_context_create($options);
         }

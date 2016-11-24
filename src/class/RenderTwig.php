@@ -263,6 +263,9 @@ if (!defined ("_RenderTwig_CLASS_") ) {
                 $function = new \Twig_SimpleFunction('getDataKey', function ($key) { return $this->core->getDataKey($key); });
                 $this->twig->addFunction($function);
 
+                $function = new \Twig_SimpleFunction('getAuthVar', function ($key) { return $this->core->user->getVar($key); });
+                $this->twig->addFunction($function);
+
                 $this->index = $index;
             }
             $this->core->__p->add('RenderTwig->setTwig: ', '', 'endnote');
