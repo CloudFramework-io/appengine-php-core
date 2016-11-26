@@ -18,7 +18,7 @@ if (!defined ("_Google_CLASS_") ) {
             $this->core = $core;
             if(!is_dir($this->core->system->root_path.'/vendor/google')) {
                 $this->addError('Missing Google Client libreries. Execute from your document root: php composer.phar require google/apiclient:^2.0');
-                $this->addError('You can find composer.phar from: https://getcomposer.org/composer.phar');
+                $this->addError('You can find composer.phar from: curl https://getcomposer.org/composer.phar');
                 $this->addError('You can reduce extra files and docs with: find vendor -type d -name tests  -exec rm -rf {} \;');
                 $this->addError('You can reduce extra files and docs with: find vendor -type d -name examples  -exec rm -rf {} \;');
                 $this->addError('You can reduce extra files and docs with: find vendor -type d -name doc  -exec rm -rf {} \;');
