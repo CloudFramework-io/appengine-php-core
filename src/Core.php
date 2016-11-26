@@ -79,7 +79,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
         public $user;
         public $config;
         public $localization;
-        var $_version = '20160522';
+        var $_version = '20161126';
         var $data = null;
 
         /**
