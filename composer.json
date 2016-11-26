@@ -1,5 +1,5 @@
 {
-  "name": "cloudframework/appengine-php-core",
+  "name": "cloudframework-io/appengine-php-core",
   "keywords": ["appengine", "google", "framework", "sql", "cloud datastore", "nosql","gae","cloudframwork"],
   "description": "php framework to develop API and Web applications optimized for Google Appengine",
   "minimum-stability": "dev",
