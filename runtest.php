@@ -17,9 +17,11 @@ if(true) {
 
     // $script[0] = string
 
-    if(!is_file($path.'/tests/'.$script[0].'.php')) die('Test not found: '.$path.'/tests/'.$script[0]."\n\n");
+    if(!is_file($path.'/tests/'.$script[0].'.php')) die('Test not found: '.$path.'/tests/'.$script[0]."\n\n Create it with:\n-------\n<?php\nclass Test extends Tests {\n\tfunction main() { }\n}\n-------\n\n");
+
     include_once $path.'/tests/'.$script[0].'.php';
     if(!class_exists('Test')) die($path.'/tests/'.$script[0].' does not include a "Class Test'."\n\n");
+
     /** @var Tests $test */
     $test = new Test($core);
     $test->params = $script;
