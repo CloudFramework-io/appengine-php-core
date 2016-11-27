@@ -10,7 +10,7 @@ class API extends RESTful
 			list($key,$value) = $this->core->security->getBasicAuth();
 			$showConfig =  $key=='SystemPassword' && $this->core->system->checkPassword($value,$this->core->config->get($key));
 		} else {
-			$this->setError('Require Basic Authentication');
+			$this->setErrorFromCodelib('security-error','Require Basic Authentication');
 		}
 
 		$check = [];

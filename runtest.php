@@ -29,6 +29,6 @@ if(true) {
 }
 
 $test->main();
-system("clear");
-echo $test->send(true,true,$argv);
+//system("clear");
+//echo $test->send(true,true,$argv);
 echo "\n\n";

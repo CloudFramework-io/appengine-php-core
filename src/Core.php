@@ -2883,15 +2883,14 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
         function getUrlHeaders($url,$format=0)
         {
             $url_info=parse_url($url);
-
             if (isset($url_info['scheme']) && $url_info['scheme'] == 'https') {
                 $port = 443;
-                $fp=fsockopen('ssl://'.$url_info['host'], $port, $errno, $errstr, 30);
+                $fp= @fsockopen('ssl://'.$url_info['host'], $port, $errno, $errstr, 30);
             } else {
                 $port = isset($url_info['port']) ? $url_info['port'] : 80;
-                $fp=fsockopen($url_info['host'], $port, $errno, $errstr, 30);
-            }
+                $fp = @fsockopen($url_info['host'], $port, $errno, $errstr, 30);
 
+            }
             if($fp)
             {
                 $head = "HEAD ".@$url_info['path']."?".@$url_info['query']." HTTP/1.0\r\nHost: ".@$url_info['host']."\r\n\r\n";
@@ -2926,6 +2925,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             }
             else
             {
+                $this->core->errors->add(error_get_last());
                 return false;
             }
         }
