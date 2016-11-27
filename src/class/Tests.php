@@ -10,6 +10,7 @@ if (!defined("_Tests_CLASS_")) {
         var $server=null;
         var $response = null;
         var $response_headers = null;
+        var $headers = [];
 
         function sendTerminal($info) {
             if(is_string($info)) echo $info;
@@ -41,7 +42,7 @@ if (!defined("_Tests_CLASS_")) {
         {
             if(!$this->server) $this->addError('Missing server. User $this->connects($server) first.');
             echo "   ** Test gets info from ".$this->server.$url."\n";
-            $this->response = $this->core->request->get($this->server.$url,$data,null,$raw);
+            $this->response = $this->core->request->get($this->server.$url,$data,$this->headers,$raw);
             if(!$this->response )
                 if($this->core->errors->lines) $this->addError("Error connecting  [{$this->core->errors->data[0]}]");
 
@@ -99,6 +100,18 @@ if (!defined("_Tests_CLASS_")) {
                 _printe($this->core->errors->data);
             }
             die();
+        }
+
+        function addsHeaders($headers) {
+            $i=0;
+            foreach ($headers as $key=>$header) {
+                if(strlen($header)) {
+                    echo ($i++)?", {$key}":"   [Adding header {$key}]";
+                    $this->headers[$key] = $header;
+                }
+            }
+            echo "\n";
+
         }
     }
 }
