@@ -159,60 +159,60 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                     // -----------------------
                     // Evaluating tests API cases
 
-                        // path to file
-                        if ($apifile[0] == '_' || $apifile == 'queue') {
-                            $pathfile = __DIR__ . "/api/h/{$apifile}.php";
-                            if (!file_exists($pathfile)) $pathfile = '';
-                        } else {
-                            // Every End-point inside the app has priority over the apiPaths
-                            $pathfile = $this->system->app_path . "/api/{$apifile}.php";
-                            if (!file_exists($pathfile)) {
-                                $pathfile = '';
-                                // pathAPI is deprecated..
-                                if (strlen($this->config->get('ApiPath')))
-                                    $pathfile = $this->config->get('ApiPath') . "/{$apifile}.php";
-                                elseif (strlen($this->config->get('pathAPI')))
-                                    $pathfile = $this->config->get('pathAPI') . "/{$apifile}.php";
-                            }
+                    // path to file
+                    if ($apifile[0] == '_' || $apifile == 'queue') {
+                        $pathfile = __DIR__ . "/api/h/{$apifile}.php";
+                        if (!file_exists($pathfile)) $pathfile = '';
+                    } else {
+                        // Every End-point inside the app has priority over the apiPaths
+                        $pathfile = $this->system->app_path . "/api/{$apifile}.php";
+                        if (!file_exists($pathfile)) {
+                            $pathfile = '';
+                            // pathAPI is deprecated..
+                            if (strlen($this->config->get('ApiPath')))
+                                $pathfile = $this->config->get('ApiPath') . "/{$apifile}.php";
+                            elseif (strlen($this->config->get('pathAPI')))
+                                $pathfile = $this->config->get('pathAPI') . "/{$apifile}.php";
                         }
-
-                        // IF NOT EXIST
-                        include_once __DIR__ . '/class/RESTful.php';
-
-                        try {
-                            if (strlen($pathfile)) {
-                                include_once $pathfile;
-                            }
-
-                            // By default the ClassName will be called API.. if the include set $api_class var, we will use that class name
-                            if(!isset($api_class)) $api_class = 'API';
-
-                            if (class_exists($api_class)) {
-                                $api = new $api_class($this);
-                                if ($api->params[0] == '__codes') {
-                                    $__codes = $api->codeLib;
-                                    foreach ($__codes as $key => $value) {
-                                        $__codes[$key] = $api->codeLibError[$key] . ', ' . $value;
-                                    }
-                                    $api->addReturnData($__codes);
-                                } else {
-                                    $api->main();
-                                }
-                                $this->__p->add("Executed RESTfull->main()", "/api/{$apifile}.php");
-                                $api->send();
-
-                            } else {
-                                $api = new RESTful($this);
-                                $api->setError("api $apifile does not include a {$api_class} class extended from RESTFul with method ->main()", 404);
-                                $api->send();
-                            }
-                        } catch (Exception $e) {
-                            $this->errors->add(error_get_last());
-                            $this->errors->add($e->getMessage());
-                        }
-                        $this->__p->add("API including RESTfull.php and {$apifile}.php: ", 'There are ERRORS');
                     }
-                    return false;
+
+                    // IF NOT EXIST
+                    include_once __DIR__ . '/class/RESTful.php';
+
+                    try {
+                        if (strlen($pathfile)) {
+                            include_once $pathfile;
+                        }
+
+                        // By default the ClassName will be called API.. if the include set $api_class var, we will use that class name
+                        if(!isset($api_class)) $api_class = 'API';
+
+                        if (class_exists($api_class)) {
+                            $api = new $api_class($this);
+                            if ($api->params[0] == '__codes') {
+                                $__codes = $api->codeLib;
+                                foreach ($__codes as $key => $value) {
+                                    $__codes[$key] = $api->codeLibError[$key] . ', ' . $value;
+                                }
+                                $api->addReturnData($__codes);
+                            } else {
+                                $api->main();
+                            }
+                            $this->__p->add("Executed RESTfull->main()", "/api/{$apifile}.php");
+                            $api->send();
+
+                        } else {
+                            $api = new RESTful($this);
+                            $api->setError("api $apifile does not include a {$api_class} class extended from RESTFul with method ->main()", 404);
+                            $api->send();
+                        }
+                    } catch (Exception $e) {
+                        $this->errors->add(error_get_last());
+                        $this->errors->add($e->getMessage());
+                    }
+                    $this->__p->add("API including RESTfull.php and {$apifile}.php: ", 'There are ERRORS');
+                }
+                return false;
             } // Take a LOOK in the menu
             elseif ($this->config->inMenuPath()) {
                 if (!empty($this->config->get('logic'))) {
@@ -2340,7 +2340,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
 
                 // If this localization file exists but the $code does not exist because the cache
                 if (isset($this->data[$locFile][$lang]) && !isset($this->data[$locFile][$lang][$code]) && !isset($this->files_readed[$locFile][$lang]) ) {
-                        // $this->readFromFile($locFile, $lang);
+                    // $this->readFromFile($locFile, $lang);
                 }
             }
 
@@ -2723,9 +2723,9 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             return $this->call($rute, $data, 'PUT', $extra_headers, $raw);
         }
 
-        function delete($rute, $data = null, $extra_headers = null, $raw = false)
+        function delete($rute, $extra_headers = null)
         {
-            return $this->call($rute, $data, 'DELETE', $extra_headers, $raw);
+            return $this->call($rute, null, 'DELETE', $extra_headers);
         }
 
         function call($rute, $data = null, $verb = 'GET', $extra_headers = null, $raw = false)
@@ -2777,7 +2777,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
 
 
             // Build contents received in $data as an array
-            if (is_array($data))
+            if (is_array($data)) {
                 if ($verb == 'GET') {
                     if (is_array($data)) {
                         if (strpos($rute, '?') === false) $rute .= '?';
@@ -2794,9 +2794,9 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                     }
                 } else {
                     if ($raw) {
-                        if (stripos($options['http']['header'], 'application/json') !== false)
+                        if (stripos($options['http']['header'], 'application/json') !== false) {
                             $build_data = json_encode($data);
-                        else
+                        } else
                             $build_data = $data;
                     } else {
                         $build_data = http_build_query($data);
@@ -2806,6 +2806,11 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                     // You have to calculate the Content-Length to run as script
                     //$options['http']['header'] .= sprintf('Content-Length: %d', strlen($build_data)) . "\r\n";
                 }
+            }
+            // Take data as a valid JSON
+            elseif(is_string($data)) {
+                if(is_array(json_decode($data,true))) $options['http']['content'] = $data;
+            }
 
             // Context creation
             $context = stream_context_create($options);

@@ -55,7 +55,7 @@ if (!defined("_Tests_CLASS_")) {
             echo "      cheks if response code is $code: ";
 
             if(strpos($this->response_headers[0]," {$code} ")===false) $this->addError('Failing checksIfResponseCodeIs. Response is: '.$this->response_headers[0]);
-            echo "\n";
+            echo "[OK]\n";
 
 
         }
