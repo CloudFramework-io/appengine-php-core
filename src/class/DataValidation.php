@@ -68,9 +68,9 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
                             continue;  // OK.. next
                         }else {
                             if(!key_exists($key,$data))
-                            $this->setError('Missing '.$extrakey.$key);
-                        else
-                            $this->setError('Empty value for '.$extrakey.$key);
+                                $this->setError('Missing '.$extrakey.$key);
+                            else
+                                $this->setError('Empty value for '.$extrakey.$key);
                         }
                     }
 
@@ -152,7 +152,7 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
                 case "float": if(strval(floatval($data))===strval($data)) $data=floatval($data);return is_float($data);
                 case "bit": if(strval(intval($data))===strval($data)) $data=intval($data);return ($data==0 || $data==1);
                 case "model": return is_array($data) && !empty($data);
-                case "json": return is_string($data) && is_array(json_decode($data,true));
+                case "json": if(is_array($data)) $data = json_encode($data);return is_string($data) && is_array(json_decode($data,true));
                 case "name": return $this->validateName($key,$data);
                 case "ip": return filter_var($data,FILTER_VALIDATE_IP);
                 case "url": return filter_var($data,FILTER_VALIDATE_URL);

@@ -90,8 +90,14 @@ if (!defined ("_Models_CLASS_") ) {
                 if (isset($this->models[$model]['mapping'][$key])
                     && $this->models[$model]['mapping'][$key]['field']
                     && (strpos($this->models[$model]['mapping'][$key]['validation'], 'internal') === false || strpos($this->models[$model]['mapping'][$key]['validation'], 'hidden') === false )
-                )
+                ) {
+
                     $record[$this->models[$model]['mapping'][$key]['field']] = $value;
+                    // If the record is an array (it is not supported in DB), let's convert it in JSON
+                    if(is_array($record[$this->models[$model]['mapping'][$key]['field']])) $record[$this->models[$model]['mapping'][$key]['field']]  = json_encode($record[$this->models[$model]['mapping'][$key]['field']] );
+                }
+
+
             }
             return $record;
         }
@@ -110,6 +116,9 @@ if (!defined ("_Models_CLASS_") ) {
                 if (!isset($data[$key]) && preg_match('/(\||^)optional(\||$)/',$value['validation']) ) continue;
 
                 $record[$value['field']] = (preg_match('/(\||^)internal(\||$)/',$value['validation']))?null:$data[$key];
+
+                // If the record is an array (it is not supported in DB), let's convert it in JSON
+                if(is_array($record[$value['field']] )) $record[$value['field']]  = json_encode($record[$value['field']] );
             }
             return $record;
         }

@@ -74,12 +74,14 @@ if (!defined("_RESTfull_CLASS_")) {
 
                 // raw data.
                 $input = file_get_contents("php://input");
+
                 if (strlen($input)) {
                     $this->formParams['_raw_input_'] = $input;
 
-                    if (is_object(json_decode($input))) {
-                        $input_array = json_decode($input, true);
-                    } elseif(strpos($input,"\n") === false && strpos($input,"=")) {
+                    // Try to parse as a JSON
+                    $input_array = json_decode($input, true);
+
+                    if(!is_array($input_array) && strpos($input,"\n") === false && strpos($input,"=")) {
                         parse_str($input, $input_array);
                     }
 
@@ -269,7 +271,7 @@ if (!defined("_RESTfull_CLASS_")) {
             return !$this->error;
         }
 
-        
+
 
 
 
@@ -330,7 +332,7 @@ if (!defined("_RESTfull_CLASS_")) {
         function sendHeaders()
         {
             if($this->core->is->terminal()) return;
-            
+
             $header = $this->getResponseHeader();
             if (strlen($header)) header($header);
             foreach ($this->extra_headers as $header) {
@@ -418,8 +420,8 @@ if (!defined("_RESTfull_CLASS_")) {
 
                     if($value['type']=='model') {
                         $this->addCodeLib($code.'-'.$key,$msg.' '.$key.'.',$error,$value['fields']);
+                    }
                 }
-            }
         }
 
 
