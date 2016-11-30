@@ -2941,6 +2941,17 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             $this->core->errors->add($value);
             $this->errorMsg[] = $value;
         }
+        public function getResponseHeader($key) {
+
+            if(is_array($this->responseHeaders))
+                foreach ($this->responseHeaders as $responseHeader)
+                    if(strpos($responseHeader,$key)!==false) {
+                        list($header_key,$content) = explode(':',$responseHeader,2);
+                        $content = trim($content);
+                        return $content;
+                    }
+            return null;
+        }
 
         function sendLog($type, $cat, $subcat, $title, $text = '', $email = '', $app = '', $interactive = false)
         {
