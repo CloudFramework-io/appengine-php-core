@@ -79,7 +79,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
         public $user;
         public $config;
         public $localization;
-        var $_version = '20161126';
+        var $_version = '20161202';
         var $data = null;
 
         /**
@@ -2733,7 +2733,9 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             $rute = $this->getServiceUrl($rute);
             $this->responseHeaders = null;
 
-            $this->core->__p->add('Request->get: ', "$rute " . (($data === null) ? '{no params}' : '{with params}'), 'note');
+            syslog(LOG_INFO,"request {$verb} {$rute} ".(($data === null) ? '{no params}' : '{with params}'));
+
+            $this->core->__p->add("Request->{$verb}: ", "$rute " . (($data === null) ? '{no params}' : '{with params}'), 'note');
             // Performance for connections
             $options = array('ssl' => array('verify_peer' => false));
             $options['http']['ignore_errors'] = '1';
@@ -2845,8 +2847,9 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                 $this->addError($e->getMessage());
             }
 
+            syslog(($this->error)?LOG_DEBUG:LOG_INFO,"end request {$verb} {$rute} ".(($data === null) ? '{no params}' : '{with params}'));
 
-            $this->core->__p->add('Request->get: ', '', 'endnote');
+            $this->core->__p->add("Request->{$verb}: ", '', 'endnote');
             return ($ret);
         }
 
