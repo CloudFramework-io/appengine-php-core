@@ -625,7 +625,6 @@ if (!defined("_RESTfull_CLASS_")) {
             // IF THE CALL comes from a queue then LOG the result to facilitate the debud
             if($this->formParams['cloudframework_queued'] && !strpos($this->core->system->url['url'],'/queue/')) {
                 $this->core->logs->add('RESULT FROM QUEUE', $ret, LOG_DEBUG);
-                syslog(LOG_DEBUG,$this->getRequestHeader());
             }
 
             // ending script
