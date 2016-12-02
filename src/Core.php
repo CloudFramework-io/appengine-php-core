@@ -1722,6 +1722,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                     case "true":
                         $ret = trim(strtolower($tagcode))=='true';
                         break;
+
                     default:
                         $this->core->errors->add('unknown tag: |' . $tagcode . '|');
                         break;
@@ -1739,7 +1740,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
          */
         private function isAssignationTag($tag)
         {
-            $tags = ["webapp", "set", "include", "redirect", "menu"];
+            $tags = ["webapp", "set", "include", "redirect", "menu","coreversion"];
             return in_array(strtolower($tag), $tags);
         }
 
@@ -1803,7 +1804,11 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                         $this->core->errors->add("menu: tag does not contain an array");
                     }
                     break;
-
+                case "coreversion":
+                    if($this->core->_version!= $vars) {
+                        die("config var 'CoreVersion' is '{$vars}' and the current cloudframework version is {$this->core->_version}. Please update the framework");
+                    }
+                    break;
                 default:
                     $this->core->errors->add('unknown tag: |' . $tagcode . '|');
                     break;
