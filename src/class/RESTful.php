@@ -595,7 +595,6 @@ if (!defined("_RESTfull_CLASS_")) {
                 syslog(LOG_ERR, 'CloudFramework RESTFul: '. json_encode($this->core->errors->data,JSON_FORCE_OBJECT));
             }
 
-
             $this->sendHeaders();
             $this->core->__p->add("RESTFull: ", '', 'endnote');
             switch ($this->contentTypeReturn) {
@@ -622,6 +621,13 @@ if (!defined("_RESTfull_CLASS_")) {
                     break;
             }
 
+
+            // IF THE CALL comes from a queue then LOG the result to facilitate the debud
+            if($this->formParams['cloudframework_queued'] && !strpos($this->core->system->url['url'],'/queue/')) {
+                $this->core->logs->add('RESULT FROM QUEUE', $ret, LOG_DEBUG);
+                syslog(LOG_DEBUG,$this->getRequestHeader());
+            }
+
             // ending script
             if($return) return $ret;
             else {
@@ -641,6 +647,15 @@ if (!defined("_RESTfull_CLASS_")) {
         {
             $ret = array();
             foreach ($_SERVER as $key => $value) if (strpos($key, 'HTTP_') === 0) {
+                $ret[str_replace('HTTP_', '', $key)] = $value;
+            }
+            return ($ret);
+        }
+
+        function getHeadersToResend()
+        {
+            $ret = array();
+            foreach ($_SERVER as $key => $value) if (strpos($key, 'HTTP_X_') === 0) {
                 $ret[str_replace('HTTP_', '', $key)] = $value;
             }
             return ($ret);

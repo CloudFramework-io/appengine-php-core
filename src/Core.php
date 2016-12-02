@@ -79,7 +79,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
         public $user;
         public $config;
         public $localization;
-        var $_version = '20161202';
+        var $_version = '20161202b';
         var $data = null;
 
         /**
@@ -518,6 +518,11 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
 
         function getRequestFingerPrint($extra = '')
         {
+            // Return the fingerprint coming from a queue
+            if (isset($_REQUEST['cloudframework_queued_fingerprint'])) {
+                return (json_decode($_REQUEST['cloudframework_queued_fingerprint'], true));
+            }
+
             $ret['ip'] = $this->ip;
             $ret['user_agent'] = $_SERVER['HTTP_USER_AGENT'];
             $ret['host'] = $_SERVER['HTTP_HOST'];
@@ -2546,6 +2551,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
         public $errorMsg = [];
         private $curl = [];
         var $rawResult = '';
+        var $automaticHeaders = true; // Add automatically the following headers if exist on config: X-CLOUDFRAMEWORK-SECURITY, X-SERVER-KEY, X-SERVER-KEY, X-DS-TOKEN,X-EXTRA-INFO
 
         function __construct(Core &$core)
         {
@@ -2746,22 +2752,22 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             $options['http']['ignore_errors'] = '1';
             $options['http']['header'] = 'Connection: close' . "\r\n";
 
+            if($this->automaticHeaders) {
+                // Automatic send header for X-CLOUDFRAMEWORK-SECURITY if it is defined in config
+                if (strlen($this->core->config->get("CloudServiceId")) && strlen($this->core->config->get("CloudServiceSecret")))
+                    $options['http']['header'] .= 'X-CLOUDFRAMEWORK-SECURITY: ' . $this->generateCloudFrameWorkSecurityString($this->core->config->get("CloudServiceId"), microtime(true), $this->core->config->get("CloudServiceSecret")) . "\r\n";
 
-            // Automatic send header for X-CLOUDFRAMEWORK-SECURITY if it is defined in config
-            if (strlen($this->core->config->get("CloudServiceId")) && strlen($this->core->config->get("CloudServiceSecret")))
-                $options['http']['header'] .= 'X-CLOUDFRAMEWORK-SECURITY: ' . $this->generateCloudFrameWorkSecurityString($this->core->config->get("CloudServiceId"), microtime(true), $this->core->config->get("CloudServiceSecret")) . "\r\n";
+                // Add Server Key if we have it.
+                if (strlen($this->core->config->get("CloudServerKey")))
+                    $options['http']['header'] .= 'X-SERVER-KEY: ' . $this->core->config->get("CloudServerKey") . "\r\n";
 
-            // Add Server Key if we have it.
-            if (strlen($this->core->config->get("CloudServerKey")))
-                $options['http']['header'] .= 'X-SERVER-KEY: ' .$this->core->config->get("CloudServerKey"). "\r\n";
+                // Add Server Key if we have it.
+                if (strlen($this->core->config->get("X-DS-TOKEN")))
+                    $options['http']['header'] .= 'X-DS-TOKEN: ' . $this->core->config->get("X-DS-TOKEN") . "\r\n";
 
-            // Add Server Key if we have it.
-            if (strlen($this->core->config->get("X-DS-TOKEN")))
-                $options['http']['header'] .= 'X-DS-TOKEN: ' .$this->core->config->get("X-DS-TOKEN"). "\r\n";
-
-            if (strlen($this->core->config->get("X-EXTRA-INFO")))
-                $options['http']['header'] .= 'X-EXTRA-INFO: ' .$this->core->config->get("X-EXTRA-INFO"). "\r\n";
-
+                if (strlen($this->core->config->get("X-EXTRA-INFO")))
+                    $options['http']['header'] .= 'X-EXTRA-INFO: ' . $this->core->config->get("X-EXTRA-INFO") . "\r\n";
+            }
             // Extra Headers
             if ($extra_headers !== null && is_array($extra_headers)) {
                 foreach ($extra_headers as $key => $value) {
