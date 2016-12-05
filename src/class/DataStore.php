@@ -432,7 +432,7 @@ if (!defined ("_DATASTORE_CLASS_") ) {
             if ($this->error) return false;
             $this->core->__p->add('fetch: ', $type . ' fields:' . $fields . ' where:' . $where . ' order:' . $order . ' limit:' . $limit, 'note');
             $ret = [];
-            if (!strlen($fields)) $fields = '*';
+            if (!is_string($fields) || !strlen($fields)) $fields = '*';
             if (!strlen($limit)) $limit = $this->limit;
 
             // FIX when you work on a local environment
