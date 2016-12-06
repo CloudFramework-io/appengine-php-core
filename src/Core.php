@@ -1991,13 +1991,14 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             return $this->getHeader('X-SERVER-KEY');
         }
 
-        function checkServerKey($keys)
+        function checkServerKey($keys=null)
         {
             // If I don't have the credentials in keys I try to check if CLOUDFRAMEWORK-SERVER-KEYS is defined.
             if (null === $keys) {
                 $keys = $this->core->config->get('CLOUDFRAMEWORK-SERVER-KEYS');
                 if (!is_array($keys)) return false;
             }
+
 
             if (!is_array($keys)) $keys = [[$keys, '*']];
             else if (!is_array($keys[0])) $keys = [$keys];
@@ -2006,8 +2007,9 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             if (strlen($web_key))
                 foreach ($keys as $key) {
                     if ($key[0] == $web_key) {
+
                         if (!isset($key[1])) $key[1] = "*";
-                        if ($key[1] == '*') return true;
+                        if ($key[1] == '*') return $key;
                         else return $this->checkIPs($key[1]);
                     }
                 }
