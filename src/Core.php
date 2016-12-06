@@ -2745,6 +2745,9 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             $this->rawResult = $this->get($rute, $data, $extra_headers, $raw);
             $ret = json_decode($this->rawResult, true);
             if (JSON_ERROR_NONE === json_last_error()) $this->rawResult = '';
+            else {
+                $ret = ['error'=>$this->rawResult];
+            }
             return $ret;
         }
 
@@ -2753,6 +2756,9 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             $this->rawResult = $this->post($rute, $data, $extra_headers, $raw);
             $ret = json_decode($this->rawResult, true);
             if (JSON_ERROR_NONE === json_last_error()) $this->rawResult = '';
+            else {
+                $ret = ['error'=>$this->rawResult];
+            }
             return $ret;
         }
 
@@ -2761,6 +2767,9 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             $this->rawResult = $this->put($rute, $data, $extra_headers, $raw);
             $ret = json_decode($this->rawResult, true);
             if (JSON_ERROR_NONE === json_last_error()) $this->rawResult = '';
+            else {
+                $ret = ['error'=>$this->rawResult];
+            }
             return $ret;
         }
 

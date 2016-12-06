@@ -16,7 +16,7 @@ if (!defined ("_Google_CLASS_") ) {
         var $client_secret;
         var $scope;
 
-        function __construct(Core &$core)
+        function __construct(Core &$core,$type='installed')
         {
             $this->core = $core;
             if(!is_dir($this->core->system->root_path.'/vendor/google')) {
@@ -27,11 +27,10 @@ if (!defined ("_Google_CLASS_") ) {
 
                 // Read id and secret based on installed credentials
                 $client_secret = $this->core->config->get('Google_Client');
-                if(isset($client_secret['installed'])) {
-                    $this->client_id = $client_secret['installed']['client_id'];
-                    $this->client_secret = $client_secret['installed']['client_secret'];
+                if(isset($client_secret[$type])) {
+                    $this->client_id = $client_secret[$type]['client_id'];
+                    $this->client_secret = $client_secret[$type]['client_secret'];
                 }
-
                 // Read scope
                 if(isset($client_secret['scope'])) {
                     $this->scope = $client_secret['scope'];
@@ -43,6 +42,10 @@ if (!defined ("_Google_CLASS_") ) {
                     require_once $this->core->system->root_path . '/vendor/autoload.php';
                     $this->client = new Google_Client();
                     $this->client->setApplicationName('GoogleCloudFrameWork');
+                    
+                    if($type=='installed') unset($client_secret['web']);
+                    if($type=='web') unset($client_secret['installed']);
+
                     $this->client->setAuthConfig($client_secret);
                 }
             }
