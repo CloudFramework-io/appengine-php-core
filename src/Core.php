@@ -1938,7 +1938,6 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
          */
         function existWebKey()
         {
-
             return (isset($_GET['web_key']) || isset($_POST['web_key']) || strlen($this->getHeader('X-WEB-KEY')));
         }
 
@@ -1984,16 +1983,22 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
 
         function existServerKey()
         {
-            return (strlen($this->getHeader('X-CLOUDFRAMEWORK-SERVER-KEY')) > 0);
+            return (strlen($this->getHeader('X-SERVER-KEY')) > 0);
         }
 
         function getServerKey()
         {
-            return $this->getHeader('X-CLOUDFRAMEWORK-SERVER-KEY');
+            return $this->getHeader('X-SERVER-KEY');
         }
 
         function checkServerKey($keys)
         {
+            // If I don't have the credentials in keys I try to check if CLOUDFRAMEWORK-SERVER-KEYS is defined.
+            if (null === $keys) {
+                $keys = $this->core->config->get('CLOUDFRAMEWORK-SERVER-KEYS');
+                if (!is_array($keys)) return false;
+            }
+
             if (!is_array($keys)) $keys = [[$keys, '*']];
             else if (!is_array($keys[0])) $keys = [$keys];
             $web_key = $this->getServerKey();
@@ -2003,7 +2008,6 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                     if ($key[0] == $web_key) {
                         if (!isset($key[1])) $key[1] = "*";
                         if ($key[1] == '*') return true;
-                        elseif (!strlen($_SERVER['HTTP_ORIGIN'])) return false;
                         else return $this->checkIPs($key[1]);
                     }
                 }
@@ -2272,6 +2276,45 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             }
             return $ret;
 
+        }
+
+        function encrypt($text) {
+            $key = ($this->core->config->get('EncryptPassword'))?:'XWER$T;(6tg';
+            $iv = mcrypt_create_iv(
+                mcrypt_get_iv_size(MCRYPT_RIJNDAEL_128, MCRYPT_MODE_CBC),
+                MCRYPT_DEV_URANDOM
+            );
+
+            return  base64_encode(
+                $iv .
+                mcrypt_encrypt(
+                    MCRYPT_RIJNDAEL_128,
+                    hash('sha256', $key, true),
+                    $text,
+                    MCRYPT_MODE_CBC,
+                    $iv
+                )
+            );
+        }
+
+        function decrypt($text) {
+
+            if(strlen($text)<22) return null;
+
+            $key = ($this->core->config->get('EncryptPassword'))?:'XWER$T;(6tg';
+            $data = base64_decode($text);
+            $iv = substr($data, 0, mcrypt_get_iv_size(MCRYPT_RIJNDAEL_128, MCRYPT_MODE_CBC));
+
+            return rtrim(
+                mcrypt_decrypt(
+                    MCRYPT_RIJNDAEL_128,
+                    hash('sha256', $key, true),
+                    substr($data, mcrypt_get_iv_size(MCRYPT_RIJNDAEL_128, MCRYPT_MODE_CBC)),
+                    MCRYPT_MODE_CBC,
+                    $iv
+                ),
+                "\0"
+            );
         }
     }
 

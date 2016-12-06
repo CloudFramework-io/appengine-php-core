@@ -1,7 +1,7 @@
 <?php
 class API extends RESTful
 {
-
+    /** @var  Google */
     var $google;
 
     function main()
@@ -66,7 +66,7 @@ class API extends RESTful
                 $this->addReturnData(['valid-end-points'=>[
                     '/generate_token'
                     ,'/generate_access_token?token={token}'
-                    ,'/test_access_token'
+                    ,'/test'
                 ]]);
             }
         }
