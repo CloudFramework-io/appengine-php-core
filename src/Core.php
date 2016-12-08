@@ -15,6 +15,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
      */
     function __print($args)
     {
+        $ret = "";
         if (key_exists('PWD', $_SERVER)) echo "\n";
         else echo "<pre>";
         for ($i = 0, $tr = count($args); $i < $tr; $i++) {

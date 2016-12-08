@@ -370,7 +370,7 @@ if (!defined ("_DATASTORE_CLASS_") ) {
             /* @var $dv DataValidation */
             $dv = $this->core->loadClass('DataValidation');
             if(!$dv->validateModel($this->schema['props']['__model'],$entity,$dictionaries,$all)) {
-                $this->setError('Error validating Data in Model.: {'.$dv->field.'}. '.$dv->errorMsg);
+                $this->setError($this->entity_name.': error validating Data in Model.: {'.$dv->field.'}. '.$dv->errorMsg);
             }
 
             return ($entity);
