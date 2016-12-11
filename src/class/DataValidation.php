@@ -124,7 +124,6 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
                     else $data = preg_replace("/$regex/",'',$data);
                 }
             }
-
             if( strpos($options,'toarray:')!==false && !is_array($data) && is_string($data)) {
                 $sep = $this->extractOptionValue('toarray:',$options);
                 if(strlen($data))
@@ -327,14 +326,25 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
             return true;
         }
 
-        public function validateRegexMatch($key,$options,$data) {
+        /**
+         * Validate if the content match with a regex expresion
+         * @param $key
+         * @param $options
+         * @param $data
+         * @return bool|int
+         */
+        public function validateRegexMatch($key, $options, $data) {
             if(strlen($options) && strpos($options,'regex_match')!==false){
                 $regex = $this->extractOptionValue('regex_match:',$options);
                 if(strlen($regex)) {
-                    if (!is_array($data)) return preg_match('/^(['.$regex.'])+$/i', trim($data));
-                    foreach ($data as $item) {
-                        if (!preg_match('/^(['.$regex.'])+$/i', trim($data))) {
-                            $this->errorFields[] = ['key'=>$key,'method'=>__FUNCTION__,'data'=>$data];
+                    if (is_string($data)) {
+                        if (!preg_match('/'.$regex.'/', trim($data))) {
+                            $this->errorFields[] = ['key'=>$key,'method'=>__FUNCTION__,'regex'=>$regex];
+                            return false;
+                        }
+                    } else foreach ($data as $item) {
+                        if (!preg_match('/'.$regex.'/', trim($item))) {
+                            $this->errorFields[] = ['key'=>$key,'method'=>__FUNCTION__,'regex'=>$regex];
                             return false;
                         }
                     }

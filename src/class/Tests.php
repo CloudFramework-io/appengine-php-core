@@ -19,7 +19,7 @@ if (!defined("_Tests_CLASS_")) {
         }
 
         function wants($wish) {
-            $this->sendTerminal('** This test wants '.$wish);
+            $this->sendTerminal("\n".'** This test wants '.$wish);
         }
 
         function prompts($title,$default=null) {
@@ -50,14 +50,25 @@ if (!defined("_Tests_CLASS_")) {
 
         }
 
+        function posts($url,$data=null,$raw=false)
+        {
+            if(!$this->server) $this->addError('Missing server. User $this->connects($server) first.');
+            echo "   ** Test posts info into ".$this->server.$url."\n";
+            $this->response = $this->core->request->post($this->server.$url,$data,$this->headers,$raw);
+            if(!$this->response )
+                if($this->core->errors->lines) $this->addError("Error connecting  [{$this->core->errors->data[0]}]");
+
+            $this->response_headers = $this->core->request->responseHeaders;
+
+        }
+
         function checksIfResponseCodeIs($code) {
             if(!$this->response) $this->addError('Missing response. User $this->(gets/posts/puts/deletes) first.');
             echo "      cheks if response code is $code: ";
 
             if(strpos($this->response_headers[0]," {$code} ")===false) $this->addError('Failing checksIfResponseCodeIs. Response is: '.$this->response_headers[0]);
             echo "[OK]\n";
-
-
+            return(!$this->error);
         }
 
         function checksIfResponseContainsJSON($json) {
@@ -79,7 +90,7 @@ if (!defined("_Tests_CLASS_")) {
             if(recursiveCheck($response,$json)) echo " [OK]";
             else $this->addError('Failing checksIfResponseContainsJSON.');
             echo "\n";
-
+            return(!$this->error);
         }
 
 
@@ -92,6 +103,7 @@ if (!defined("_Tests_CLASS_")) {
                 if(strpos($this->response,$item)===false) $this->addError('Failing check.');
             }
             echo " [OK]\n";
+            return(!$this->error);
         }
 
         function addError($error) {
@@ -105,10 +117,8 @@ if (!defined("_Tests_CLASS_")) {
         function addsHeaders($headers) {
             $i=0;
             foreach ($headers as $key=>$header) {
-                if(strlen($header)) {
-                    echo ($i++)?", {$key}":"   [Adding header {$key}]";
+                    echo ($i++)?", {$key}":"   [Adding header {$key} and value {$header}]";
                     $this->headers[$key] = $header;
-                }
             }
             echo "\n";
 

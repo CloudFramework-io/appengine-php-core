@@ -273,16 +273,40 @@ if (!defined("_RESTfull_CLASS_")) {
         }
 
 
-
-
-
-
-        function checkMandatoryParam($pos, $msg = '',$values = [],$code=null)
+        /**
+         * Validate that a specific parameter exist: /{end-point}/parameter[0]/parameter[1]/parameter[2]/..
+         * @param $pos
+         * @param string $msg
+         * @param array $validation
+         * @param null $code
+         * @return bool
+         */
+        function checkMandatoryParam($pos, $msg = '', $validation = [], $code=null)
         {
-            if (!strlen($this->params[$pos]) || (is_array($values) && count($values) && !in_array($this->params[$pos], $values)) ) {
-                if(!empty($code)) $this->setErrorFromCodelib($code,($msg == '') ? 'param ' . $pos . ' is mandatory' : $msg);
-                else $this->setError(($msg == '') ? 'param ' . $pos . ' is mandatory' : $msg);
+            $this->params[$pos] = trim($this->params[$pos]); // TRIM
+            $error = strlen($this->params[$pos])==0;         // If empty error
+
+            // Validation by array values
+            if (!$error &&  (is_array($validation) && count($validation) && !in_array($this->params[$pos], $validation)) )  $error = true;
+
+            // Validation by string of validation
+            if(!$error &&  is_string($validation) && strlen($validation)) {
+                /* @var $dv DataValidation */
+                $dv = $this->core->loadClass('DataValidation');
+                $model = ["params[$pos]"=>['type'=>'string','validation'=>$validation]];
+                $data = ["params[$pos]"=>$this->params[$pos]];
+                if(!$dv->validateModel($model,$data)) {
+                    $msg .= '. Validation error: '.$dv->errorMsg.' ['.$validation.']';
+                    $error = true;
+                }
             }
+            // Generate Error
+            if($error) {
+                if(empty($code)) $code='params-error';
+                $this->setErrorFromCodelib($code,($msg == '') ? 'param ' . $pos . ' is mandatory' : $msg);
+            }
+
+            // Return
             return (!$this->error);
         }
 
