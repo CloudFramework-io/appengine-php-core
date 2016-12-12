@@ -12,41 +12,48 @@ if (!defined ("_Google_CLASS_") ) {
         var $error = false;
         var $errorMsg = [];
         var $client;
-        var $client_id;
         var $client_secret;
         var $scope;
 
         function __construct(Core &$core,$type='installed')
         {
+            if(!$type) $type='installed';
+
             $this->core = $core;
             if(!is_dir($this->core->system->root_path.'/vendor/google')) {
                 $this->addError('Missing Google Client libreries. Execute from your document root: php composer.phar require google/apiclient:^2.0');
                 $this->addError('You can find composer.phar from: curl https://getcomposer.org/composer.phar');
             } else {
-                $client_secret = $this->core->config->get('Google_Client');
+                require_once $this->core->system->root_path . '/vendor/autoload.php';
+                $this->client = new Google_Client();
+                $this->client->setApplicationName('GoogleCloudFrameWork');
 
                 // Read id and secret based on installed credentials
-                $client_secret = $this->core->config->get('Google_Client');
-                if(isset($client_secret[$type])) {
-                    $this->client_id = $client_secret[$type]['client_id'];
-                    $this->client_secret = $client_secret[$type]['client_secret'];
-                }
-                // Read scope
-                if(isset($client_secret['scope'])) {
-                    $this->scope = $client_secret['scope'];
-                }
-
-                if(!is_array($client_secret)) {
+                $this->client_secret = $this->core->config->get('Google_Client');
+                if(!is_array($this->client_secret))
                     $this->addError('Missing Google_Client config var with the credentials from Google. Get JSON OAUTH 2.0 credentials file from: https://console.developers.google.com/apis/credentials');
-                } else {
-                    require_once $this->core->system->root_path . '/vendor/autoload.php';
-                    $this->client = new Google_Client();
-                    $this->client->setApplicationName('GoogleCloudFrameWork');
-                    
-                    if($type=='installed') unset($client_secret['web']);
-                    if($type=='web') unset($client_secret['installed']);
+                else {
+                    if(!isset($this->client_secret[$type])) {
+                        if($type=='developer') $type.=' config var for API';
+                        else $type.=' config array for Oauth 2.0 client ID';
+                        $this->addError("Missing Google_Client:{$type} Key. Go to https://console.cloud.google.com/apis/credentials and specify the right credentials");
+                    } else {
+                        switch ($type) {
+                            case "web":
+                                $this->client->setAuthConfig(['web'=>$this->client_secret['web']]);
+                                break;
+                            case "installed":
+                                $this->client->setAuthConfig(['installed'=>$this->client_secret['installed']]);
+                                break;
+                            case "developer":
+                                $this->client->setDeveloperKey($this->client_secret['developer']);
+                                break;
+                            default:
+                                die('Wrong Google $type credentials');
+                                break;
 
-                    $this->client->setAuthConfig($client_secret);
+                        }
+                    }
                 }
             }
         }
