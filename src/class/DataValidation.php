@@ -342,7 +342,7 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
                             $this->errorFields[] = ['key'=>$key,'method'=>__FUNCTION__,'regex'=>$regex];
                             return false;
                         }
-                    } else foreach ($data as $item) {
+                    } elseif(is_array($data)) foreach ($data as $item) {
                         if (!preg_match('/'.$regex.'/', trim($item))) {
                             $this->errorFields[] = ['key'=>$key,'method'=>__FUNCTION__,'regex'=>$regex];
                             return false;
