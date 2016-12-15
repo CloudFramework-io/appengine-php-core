@@ -2616,7 +2616,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             if (strpos($path, 'http') === 0) return $path;
             else {
                 if (!$this->core->config->get("CloudServiceUrl"))
-                    $this->core->config->set("CloudServiceUrl", 'https://cloud.adnbp.com/h/api');
+                    $this->core->config->set("CloudServiceUrl", 'https://cloudframework.io/h/api');
 
                 $this->http = $this->core->config->get("CloudServiceUrl");
 

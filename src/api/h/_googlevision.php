@@ -1,4 +1,7 @@
 <?php
+
+// Info: https://cloud.google.com/vision/reference/rest/v1
+
 class API extends RESTful
 {
     /** @var  Google */
@@ -8,32 +11,137 @@ class API extends RESTful
     {
         $this->checkMethod('GET');
         /** @var Google $this->google */
-        $this->google = $this->core->loadClass('Google');
+        $this->google = $this->core->loadClass('Google','developer');
         if($this->google->error) {
             $this->setErrorFromCodelib('system-error');
             $this->core->errors->add($this->google->errorMsg);
         } else {
-            // STEP 0.. Generate a token
-            if($this->params[0]=='generate_token') {
-                $this->google->client->setAccessType('offline');
-                $this->google->client->setScopes(Google_Service_Drive::DRIVE);
-                $this->addReturnData(['url_generate_token' => $this->google->client->createAuthUrl()]);
+
+            $optParams = [];
+            $gcsurl = 'gs://cloudframework-public/api-vision/face.jpg';
+            $this->google->client->setScopes([Google_Service_Vision::CLOUD_PLATFORM]);
+
+            $service = new Google_Service_Vision($this->google->client);
+            $body = new Google_Service_Vision_BatchAnnotateImagesRequest();
+
+            $features = [];
+
+            $feature = new Google_Service_Vision_Feature();
+            $feature->setType('FACE_DETECTION');
+            $feature->setMaxResults(100);
+            $features[] = $feature;
+
+            $feature = new Google_Service_Vision_Feature();
+            $feature->setType('LANDMARK_DETECTION');
+            $feature->setMaxResults(100);
+            $features[] = $feature;
+
+            $feature = new Google_Service_Vision_Feature();
+            $feature->setType('LOGO_DETECTION');
+            $feature->setMaxResults(100);
+            $features[] = $feature;
+
+            $feature = new Google_Service_Vision_Feature();
+            $feature->setType('LABEL_DETECTION');
+            $feature->setMaxResults(100);
+            $features[] = $feature;
+
+            $feature = new Google_Service_Vision_Feature();
+            $feature->setType('TEXT_DETECTION');
+            $feature->setMaxResults(100);
+            $features[] = $feature;
+
+            $feature = new Google_Service_Vision_Feature();
+            $feature->setType('SAFE_SEARCH_DETECTION');
+            $feature->setMaxResults(100);
+            $features[] = $feature;
+
+            $feature = new Google_Service_Vision_Feature();
+            $feature->setType('IMAGE_PROPERTIES');
+            $feature->setMaxResults(100);
+            $features[] = $feature;
+
+
+            $src = new Google_Service_Vision_ImageSource();
+            $src->setGcsImageUri($gcsurl);
+            $image = new Google_Service_Vision_Image();
+            $image->setSource($src);
+
+
+            $payload = new Google_Service_Vision_AnnotateImageRequest();
+            $payload->setFeatures($features);
+            $payload->setImage($image);
+
+            $body->setRequests([$payload]);
+
+            /** @var $res \Google_Service_Vision_BatchAnnotateImagesResponse */
+            try {
+                $res = $service->images->annotate($body, $optParams);
+            } catch (Exception $e) {
+                echo 'Excepción capturada: ',  $e->getMessage(), "\n";
             }
-            // STEP 1.. Generate an access_token and refresh_token
-            elseif($this->params[0]=='generate_access_token') {
-              if(!$this->checkMandatoryFormParam('token')) return;
-                $this->addReturnData($this->google->client->fetchAccessTokenWithAuthCode($this->formParams['token']));
+
+            /** @var Google_Service_Vision_AnnotateImageResponse $item */
+            foreach ($res->getResponses() as $item) {
+
+                //_printe($item->toSimpleObject());
+                /** @var Google_Service_Vision_FaceAnnotation $faceAnnotation */
+                foreach ($item->getFaceAnnotations() as $faceAnnotation) {
+                    $ret['faceAnnotations'][] = ['confidence'=>$faceAnnotation->detectionConfidence
+                        ,'joy'=>$faceAnnotation->joyLikelihood
+                        ,'sorrow'=>$faceAnnotation->sorrowLikelihood
+                        ,'anger'=>$faceAnnotation->angerLikelihood
+                        ,'surpise'=>$faceAnnotation->surpriseLikelihood
+                        ,'exposed'=>$faceAnnotation->underExposedLikelihood
+                        ,'blurred'=>$faceAnnotation->blurredLikelihood
+                        ,'headWear'=>$faceAnnotation->headwearLikelihood
+                        ,'rollAngle'=>$faceAnnotation->rollAngle
+                        ,'tiltAngle'=>$faceAnnotation->tiltAngle
+                        ,'panAngle'=>$faceAnnotation->panAngle
+
+                    ];
+                }
+
+                /** @var Google_Service_Vision_EntityAnnotation $landmarkAnnotation */
+                foreach ($item->getLandmarkAnnotations() as $landmarkAnnotation) {
+                    $ret['landmarkAnnotations'][] = ['description'=>$landmarkAnnotation->description,'score'=>$landmarkAnnotation->score];
+                }
+
+                /** @var Google_Service_Vision_EntityAnnotation $logoAnnotation */
+                foreach ($item->getLogoAnnotations() as $logoAnnotation) {
+                    $ret['logoAnnotations'][] = ['description'=>$logoAnnotation->description,'score'=>$logoAnnotation->score];
+                }
+
+                /** @var Google_Service_Vision_EntityAnnotation $labelAnnotation */
+                foreach ($item->getLabelAnnotations() as $labelAnnotation) {
+                    $ret['labelAnnotations'][] = ['description'=>$labelAnnotation->description,'score'=>$labelAnnotation->score];
+                }
+
+                /** @var Google_Service_Vision_EntityAnnotation $text */
+                foreach ($item->getTextAnnotations() as $text) {
+                    $ret['textAnnotations'][] = ['description'=>$text->description,'score'=>$text->score];
+                }
+
+                /** @var Google_Service_Vision_SafeSearchAnnotation $safe */
+                $safe = $item->getSafeSearchAnnotation();
+                if($safe) $ret['safeSearchAnnotation'][] = ['adult'=>$safe->getAdult(),'spoof'=>$safe->getSpoof(),'medical'=>$safe->getMedical(),'violence'=>$safe->getViolence()];
+
+                /** @var Google_Service_Vision_ImageProperties $image */
+                $image = $item->getImagePropertiesAnnotation();
+                if($image) {
+                    /** @var  Google_Service_Vision_ColorInfo $dominantColor */
+                    foreach ($image->getDominantColors() as $dominantColor) {
+                        /** @var  Google_Service_Vision_Color $color */
+                        $color = $dominantColor->getColor();
+                        $colors[] = ['color'=>[$color->getRed(),$color->getGreen(),$color->getBlue(),$color->getAlpha()],'score'=>$dominantColor->score];
+                    }
+                    if($safe) $ret['imageProperties'][] = ['colors'=>$colors];
+
+                }
+
             }
-            // STEP 2
-            elseif($this->params[0]=='test') {
-                return($this->test());
-            } else {
-                $this->addReturnData(['valid-end-points'=>[
-                    '/generate_token'
-                    ,'/generate_access_token?token={token}'
-                    ,'/test'
-                ]]);
-            }
+
+            $this->addReturnData($ret);
         }
     }
 
@@ -177,7 +285,7 @@ class API extends RESTful
             "webViewLink": null,
             "writersCanShare": null
             }';
-             return array_keys(json_decode($files,true));
+            return array_keys(json_decode($files,true));
         }
     }
 
