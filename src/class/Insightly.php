@@ -690,6 +690,9 @@ class Insightly {
         $this->buildODataQuery($request, $options);
         return $request->asJSON();
     }
+    public function getTaskCategories(){
+        return $this->GET("/v2.1/TaskCategories")->asJSON();
+    }
     public function getTeam($id){
         return $this->GET("/v2.1/Teams/$id")->asJSON();
     }
