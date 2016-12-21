@@ -7,6 +7,9 @@ class API extends RESTful
     function main()
     {
 
+        // Allow ajax calls
+        $this->sendCorsHeaders();
+
         $_url = str_replace('/queue/', '/', urldecode($this->core->system->url['url']));
         $this->formParams['_raw_input_'];
         $this->formParams['cloudframework_queued'] = true;

@@ -163,10 +163,14 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
         function dispatch()
         {
 
+            // If the $this->system->app_path ends in / delete the char.
+            $this->system->app_path = preg_replace('/\/$/','',$this->system->app_path);
+
             // API end points. By default $this->config->get('core_api_url') is '/h/api'
             if (strpos($this->system->url['url'], $this->config->get('core_api_url')) === 0) {
                 if (!strlen($this->system->url['parts'][2])) $this->errors->add('missing api end point');
                 else {
+
 
                     $apifile = $this->system->url['parts'][2];
 
@@ -229,7 +233,28 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                 return false;
             } // Take a LOOK in the menu
             elseif ($this->config->inMenuPath()) {
-                if (!empty($this->config->get('logic'))) {
+
+                // Common logic
+                if (!empty($this->config->get('commonLogic'))) {
+                    try {
+                        include_once $this->system->app_path . '/logic/' . $this->config->get('commonLogic');
+                        if (class_exists('CommonLogic')) {
+                            $commonLogic = new CommonLogic($this);
+                            $commonLogic->main();
+                            $this->__p->add("Executed CommonLogic->main()", "/logic/{$this->config->get('commonLogic')}");
+
+                        } else {
+                            die($this->config->get('commonLogic').' does not include CommonLogic class');
+                        }
+                    } catch (Exception $e) {
+                        $this->errors->add(error_get_last());
+                        $this->errors->add($e->getMessage());
+                        _print($this->errors->data);
+                    }
+                }
+
+                // Specific logic
+                if (!$this->errors->lines && !empty($this->config->get('logic'))) {
                     try {
                         include_once $this->system->app_path . '/logic/' . $this->config->get('logic');
                         if (class_exists('Logic')) {
@@ -2895,7 +2920,6 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
 
             // Context creation
             $context = stream_context_create($options);
-
 
             try {
                 $ret = @file_get_contents($rute, false, $context);
