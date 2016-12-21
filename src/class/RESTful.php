@@ -580,6 +580,10 @@ if (!defined("_RESTfull_CLASS_")) {
 
         function send($pretty=false,$return=false,$argv=[])
         {
+            // Close open connections
+            if(is_object($this->core->model->db)) $this->core->model->db->close();
+
+            // Prepare the return data
             $ret = array();
             $ret['success'] = ($this->core->errors->lines) ? false : true;
             $ret['status'] = $this->getReturnStatus();

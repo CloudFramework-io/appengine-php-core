@@ -74,14 +74,24 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
         public $logs;
         /** @var CoreLog $errors Object to control Errors */
         public $errors;
+        /** @var CoreIs $is Object to help with certain conditions */
         public $is;
+        /** @var CoreCache $cache Object to control cache info */
         public $cache;
+        /** @var CoreSecurity $security Object to control security */
         public $security;
+        /** @var CoreUser $user Object to control user information */
         public $user;
+        /** @var CoreConfig $config Object to control configuration */
         public $config;
+        /** @var CoreLocalization $localization Object to control manage Localizations */
         public $localization;
+        /** @var CoreModel $model Object to control DataModels */
+        public $model;
+
         var $_version = '20161202b';
         var $data = null;
+
 
         /**
          * @var array $loadedClasses control the classes loaded
@@ -107,6 +117,9 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             $this->config = new CoreConfig($this, __DIR__ . '/config.json');
             $this->request = new CoreRequest($this);
             $this->localization = new CoreLocalization($this);
+            $this->model = new CoreModel($this);
+
+
 
             // Local configuration
             if ($this->is->development() && is_file($this->system->root_path . '/local_config.json'))
@@ -2741,9 +2754,9 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
         }
 
 
-        function get_json_decode($rute, $data = null, $extra_headers = null, $raw = false)
+        function get_json_decode($rute, $data = null, $extra_headers = null, $send_in_json = false)
         {
-            $this->rawResult = $this->get($rute, $data, $extra_headers, $raw);
+            $this->rawResult = $this->get($rute, $data, $extra_headers, $send_in_json);
             $ret = json_decode($this->rawResult, true);
             if (JSON_ERROR_NONE === json_last_error()) $this->rawResult = '';
             else {
@@ -2752,9 +2765,9 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             return $ret;
         }
 
-        function post_json_decode($rute, $data = null, $extra_headers = null, $raw = false)
+        function post_json_decode($rute, $data = null, $extra_headers = null, $send_in_json = false)
         {
-            $this->rawResult = $this->post($rute, $data, $extra_headers, $raw);
+            $this->rawResult = $this->post($rute, $data, $extra_headers, $send_in_json);
             $ret = json_decode($this->rawResult, true);
             if (JSON_ERROR_NONE === json_last_error()) $this->rawResult = '';
             else {
@@ -2763,9 +2776,9 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             return $ret;
         }
 
-        function put_json_decode($rute, $data = null, $extra_headers = null, $raw = false)
+        function put_json_decode($rute, $data = null, $extra_headers = null, $send_in_json = false)
         {
-            $this->rawResult = $this->put($rute, $data, $extra_headers, $raw);
+            $this->rawResult = $this->put($rute, $data, $extra_headers, $send_in_json);
             $ret = json_decode($this->rawResult, true);
             if (JSON_ERROR_NONE === json_last_error()) $this->rawResult = '';
             else {
@@ -2774,19 +2787,19 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             return $ret;
         }
 
-        function get($rute, $data = null, $extra_headers = null, $raw = false)
+        function get($rute, $data = null, $extra_headers = null, $send_in_json = false)
         {
-            return $this->call($rute, $data, 'GET', $extra_headers, $raw);
+            return $this->call($rute, $data, 'GET', $extra_headers, $send_in_json);
         }
 
-        function post($rute, $data = null, $extra_headers = null, $raw = false)
+        function post($rute, $data = null, $extra_headers = null, $send_in_json = false)
         {
-            return $this->call($rute, $data, 'POST', $extra_headers, $raw);
+            return $this->call($rute, $data, 'POST', $extra_headers, $send_in_json);
         }
 
-        function put($rute, $data = null, $extra_headers = null, $raw = false)
+        function put($rute, $data = null, $extra_headers = null, $send_in_json = false)
         {
-            return $this->call($rute, $data, 'PUT', $extra_headers, $raw);
+            return $this->call($rute, $data, 'PUT', $extra_headers, $send_in_json);
         }
 
         function delete($rute, $extra_headers = null)
@@ -3064,6 +3077,101 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
         }
     }
 
+
+    /**
+     * Class to manage HTTP requests
+     * @package Core
+     */
+    Class CoreModel
+    {
+        var $error = false;
+        var $errorMsg = null;
+        /** @var CloudSQL $db  */
+        var $db = null;
+
+        protected $core;
+        var $models = null;
+
+        function __construct(Core &$core)
+        {
+            $this->core = $core;
+        }
+
+        function readModels($path) {
+
+            try {
+                $data = json_decode(@file_get_contents($path), true);
+
+                if (!is_array($data)) {
+                    $this->addError('error reading ' . $path);
+                    if (json_last_error())
+                        $this->addError("Wrong format of json: " . $path);
+                    elseif (!empty(error_get_last()))
+                        $this->addError(error_get_last());
+                    return false;
+                } else {
+                    $this->processModels($data);
+                    return true;
+                }
+            } catch (Exception $e) {
+                $this->addError(error_get_last());
+                $this->addError($e->getMessage());
+                return false;
+            }
+
+        }
+
+        public function processModels($models) {
+            if(is_array($models['DataBaseTables']))
+            foreach ($models['DataBaseTables'] as $model=>$dataBaseTable) {
+                $this->models[$model] = ['type'=>'db','data'=>$dataBaseTable];
+            }
+        }
+
+        public function getModelObject($model) {
+            if(!isset($this->models[$model])) return($this->core->errors->add("Model $model does not exist"));
+            switch ($this->models[$model]['type']) {
+                case "db":
+                    if(!is_object($object = $this->core->loadClass('DataSQL',[$model,$this->models[$model]['data']]))) return;
+                    return($object);
+                    break;
+            }
+            return null;
+        }
+
+        public function dbInit() {
+
+            if(null === $this->db) {
+                $this->core->model->db = $this->core->loadClass('CloudSQL');
+                if(!$this->db->connect()) $this->addError($this->db->getError());
+            }
+            return !$this->db->error();
+        }
+
+        /**
+         * Excute the query and return the result if there is no errors
+         * @param $SQL
+         * @param $params
+         * @return array|void
+         */
+        public function dbQuery($title, $SQL, $params) {
+
+            // Verify we have the object created
+            if(!$this->dbInit()) return($this->errorMsg);
+
+            // Execute the query
+            $ret = $this->db->getDataFromQuery($SQL,$params);
+            if($this->db->error()) return($this->addError($this->db->getError()));
+            else return $ret;
+
+        }
+
+        private function addError($msg) {
+            $this->error = true;
+            $this->errorMsg[] = $msg;
+        }
+
+    }
 
     /**
      * Class to be extended for the creation of a logic application.
