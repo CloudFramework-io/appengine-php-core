@@ -127,6 +127,39 @@ class DataSQL
 
     }
 
+    function fetch($keysWhere, $fields=null) {
+        // Keys to find
+        if(!is_array($keysWhere) ) return($this->addError('fetch($keysWhere, $fields=null) $keyWhere has to be an array with key->value'));
+
+        // Where condition for the SELECT
+        $where = ''; $params = [];
+        foreach ($keysWhere as $key=>$value) {
+
+            if($this->use_mapping) {
+                if(!isset($this->entity_schema['mapping'][$key]['field'])) return($this->addError('fetch($keysWhere, $fields=null) $keyWhere contains a wrong mapped key: '.$key));
+                $key = $this->entity_schema['mapping'][$key]['field'];
+            } else {
+                if(!isset($this->fields[$key])) return($this->addError('fetch($keysWhere, $fields=null) $keyWhere contains a wrong key: '.$key));
+            }
+            if($where) $where.=' AND ';
+            if($this->fields[$key]=='int') $where.=$key.'=%s';
+            else $where.=$key."='%s'";
+            $params[] = $value;
+        }
+
+        // Fields to returned
+        if(!$fields) $sqlFields = $this->getSQLSelectFields();
+        else {
+            if(is_string($fields)) $fields = explode(',',$fields);
+            $sqlFields = $this->getSQLSelectFields($fields);
+        }
+
+        // Query
+        $SQL = "SELECT {$sqlFields} FROM {$this->entity_name} WHERE {$where}";
+        if(!$sqlFields) return($this->addError('No fields to select found: '.json_encode($fields)));
+        return $this->core->model->dbQuery($this->entity_name.' fetch by querys: '.json_encode($keysWhere),$SQL,$params);
+    }
+
 
     /**
      * Active or deactive mapping of fields

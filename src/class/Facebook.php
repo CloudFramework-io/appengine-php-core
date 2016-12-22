@@ -14,6 +14,7 @@ if (!defined ("_Facebook_CLASS_") ) {
         var $client;
         var $client_secret=[];
         var $scope;
+        var $access_token=null;
 
         function __construct(Core &$core)
         {
@@ -29,22 +30,159 @@ if (!defined ("_Facebook_CLASS_") ) {
             if(!is_array($this->client_secret))
                 return($this->addError('Missing Facebook_Client config var with the credentials from Facebook.'));
 
-            if(!is_array($this->client_secret['api_id']))
+            if(!isset($this->client_secret['app_id']))
                 return($this->addError('Missing app_id config var inside Facebook_Client.'));
 
 
-            if(!is_array($this->client_secret['app_secret']))
+            if(!isset($this->client_secret['app_secret']))
                 return($this->addError('Missing app_secret config var inside Facebook_Client.'));
 
 
             require_once $this->core->system->root_path . '/vendor/autoload.php';
 
             $this->client = new Facebook\Facebook([
-                'app_id' => $this->client_secret['api_id'],
+                'app_id' => $this->client_secret['app_id'],
                 'app_secret' => $this->client_secret['app_secret'],
                 'default_graph_version' => 'v2.5',
             ]);
 
+
+        }
+
+        public function getProfile($id,$access_token=null) {
+            
+            if($this->error) return;
+            if(!$access_token) $access_token = $this->access_token;
+            if(!$access_token) return($this->addError('getProfile($id,$access_token=null). Missing access token. Use setAccessToken method or pass the variable.'));
+
+
+            try {
+                $response = $this->client->get("/".$id."?fields=id,name,first_name,middle_name,last_name,email,cover,locale,website,link,picture", $access_token);
+            } catch(Facebook\Exceptions\FacebookResponseException $e) {
+                return($this->addError('Error getting user profile: ' . $e->getMessage()));
+            }
+            
+            /** @var  $graphUser */
+            $graphUser = $response->getGraphUser();
+            $profile = array(
+                "user_id" => $graphUser->getId(),
+                "name" => $graphUser->getName(),
+                "first_name" => $graphUser->getFirstName(),
+                "last_name" => $graphUser->getLastName(),
+                "email" => $graphUser->getEmail(),
+                "photo" => $graphUser->getPicture()->getUrl(),
+                "locale" => $graphUser->getField('locale', 'en'),
+                "url" => $graphUser->getLink(),
+                "raw" => json_decode($graphUser, true)
+            );
+            return $profile;
+        }
+
+        /**
+         * Returns the pages that the user associated to the access token can admin
+         * @param null $access_token
+         * @return array|void
+         */
+        public function getPages($access_token=null) {
+
+            if($this->error) return;
+            if(!$access_token) $access_token = $this->access_token;
+            if(!$access_token) return($this->addError('getPages($id,$access_token=null). Missing access token. Use setAccessToken method or pass the variable.'));
+
+
+            try {
+                $response = $this->client->get("/me/accounts", $access_token);
+            } catch(Facebook\Exceptions\FacebookResponseException $e) {
+                return($this->addError('Error getting user profile: ' . $e->getMessage()));
+            }
+
+            $pagesEdge = $response->getGraphEdge();
+            foreach ($pagesEdge as $page) {
+                $pages[] = $page->asArray();
+            }
+
+            return $pages;
+        }
+
+        /**
+         * Returns the pages that the user associated to the access token can admin
+         * @param null $access_token
+         * @return array|void
+         */
+        public function getPage($id,$access_token=null) {
+
+            if($this->error) return;
+            if(!$access_token) $access_token = $this->access_token;
+            if(!$access_token) return($this->addError('getPages($id,$access_token=null). Missing access token. Use setAccessToken method or pass the variable.'));
+
+
+            try {
+                $response = $this->client->get("/".$id."?fields=access_token,category,name,id", $access_token);
+                $node = $response->getGraphNode()->asArray();
+
+                $response = $this->client->get("/".$id."/tabs", $node["access_token"]);
+                $tabsEdge = $response->getGraphEdge();
+
+                foreach ($tabsEdge as $tab) {
+                    $node['tabs'][] = $tab->asArray();
+                }
+            } catch(Facebook\Exceptions\FacebookResponseException $e) {
+                return($this->addError('Error getting page: ' . $e->getMessage()));
+            }
+
+
+
+            return $node;
+        }
+
+        /**
+         * Service that creates a tab in a page
+         * @param $id       page id
+         * @param $parameters
+         *      "app_id"               =>      ID of the app that contains a Page Tab platform (required)
+         *      "custom_name"          =>      Custom name for the tab (required)
+         *      "custom_image_url"     =>      url of the image file (optional). You can upload a JPG, GIF or PNG file.
+         *                                     The size of the image must be 111 x 74 pixels. File size limit 1 MB.
+         *      "position"             =>      position among the other tabs (optional)
+         * @return array
+         */
+        public function createPageTab($id,$parameters,$access_token=null) {
+
+            if($this->error) return;
+            if(!$access_token) $access_token = $this->access_token;
+            if(!$access_token) return($this->addError('getPages($id,$access_token=null). Missing access token. Use setAccessToken method or pass the variable.'));
+
+
+            try {
+                $response = $this->client->get("/".$id."?fields=access_token,category,name,id", $access_token);
+                $node = $response->getGraphNode()->asArray();
+
+                // Create tab
+                $this->client->post("/".$id."/tabs", $parameters, $node["access_token"]);
+
+                $response = $this->client->get("/".$id."?fields=access_token,category,name,id", $access_token);
+                $node = $response->getGraphNode()->asArray();
+
+                $response = $this->client->get("/".$id."/tabs", $node["access_token"]);
+                $tabsEdge = $response->getGraphEdge();
+
+                foreach ($tabsEdge as $tab) {
+                    $node['tabs'][] = $tab->asArray();
+                }
+            } catch(Facebook\Exceptions\FacebookResponseException $e) {
+                return($this->addError('Error creating tab: ' . $e->getMessage()));
+            }
+
+
+
+            return $node;
+        }
+
+        public function setAccessToken($token) {
+            if(!token) return($this->addError('setAccessToken($token). Empty $token'));
+            if($this->error) return;
+
+            $this->setAccessToken($token);
         }
 
         function addError($value)
