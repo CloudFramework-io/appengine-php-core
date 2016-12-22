@@ -12,15 +12,15 @@ if (!defined ("_Google_CLASS_") ) {
         var $error = false;
         var $errorMsg = [];
         var $client;
-        var $client_secret;
         var $scope;
+        var $type = 'installed';
 
         function __construct(Core &$core,$type='installed')
         {
-            if(!$type) $type='installed';
+            if($type) $this->type = $type;
 
             $this->core = $core;
-            if(!is_dir($this->core->system->root_path.'/vendor/google')) {
+            if(!is_dir($this->core->system->root_path.'/vendor/facebook')) {
                 $this->addError('Missing Google Client libreries. Execute from your document root: php composer.phar require google/apiclient:^2.0');
                 $this->addError('You can find composer.phar from: curl https://getcomposer.org/composer.phar');
             } else {
@@ -33,12 +33,12 @@ if (!defined ("_Google_CLASS_") ) {
                 if(!is_array($this->client_secret))
                     $this->addError('Missing Google_Client config var with the credentials from Google. Get JSON OAUTH 2.0 credentials file from: https://console.developers.google.com/apis/credentials');
                 else {
-                    if(!isset($this->client_secret[$type])) {
-                        if($type=='developer') $type.=' config var for API';
-                        else $type.=' config array for Oauth 2.0 client ID';
-                        $this->addError("Missing Google_Client:{$type} Key. Go to https://console.cloud.google.com/apis/credentials and specify the right credentials");
+                    if(!isset($this->client_secret[$this->type])) {
+                        if($this->type=='developer') $this->type.=' config var for API';
+                        else $this->type.=' config array for Oauth 2.0 client ID';
+                        $this->addError("Missing Google_Client:{$this->type} Key. Go to https://console.cloud.google.com/apis/credentials and specify the right credentials");
                     } else {
-                        switch ($type) {
+                        switch ($this->type) {
                             case "web":
                                 $this->client->setAuthConfig(['web'=>$this->client_secret['web']]);
                                 break;

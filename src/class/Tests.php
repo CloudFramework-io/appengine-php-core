@@ -37,19 +37,19 @@ if (!defined("_Tests_CLASS_")) {
         }
 
         function connects($server) {
-            if(empty($server)) $this->addError('You can not connect into empty url');
-            if(!($headers = $this->core->request->getUrlHeaders($server))) $this->addError('You have provided a wrong url: '.$server);
+            if(empty($server)) $this->addsError('You can not connect into empty url');
+            if(!($headers = $this->core->request->getUrlHeaders($server))) $this->addsError('You have provided a wrong url: '.$server);
             echo "   ".$headers[0]."\n";
             $this->server = $server;
         }
 
         function gets($url,$data=null,$raw=false)
         {
-            if(!$this->server) $this->addError('Missing server. User $this->connects($server) first.');
+            if(!$this->server) $this->addsError('Missing server. User $this->connects($server) first.');
             echo "   ** Test gets info from ".$this->server.$url."\n";
             $this->response = $this->core->request->get($this->server.$url,$data,$this->headers,$raw);
             if(!$this->response )
-                if($this->core->errors->lines) $this->addError("Error connecting  [{$this->core->errors->data[0]}]");
+                if($this->core->errors->lines) $this->addsError("Error connecting  [{$this->core->errors->data[0]}]");
 
             $this->response_headers = $this->core->request->responseHeaders;
 
@@ -57,31 +57,31 @@ if (!defined("_Tests_CLASS_")) {
 
         function posts($url,$data=null,$raw=false)
         {
-            if(!$this->server) $this->addError('Missing server. User $this->connects($server) first.');
+            if(!$this->server) $this->addsError('Missing server. User $this->connects($server) first.');
             echo "   ** Test posts info into ".$this->server.$url."\n";
             $this->response = $this->core->request->post($this->server.$url,$data,$this->headers,$raw);
             if(!$this->response )
-                if($this->core->errors->lines) $this->addError("Error connecting  [{$this->core->errors->data[0]}]");
+                if($this->core->errors->lines) $this->addsError("Error connecting  [{$this->core->errors->data[0]}]");
 
             $this->response_headers = $this->core->request->responseHeaders;
 
         }
 
         function checksIfResponseCodeIs($code) {
-            if(!$this->response) $this->addError('Missing response. User $this->(gets/posts/puts/deletes) first.');
+            if(!$this->response) $this->addsError('Missing response. User $this->(gets/posts/puts/deletes) first.');
             echo "      cheks if response code is $code: ";
 
-            if(strpos($this->response_headers[0]," {$code} ")===false) $this->addError('Failing checksIfResponseCodeIs. Response is: '.$this->response_headers[0]);
+            if(strpos($this->response_headers[0]," {$code} ")===false) $this->addsError('Failing checksIfResponseCodeIs. Response is: '.$this->response_headers[0]);
             echo "[OK]\n";
             return(!$this->error);
         }
 
         function checksIfResponseContainsJSON($json) {
-            if(!$this->response) $this->addError('Missing response. User $this->(gets/posts/puts/deletes) first.');
+            if(!$this->response) $this->addsError('Missing response. User $this->(gets/posts/puts/deletes) first.');
             echo "      cheks if json returned match with JSON pattern: ";
-            if(!($response = json_decode($this->response,true))) $this->addError('returned data is not a JSON');
+            if(!($response = json_decode($this->response,true))) $this->addsError('returned data is not a JSON');
             if(is_string($json)) $json = json_decode($json,true);
-            if(!is_array($json)) $this->addError('pattern is not array nor json');
+            if(!is_array($json)) $this->addsError('pattern is not array nor json');
             echo json_encode($json);
 
             function recursiveCheck(&$data,&$pattern)
@@ -93,7 +93,7 @@ if (!defined("_Tests_CLASS_")) {
                 return true;
             }
             if(recursiveCheck($response,$json)) echo " [OK]";
-            else $this->addError('Failing checksIfResponseContainsJSON.');
+            else $this->addsError('Failing checksIfResponseContainsJSON.');
             echo "\n";
             return(!$this->error);
         }
@@ -101,17 +101,18 @@ if (!defined("_Tests_CLASS_")) {
 
         function checksIfResponseContains($text) {
             if(!is_array($text)) $text=[$text];
-            if(!$this->server) $this->addError('Missing server. User $this->connects($server) first.');
-            if(!$this->response) $this->addError('Missing response. User $this->(gets/posts/puts/deletes) first.');
+            if(!$this->server) $this->addsError('Missing server. User $this->connects($server) first.');
+            if(!$this->response) $this->addsError('Missing response. User $this->(gets/posts/puts/deletes) first.');
             echo "      cheks if response contains: ".json_encode($text);
             foreach ($text as $item) {
-                if(strpos($this->response,$item)===false) $this->addError('Failing check.');
+                if(strpos($this->response,$item)===false) $this->addsError('Failing check.');
             }
             echo " [OK]\n";
             return(!$this->error);
         }
 
-        function addError($error) {
+        function addsError($error) {
+            if(is_array($error)) $error = json_encode($error,JSON_PRETTY_PRINT);
             echo("\n\n   the test failed: {$error}\n\n");
             if($this->core->errors->lines) {
                 _printe($this->core->errors->data);
