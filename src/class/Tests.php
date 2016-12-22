@@ -22,6 +22,11 @@ if (!defined("_Tests_CLASS_")) {
             $this->sendTerminal("\n".'** This test wants '.$wish);
         }
 
+        function says($something) {
+            if(is_array($something)) $something = json_encode($something,JSON_PRETTY_PRINT);
+            $this->sendTerminal("\n".'   '.$something);
+        }
+
         function prompts($title,$default=null) {
             echo ('   please, this test needs '.$title.(($default)?" [default {$default}]":'').': ');
             $handle = fopen ("php://stdin","r");
