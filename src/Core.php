@@ -439,13 +439,17 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
 
         function init($id = '')
         {
-            // I will only start session if someone call me..
-            $this->id = $id;  // Someone create a session based in one ID and no in a PHPSESSION
 
+            // If they pass a session id I will use it.
+            if (!empty($id)) session_id($id);
 
-            if (strlen($this->id))
-                session_id($this->id);
+            // Session start
             session_start();
+
+            // Let's keep the session id
+            $this->id = session_id();
+
+            // Initiated.
             $this->start = true;
         }
 
@@ -3147,8 +3151,11 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
 
         public function processModels($models) {
             if(is_array($models['DataBaseTables']))
-            foreach ($models['DataBaseTables'] as $model=>$dataBaseTable) {
-                $this->models[$model] = ['type'=>'db','data'=>$dataBaseTable];
+                foreach ($models['DataBaseTables'] as $model=>$dataBaseTable) {
+                    $this->models[$model] = ['type'=>'db','data'=>$dataBaseTable];
+                }
+            foreach ($models['DataStoreEntities'] as $model=>$dsEntity) {
+                $this->models[$model] = ['type'=>'ds','data'=>$dsEntity];
             }
         }
 
@@ -3157,6 +3164,12 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             switch ($this->models[$model]['type']) {
                 case "db":
                     if(!is_object($object = $this->core->loadClass('DataSQL',[$model,$this->models[$model]['data']]))) return;
+                    return($object);
+                    break;
+
+                case "ds":
+                    if(empty($this->core->config->get('DataStoreSpaceName'))) return($this->addError('Missing DataStoreSpaceName config var'));
+                    if(!is_object($object = $this->core->loadClass('DataStore',[$model,$this->core->config->get('DataStoreSpaceName'),$this->models[$model]['data']]))) return;
                     return($object);
                     break;
             }
