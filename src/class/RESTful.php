@@ -580,8 +580,8 @@ if (!defined("_RESTfull_CLASS_")) {
 
         function send($pretty=false,$return=false,$argv=[])
         {
-            // Close open connections
-            if(is_object($this->core->model->db)) $this->core->model->db->close();
+            // Close potential open connections
+            $this->core->model->dbClose();
 
             // Prepare the return data
             $ret = array();

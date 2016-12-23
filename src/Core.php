@@ -3190,6 +3190,10 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
 
         }
 
+        public function dbClose() {
+            if(is_object($this->db)) $this->db->close();
+        }
+
         private function addError($msg) {
             $this->error = true;
             $this->errorMsg[] = $msg;

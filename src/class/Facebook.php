@@ -152,16 +152,57 @@ if (!defined ("_Facebook_CLASS_") ) {
             if(!$access_token) $access_token = $this->access_token;
             if(!$access_token) return($this->addError('getPages($id,$access_token=null). Missing access token. Use setAccessToken method or pass the variable.'));
 
+            try {
+                $response = $this->client->get("/".$id."?fields=access_token,category,name,id", $access_token);
+                $node = $response->getGraphNode()->asArray();
+
+                // Create tab
+                /** @var \Facebook\FacebookResponse $ret */
+                $response = $this->client->post("/".$id."/tabs", $parameters, $node["access_token"]);
+                $tab = $response->getGraphNode()->asArray();
+                if(!$tab['success']) return($this->addError('Error creating tab. Missing success result '));
+
+                $response = $this->client->get("/".$id."/tabs", $node["access_token"]);
+                $tabsEdge = $response->getGraphEdge();
+
+                foreach ($tabsEdge as $tab) if(strpos($tab->asArray()['id'],'app_'.$this->client_secret['app_id'])) {
+                    $node['tab'] = $tab->asArray();
+                }
+            } catch(Facebook\Exceptions\FacebookResponseException $e) {
+                return($this->addError('Error creating tab: ' . $e->getMessage()));
+            }
+
+
+
+            return $node;
+        }
+
+        /**
+         * Service that creates a tab in a page
+         * @param $id       page id
+         * @param $parameters
+         *      "app_id"               =>      ID of the app that contains a Page Tab platform (required)
+         *      "custom_name"          =>      Custom name for the tab (required)
+         *      "custom_image_url"     =>      url of the image file (optional). You can upload a JPG, GIF or PNG file.
+         *                                     The size of the image must be 111 x 74 pixels. File size limit 1 MB.
+         *      "position"             =>      position among the other tabs (optional)
+         * @return array
+         */
+        public function deletePageTab($id,$tabId,$access_token=null) {
+
+            if($this->error) return;
+            if(!$access_token) $access_token = $this->access_token;
+            if(!$access_token) return($this->addError('getPages($id,$access_token=null). Missing access token. Use setAccessToken method or pass the variable.'));
 
             try {
                 $response = $this->client->get("/".$id."?fields=access_token,category,name,id", $access_token);
                 $node = $response->getGraphNode()->asArray();
 
                 // Create tab
-                $this->client->post("/".$id."/tabs", $parameters, $node["access_token"]);
-
-                $response = $this->client->get("/".$id."?fields=access_token,category,name,id", $access_token);
-                $node = $response->getGraphNode()->asArray();
+                /** @var \Facebook\FacebookResponse $ret */
+                $response = $this->client->delete("/".$id."/tabs", ['tab'=>$tabId], $node["access_token"]);
+                $tab = $response->getGraphNode()->asArray();
+                if(!$tab['success']) return($this->addError('Error creating tab. Missing success result '));
 
                 $response = $this->client->get("/".$id."/tabs", $node["access_token"]);
                 $tabsEdge = $response->getGraphEdge();
@@ -183,6 +224,41 @@ if (!defined ("_Facebook_CLASS_") ) {
             if($this->error) return;
 
             $this->setAccessToken($token);
+        }
+
+        public function decodeSignedRequest($signed_request) {
+
+            try {
+                $fbApp = new Facebook\FacebookApp($this->client_secret['app_id'], $this->client_secret['app_secret']);
+                $signed_request = new \Facebook\SignedRequest($fbApp, $signed_request);
+                return($signed_request->getPayload());
+            } catch(Facebook\Exceptions\FacebookSDKException $e) {
+                $this->addError(['signature'=>$signed_request]);
+                return($this->addError('Error creating tab: ' . $e->getMessage()));
+            }
+
+
+            // PHP native decoding
+            // https://developers.facebook.com/docs/games/gamesonfacebook/login#parsingsr
+            /*
+            list($encoded_sig, $payload) = explode('.', $signed_request, 2);
+
+            $secret = $this->client_secret['app_secret']; // Use your app secret here
+
+            // decode the data
+            $sig = base64_url_decode($encoded_sig);
+            $data = json_decode(base64_decode(strtr($payload, '-_', '+/')), true);
+
+            // confirm the signature
+            $expected_sig = hash_hmac('sha256', $payload, $secret, $raw = true);
+            if ($sig !== $expected_sig) {
+                error_log('Bad Signed JSON signature!');
+                return null;
+            }
+
+            return $data;
+            */
+
         }
 
         function addError($value)
