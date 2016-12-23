@@ -524,7 +524,6 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                 return (json_decode($_REQUEST['cloudframework_queued_fingerprint'], true));
             }
 
-            $ret['ip'] = $this->ip;
             $ret['user_agent'] = $_SERVER['HTTP_USER_AGENT'];
             $ret['host'] = $_SERVER['HTTP_HOST'];
             $ret['software'] = $_SERVER['SERVER_SOFTWARE'];
@@ -534,6 +533,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                 unset($ret['geoData']['credit']);
             }
             $ret['hash'] = sha1(implode(",", $ret));
+            $ret['ip'] = $this->ip;
             $ret['http_referer'] = $_SERVER['HTTP_REFERER'];
             $ret['time'] = date('Ymdhis');
             $ret['uri'] = $_SERVER['REQUEST_URI'];
