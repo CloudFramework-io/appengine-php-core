@@ -56,8 +56,9 @@ try {
     $core->__p->add('Running Script','',"endnote");
 
 } catch (Exception $e) {
-    $this->errors->add(error_get_last());
-    $this->errors->add($e->getMessage());
+
+    $run->addError(error_get_last());
+    $run->addError($e->getMessage());
 }
 echo "------------------------------\n";
 if($core->errors->lines) {

@@ -43,13 +43,21 @@ if (!defined ("_Facebook_CLASS_") ) {
             $this->client = new Facebook\Facebook([
                 'app_id' => $this->client_secret['app_id'],
                 'app_secret' => $this->client_secret['app_secret'],
-                'default_graph_version' => 'v2.5',
+                'default_graph_version' => 'v2.8',
             ]);
 
 
         }
 
-        public function getProfile($id,$access_token=null) {
+        /**
+         * Returns info about an user
+         * About the fields and the end-point: https://developers.facebook.com/docs/graph-api/reference/user/
+         * @param $id                   id of the user
+         * @param string $access_token  optional access token
+         * @param string $fields        optional fields. By default: id,name,first_name,middle_name,last_name,email,cover,locale,website,link,picture,is_verified
+         * @return array|void
+         */
+        public function getProfile($id, $access_token=null, $fields='id,name,first_name,middle_name,last_name,email,cover,locale,website,link,picture,is_verified') {
             
             if($this->error) return;
             if(!$access_token) $access_token = $this->access_token;
@@ -57,25 +65,18 @@ if (!defined ("_Facebook_CLASS_") ) {
 
 
             try {
-                $response = $this->client->get("/".$id."?fields=id,name,first_name,middle_name,last_name,email,cover,locale,website,link,picture", $access_token);
-            } catch(Facebook\Exceptions\FacebookResponseException $e) {
+                $response = $this->client->get("/".$id."?fields={$fields}", $access_token);
+
+                // Let's extract the total friends
+                $friends = $this->client->get("/{$id}/friends?limit=1", $access_token);
+
+            } catch(Exception $e) {
                 return($this->addError('Error getting user profile: ' . $e->getMessage()));
             }
             
             /** @var  $graphUser */
             $graphUser = $response->getGraphUser();
-            $profile = array(
-                "user_id" => $graphUser->getId(),
-                "name" => $graphUser->getName(),
-                "first_name" => $graphUser->getFirstName(),
-                "last_name" => $graphUser->getLastName(),
-                "email" => $graphUser->getEmail(),
-                "photo" => $graphUser->getPicture()->getUrl(),
-                "locale" => $graphUser->getField('locale', 'en'),
-                "url" => $graphUser->getLink(),
-                "raw" => json_decode($graphUser, true)
-            );
-            return $profile;
+            return(array_merge($graphUser->asArray(),['total_friends'=>$friends->getDecodedBody()['summary']['total_count']]));
         }
 
         /**
@@ -96,6 +97,7 @@ if (!defined ("_Facebook_CLASS_") ) {
                 return($this->addError('Error getting user profile: ' . $e->getMessage()));
             }
 
+            $pages = [];
             $pagesEdge = $response->getGraphEdge();
             foreach ($pagesEdge as $page) {
                 $pages[] = $page->asArray();
@@ -106,10 +108,11 @@ if (!defined ("_Facebook_CLASS_") ) {
 
         /**
          * Returns the pages that the user associated to the access token can admin
-         * @param null $access_token
+         * @param string $access_token    optional access token
+         * @param string $fields          optional fields to show.. See https://developers.facebook.com/docs/graph-api/reference/page/
          * @return array|void
          */
-        public function getPage($id,$access_token=null) {
+        public function getPage($id,$access_token=null,$fields='access_token,category,name,id,link,fan_count,is_verified,engagement,emails,general_info') {
 
             if($this->error) return;
             if(!$access_token) $access_token = $this->access_token;
@@ -117,9 +120,9 @@ if (!defined ("_Facebook_CLASS_") ) {
 
 
             try {
-                $response = $this->client->get("/".$id."?fields=access_token,category,name,id", $access_token);
+                $response = $this->client->get("/".$id."?fields={$fields}", $access_token);
                 $node = $response->getGraphNode()->asArray();
-
+                return $node;
                 $response = $this->client->get("/".$id."/tabs", $node["access_token"]);
                 $tabsEdge = $response->getGraphEdge();
 
@@ -144,6 +147,7 @@ if (!defined ("_Facebook_CLASS_") ) {
          *      "custom_image_url"     =>      url of the image file (optional). You can upload a JPG, GIF or PNG file.
          *                                     The size of the image must be 111 x 74 pixels. File size limit 1 MB.
          *      "position"             =>      position among the other tabs (optional)
+         * @param $access_token                optional access token if it is not set
          * @return array
          */
         public function createPageTab($id,$parameters,$access_token=null) {
@@ -178,15 +182,11 @@ if (!defined ("_Facebook_CLASS_") ) {
         }
 
         /**
-         * Service that creates a tab in a page
-         * @param $id       page id
-         * @param $parameters
-         *      "app_id"               =>      ID of the app that contains a Page Tab platform (required)
-         *      "custom_name"          =>      Custom name for the tab (required)
-         *      "custom_image_url"     =>      url of the image file (optional). You can upload a JPG, GIF or PNG file.
-         *                                     The size of the image must be 111 x 74 pixels. File size limit 1 MB.
-         *      "position"             =>      position among the other tabs (optional)
-         * @return array
+         * Service that delete a tab in a page
+         * @param $id                   page id
+         * @param $tabId                tab id
+         * @param $access_token         optional access token if it is not set
+         * @return array|null                Return the tabs in the page or null if error
          */
         public function deletePageTab($id,$tabId,$access_token=null) {
 
@@ -219,6 +219,10 @@ if (!defined ("_Facebook_CLASS_") ) {
             return $node;
         }
 
+        /**
+         * Set an access token for all calls avoiding to send it in every call
+         * @param $token
+         */
         public function setAccessToken($token) {
             if(!token) return($this->addError('setAccessToken($token). Empty $token'));
             if($this->error) return;
@@ -226,6 +230,16 @@ if (!defined ("_Facebook_CLASS_") ) {
             $this->setAccessToken($token);
         }
 
+        /**
+         * Analyze $signed_request
+         * https://developers.facebook.com/docs/pages/tabs
+         * https://developers.facebook.com/docs/reference/login/signed-request
+         *
+         * The method decodeSignedRequest in case of success will return an array with user values:
+         * https://developers.facebook.com/docs/reference/login/signed-request
+         * @param $signed_request
+         * @return array|null|void
+         */
         public function decodeSignedRequest($signed_request) {
 
             try {

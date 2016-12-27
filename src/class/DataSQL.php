@@ -10,6 +10,11 @@ class DataSQL
     var $fields = [];
     var $mapping = [];
     private $use_mapping = false;
+    private $limit = 0;
+    private $order = '';
+    private $joins = [];
+    private $queryFields = '';
+    private $queryWhere = [];
 
     /**
      * DataSQL constructor.
@@ -44,6 +49,7 @@ class DataSQL
                 }
             }
         }
+
     }
 
     /**
@@ -68,16 +74,17 @@ class DataSQL
      * @return array|null
      */
     function getSQLSelectFields($fields=null) {
+        if(null === $fields || empty($fields)) $fields = $this->getFields();
+
         if(!$this->use_mapping || !count($this->mapping)) {
-            if(null === $fields) $fields = $this->getFields();
-            return implode(',',$fields);
+            return $this->entity_name.'.'.implode(','.$this->entity_name.'.',$fields);
         }
         else {
             $ret = '';
             foreach ($this->mapping as $field=>$fieldMapped) {
                 if(null != $fields && !in_array($fieldMapped,$fields)) continue;
                 if($ret) $ret.=',';
-                $ret .= "{$field} AS {$fieldMapped}";
+                $ret .= "{$this->entity_name}.{$field} AS {$fieldMapped}";
             }
             return $ret;
         }
@@ -99,7 +106,7 @@ class DataSQL
         foreach ($this->keys as $i=>$key) {
 
             if($where) $where.=' AND ';
-            $where.=" {$key[0]} IN ( ";
+            $where.=" {$this->entity_name}.{$key[0]} IN ( ";
             $values = '';
             foreach ($keysWhere as $keyWhere) {
                 if(!is_array($keyWhere)) $keyWhere = [$keyWhere];
@@ -127,12 +134,101 @@ class DataSQL
 
     }
 
-    function fetch($keysWhere, $fields=null) {
+    /**
+     * Set a limit in the select query or fetch method.
+     * @param int $limit
+     */
+    function setLimit($limit) {
+        $this->limit = intval($limit);
+    }
+
+    /**
+     * Defines the fields to retuen in a query. If empty it will return all of them
+     * @param $fields
+     */
+    function setQueryFields($fields) {
+        $this->queryFields = $fields;
+    }
+
+    /**
+     * Array with key=>value
+     * Especial values:
+     *              '__null__'
+     *              '__notnull__'
+     *              '__empty__'
+     *              '__notempty__'
+     * @param Array $keysWhere
+     */
+    function setQueryWhere($keysWhere) {
+        if(!is_array($keysWhere) ) return($this->addError('setQueryWhere($keysWhere) $keyWhere has to be an array with key->value'));
+        $this->queryWhere = $keysWhere;
+    }
+
+    /**
+     * Return records from the db object
+     * @param array $keysWhere
+     * @param null $fields
+     * @return array|void
+     */
+    function fetch($keysWhere=[], $fields=null) {
         // Keys to find
         if(!is_array($keysWhere) ) return($this->addError('fetch($keysWhere, $fields=null) $keyWhere has to be an array with key->value'));
 
+
+
+        list($where,$params) = $this->getQuerySQLWhereAndParams($keysWhere);
+
+        $sqlFields = $this->getQuerySQLFields();
+
+
+        // Query
+        $from = $this->getQuerySQLFroms();
+        $SQL = "SELECT {$sqlFields} FROM {$from} WHERE {$where}";
+
+
+        if($this->order) $SQL.= " ORDER BY {$this->order}";
+        if($this->limit) $SQL.= " limit {$this->limit}";
+
+        if(!$sqlFields) return($this->addError('No fields to select found: '.json_encode($fields)));
+
+        $ret= $this->core->model->dbQuery($this->entity_name.' fetch by querys: '.json_encode($keysWhere),$SQL,$params);
+        if($this->core->model->error) $this->addError($this->core->model->errorMsg);
+        return($ret);
+    }
+
+    /**
+     * Update a record in db
+     * @param $data
+     * @return bool|null|void
+     */
+    public function update($data) {
+        if(!is_array($data) ) return($this->addError('update($data) $data has to be an array with key->value'));
+
+        $ret= $this->core->model->dbUpdate($this->entity_name.' update record: '.json_encode($data),$this->entity_name,$data);
+        if($this->core->model->error) $this->addError($this->core->model->errorMsg);
+        return($ret);
+
+    }
+
+
+    /** About Order */
+    function unsetOrder() {$this->order='';}
+
+    function addOrder($field,$type) {
+        if(isset($this->fields[$field]))  {
+            if(strlen($this->order)) $this->order.=', ';
+            $this->order.= $this->entity_name.'.'.$field.((strtoupper(trim($type))=='DESC')?' DESC':' ASC');
+        }
+    }
+
+
+    function getQuerySQLWhereAndParams($keysWhere=[]) {
+        if(!is_array($keysWhere) ) return($this->addError('getQuerySQLWhereAndParams($keysWhere) $keyWhere has to be an array with key->value'));
+
         // Where condition for the SELECT
         $where = ''; $params = [];
+        if(!count($keysWhere)) $keysWhere = $this->queryWhere;
+
         foreach ($keysWhere as $key=>$value) {
 
             if($this->use_mapping) {
@@ -142,24 +238,62 @@ class DataSQL
                 if(!isset($this->fields[$key])) return($this->addError('fetch($keysWhere, $fields=null) $keyWhere contains a wrong key: '.$key));
             }
             if($where) $where.=' AND ';
-            if($this->fields[$key]=='int') $where.=$key.'=%s';
-            else $where.=$key."='%s'";
-            $params[] = $value;
+            switch ($value) {
+                case "__null__":
+                    $where.="{$this->entity_name}.{$key} IS NULL";
+                    break;
+                case "__notnull__":
+                    $where.="{$this->entity_name}.{$key} IS NOT NULL";
+                    break;
+                default:
+                    if($this->fields[$key]=='int') $where.="{$this->entity_name}.{$key}=%s";
+                    else $where.="{$this->entity_name}.{$key}='%s'";
+                    $params[] = $value;
+                    break;
+
+            }
+
         }
 
-        // Fields to returned
-        if(!$fields) $sqlFields = $this->getSQLSelectFields();
-        else {
-            if(is_string($fields)) $fields = explode(',',$fields);
-            $sqlFields = $this->getSQLSelectFields($fields);
+        // Search into Joins quieries
+        foreach ($this->joins as $join) {
+            /** @var DataSQL $object */
+            $object = $join[1];
+            list($joinWhere,$joinParams) = $object->getQuerySQLWhereAndParams();
+            if($joinWhere) {
+
+                if($where) $where.=' AND ';
+                $where.=$joinWhere;
+
+                $params=array_merge($params,$joinParams);
+
+            }
         }
 
-        // Query
-        $SQL = "SELECT {$sqlFields} FROM {$this->entity_name} WHERE {$where}";
-        if(!$sqlFields) return($this->addError('No fields to select found: '.json_encode($fields)));
-        return $this->core->model->dbQuery($this->entity_name.' fetch by querys: '.json_encode($keysWhere),$SQL,$params);
+        return [$where,$params];
     }
 
+    function getQuerySQLFields($fields=null) {
+        if(!$fields) $fields=$this->queryFields;
+        if($fields && is_string($fields)) $fields = explode(',',$fields);
+        $ret =  $this->getSQLSelectFields($fields);
+        foreach ($this->joins as $join) {
+            /** @var DataSQL $object */
+            $object = $join[1];
+            $ret.=','.$object->getQuerySQLFields();
+        }
+        return $ret;
+    }
+
+    function getQuerySQLFroms() {
+        $from = $this->entity_name;
+        foreach ($this->joins as $join) {
+            /** @var DataSQL $object */
+            $object = $join[1];
+            $from.=" {$join[0]} JOIN {$object->entity_name} ON ($join[2])";
+        }
+        return $from;
+    }
 
     /**
      * Active or deactive mapping of fields
@@ -167,6 +301,10 @@ class DataSQL
      */
     public function useMapping($use=true) {
         $this->use_mapping = $use;
+    }
+
+    function join ($type,DataSQL &$object,$on) {
+        $this->joins[] = [$type,$object,$on];
     }
 
     /**
@@ -178,5 +316,11 @@ class DataSQL
         $this->errorMsg[] = $value;
         $this->core->errors->add(['DataSQL'=>$value]);
     }
+
+    function getDBQuery() {
+        return($this->core->model->db->getQuery());
+    }
+
+
 
 }

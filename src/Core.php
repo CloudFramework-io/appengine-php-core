@@ -3152,28 +3152,51 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
         public function processModels($models) {
             if(is_array($models['DataBaseTables']))
                 foreach ($models['DataBaseTables'] as $model=>$dataBaseTable) {
-                    $this->models[$model] = ['type'=>'db','data'=>$dataBaseTable];
+                    $this->models['db:'.$model] = ['type'=>'db','data'=>$dataBaseTable];
                 }
             foreach ($models['DataStoreEntities'] as $model=>$dsEntity) {
-                $this->models[$model] = ['type'=>'ds','data'=>$dsEntity];
+                $this->models['ds:'.$model] = ['type'=>'ds','data'=>$dsEntity];
             }
         }
 
+        /**
+         * @param string $model         We expect a '(db|ds):model_name' or just 'model_name'
+         * @return mixed|null|void
+         */
         public function getModelObject($model) {
+
+            // If the model does not include the '(ds|db):' we add it.
+            if(!strpos($model,':')) {
+                if(isset($this->models['db:'.$model])) $model = 'db:'.$model;
+                else $type = 'ds:'.$model;
+            }
+
+            // Let's find it and return
             if(!isset($this->models[$model])) return($this->core->errors->add("Model $model does not exist"));
             switch ($this->models[$model]['type']) {
                 case "db":
-                    if(!is_object($object = $this->core->loadClass('DataSQL',[$model,$this->models[$model]['data']]))) return;
+                    list($type,$table) = explode(':',$model,2);
+                    if(!is_object($object = $this->core->loadClass('DataSQL',[$table,$this->models[$model]['data']]))) return;
                     return($object);
                     break;
 
                 case "ds":
+                    list($type,$entity) = explode(':',$model,2);
                     if(empty($this->core->config->get('DataStoreSpaceName'))) return($this->addError('Missing DataStoreSpaceName config var'));
-                    if(!is_object($object = $this->core->loadClass('DataStore',[$model,$this->core->config->get('DataStoreSpaceName'),$this->models[$model]['data']]))) return;
+                    if(!is_object($object = $this->core->loadClass('DataStore',[$entity,$this->core->config->get('DataStoreSpaceName'),$this->models[$model]['data']]))) return;
                     return($object);
                     break;
             }
             return null;
+        }
+
+        /**
+         * Returns the array keys of the models
+         * @return array
+         */
+        public function listmodels() {
+            if(is_array($this->models)) return array_keys($this->models);
+            else return [];
         }
 
         public function dbInit() {
@@ -3197,9 +3220,31 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             if(!$this->dbInit()) return($this->errorMsg);
 
             // Execute the query
+            $this->core->logs->add($title,'dbQuery');
             $ret = $this->db->getDataFromQuery($SQL,$params);
             if($this->db->error()) return($this->addError($this->db->getError()));
             else return $ret;
+
+        }
+
+        /**
+         * Update a record into the database
+         * @param $title
+         * @param $table
+         * @param $data
+         * @return bool|null|void
+         */
+        public function dbUpdate($title, $table, $data) {
+
+            // Verify we have the object created
+            if(!$this->dbInit()) return($this->errorMsg);
+
+            // Execute the query
+            $this->core->logs->add($title,'dbUpdate');
+            $this->db->cfmode=false; // Deactivate Cloudframework mode.
+            $this->db->cloudFrameWork('update',$data,$table);
+            if($this->db->error()) return($this->addError($this->db->getError()));
+            else return true;
 
         }
 
@@ -3211,6 +3256,8 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             $this->error = true;
             $this->errorMsg[] = $msg;
         }
+
+
 
     }
 
