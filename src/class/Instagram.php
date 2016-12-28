@@ -11,7 +11,7 @@ if (!defined ("_Instagram_CLASS_") ) {
         var $user_id=null;
         var $error = false;
         var $errorMsg = [];
-        function __construct (Core &$core,$config)
+        function __construct (Core &$core,$config=null)
         {
             $this->core = $core;
             $this->config = $config;
@@ -45,6 +45,30 @@ if (!defined ("_Instagram_CLASS_") ) {
                         }
                     }
                 }
+            }
+            return $data;
+        }
+
+        public function getUserInfo($user_id='')
+        {
+            $data = null;
+            if (!strlen($user_id)) $user_id = $this->user_id;
+            if (strlen($user_id) && strlen($this->access_token)) {
+                $params['access_token'] = $this->access_token;
+                $url = 'https://api.instagram.com/v1/users/self';
+                $ret = $this->core->request->get($url,$params);
+                if(strlen($ret) ) {
+                    $ret = json_decode($ret,true);
+                    if($ret['meta']['code']==200) {
+                        $data = $ret['data'];
+                    } else {
+                        $this->addError($ret);
+                    }
+                } else {
+                    $this->addError($ret);
+                }
+            } else {
+                $this->addError('Missing user_id or access_token');
             }
             return $data;
         }
