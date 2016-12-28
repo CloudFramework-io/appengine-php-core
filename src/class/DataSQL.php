@@ -160,7 +160,7 @@ class DataSQL
      * @param Array $keysWhere
      */
     function setQueryWhere($keysWhere) {
-        if(!is_array($keysWhere) ) return($this->addError('setQueryWhere($keysWhere) $keyWhere has to be an array with key->value'));
+        if(empty($keysWhere) ) return($this->addError('setQueryWhere($keysWhere) $keyWhere can not be empty'));
         $this->queryWhere = $keysWhere;
     }
 
@@ -171,21 +171,29 @@ class DataSQL
      * @return array|void
      */
     function fetch($keysWhere=[], $fields=null) {
-        // Keys to find
-        if(!is_array($keysWhere) ) return($this->addError('fetch($keysWhere, $fields=null) $keyWhere has to be an array with key->value'));
 
+        //--- WHERE
+        // Array with key=>value or empty
+        if(is_array($keysWhere) ) {
+            list($where, $params) = $this->getQuerySQLWhereAndParams($keysWhere);
+        }
+        // String
+        elseif(is_string($keysWhere) && !empty($keysWhere)) {
+            $where =$keysWhere;
+            $params = [];
+        } else {
+            return($this->addError('fetch($keysWhere,$fields=null) $keyWhere has a wrong value'));
+        }
 
-
-        list($where,$params) = $this->getQuerySQLWhereAndParams($keysWhere);
-
+        // --- FIELDS
         $sqlFields = $this->getQuerySQLFields();
 
-
-        // Query
+        // --- QUERY
         $from = $this->getQuerySQLFroms();
         $SQL = "SELECT {$sqlFields} FROM {$from} WHERE {$where}";
 
 
+        // --- ORDER BY
         if($this->order) $SQL.= " ORDER BY {$this->order}";
         if($this->limit) $SQL.= " limit {$this->limit}";
 

@@ -60,7 +60,7 @@ try {
     $run->addError(error_get_last());
     $run->addError($e->getMessage());
 }
-echo "------------------------------\n";
+echo "\n------------------------------\n";
 if($core->errors->lines) {
     $run->sendTerminal(['errors'=>$core->errors->data]);
     $run->sendTerminal('Script: Error');

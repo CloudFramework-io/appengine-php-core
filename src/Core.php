@@ -3403,7 +3403,9 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             $this->argv = $argv;
         }
 
-
+        function hasOption($option) {
+            return(in_array('--'.$option, $this->argv));
+        }
 
         function sendTerminal($info) {
             if(is_string($info)) echo $info."\n";
