@@ -1,7 +1,7 @@
 <?php
 
 class DataSQL
-    {
+{
     var $error = false;
     var $errorMsg = '';
     var $entity_schema = null;
@@ -75,14 +75,13 @@ class DataSQL
      */
     function getSQLSelectFields($fields=null) {
         if(null === $fields || empty($fields)) $fields = $this->getFields();
-
         if(!$this->use_mapping || !count($this->mapping)) {
             return $this->entity_name.'.'.implode(','.$this->entity_name.'.',$fields);
         }
         else {
             $ret = '';
             foreach ($this->mapping as $field=>$fieldMapped) {
-                if(null != $fields && !in_array($fieldMapped,$fields)) continue;
+                if(null != $fields && !in_array($field,$fields)) continue;
                 if($ret) $ret.=',';
                 $ret .= "{$this->entity_name}.{$field} AS {$fieldMapped}";
             }
@@ -143,7 +142,7 @@ class DataSQL
     }
 
     /**
-     * Defines the fields to retuen in a query. If empty it will return all of them
+     * Defines the fields to return in a query. If empty it will return all of them
      * @param $fields
      */
     function setQueryFields($fields) {
@@ -186,7 +185,7 @@ class DataSQL
         }
 
         // --- FIELDS
-        $sqlFields = $this->getQuerySQLFields();
+        $sqlFields = $this->getQuerySQLFields($fields);
 
         // --- QUERY
         $from = $this->getQuerySQLFroms();
@@ -211,6 +210,16 @@ class DataSQL
      */
     public function update($data) {
         if(!is_array($data) ) return($this->addError('update($data) $data has to be an array with key->value'));
+
+        // Let's convert from Mapping into SQL fields
+        if($this->use_mapping) {
+            $mapdata = $data;
+            $data = [];
+            foreach ($mapdata as $key=>$value) {
+                if(!isset($this->entity_schema['mapping'][$key]['field'])) return($this->addError('update($data) $data contains a wrong mapped key: '.$key));
+                $data[$this->entity_schema['mapping'][$key]['field']] = $value;
+            }
+        }
 
         $ret= $this->core->model->dbUpdate($this->entity_name.' update record: '.json_encode($data),$this->entity_name,$data);
         if($this->core->model->error) $this->addError($this->core->model->errorMsg);
