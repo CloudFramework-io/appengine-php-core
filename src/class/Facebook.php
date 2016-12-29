@@ -58,7 +58,7 @@ if (!defined ("_Facebook_CLASS_") ) {
          * @return array|void
          */
         public function getProfile($id, $access_token=null, $fields='id,name,first_name,middle_name,last_name,email,cover,locale,website,link,picture,is_verified') {
-            
+
             if($this->error) return;
             if(!$access_token) $access_token = $this->access_token;
             if(!$access_token) return($this->addError('getProfile($id,$access_token=null). Missing access token. Use setAccessToken method or pass the variable.'));
@@ -73,7 +73,7 @@ if (!defined ("_Facebook_CLASS_") ) {
             } catch(Exception $e) {
                 return($this->addError('Error getting user profile: ' . $e->getMessage()));
             }
-            
+
             /** @var  $graphUser */
             $graphUser = $response->getGraphUser();
             return(array_merge($graphUser->asArray(),['total_friends'=>$friends->getDecodedBody()['summary']['total_count']]));
@@ -122,7 +122,7 @@ if (!defined ("_Facebook_CLASS_") ) {
             try {
                 $response = $this->client->get("/".$id."?fields={$fields}", $access_token);
                 $node = $response->getGraphNode()->asArray();
-                return $node;
+
                 $response = $this->client->get("/".$id."/tabs", $node["access_token"]);
                 $tabsEdge = $response->getGraphEdge();
 
