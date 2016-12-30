@@ -15,6 +15,7 @@ class DataSQL
     private $joins = [];
     private $queryFields = '';
     private $queryWhere = [];
+    private $view = null;
 
     /**
      * DataSQL constructor.
@@ -82,6 +83,7 @@ class DataSQL
             $ret = '';
             foreach ($this->mapping as $field=>$fieldMapped) {
                 if(null != $fields && !in_array($field,$fields)) continue;
+                if($this->view && (!isset($this->entity_schema['mapping'][$fieldMapped]['views']) || !in_array($this->view,$this->entity_schema['mapping'][$fieldMapped]['views']))) continue;
                 if($ret) $ret.=',';
                 $ret .= "{$this->entity_name}.{$field} AS {$fieldMapped}";
             }
@@ -171,6 +173,7 @@ class DataSQL
      */
     function fetch($keysWhere=[], $fields=null) {
 
+        if($this->error) return false;
         //--- WHERE
         // Array with key=>value or empty
         if(is_array($keysWhere) ) {
@@ -189,7 +192,8 @@ class DataSQL
 
         // --- QUERY
         $from = $this->getQuerySQLFroms();
-        $SQL = "SELECT {$sqlFields} FROM {$from} WHERE {$where}";
+        $SQL = "SELECT {$sqlFields} FROM {$from}";
+        if($where) $SQL.=" WHERE {$where}";
 
 
         // --- ORDER BY
@@ -231,10 +235,23 @@ class DataSQL
     /** About Order */
     function unsetOrder() {$this->order='';}
 
-    function addOrder($field,$type) {
+    /**
+     * Add Order into a query
+     * @param $field
+     * @param $type
+     */
+    function addOrder($field, $type) {
+
+        // Let's convert from Mapping into SQL fields
+        if($this->use_mapping) {
+            if(isset($this->entity_schema['mapping'][$field]['field'])) $field = $this->entity_schema['mapping'][$field]['field'];
+        }
+
         if(isset($this->fields[$field]))  {
             if(strlen($this->order)) $this->order.=', ';
             $this->order.= $this->entity_name.'.'.$field.((strtoupper(trim($type))=='DESC')?' DESC':' ASC');
+        } else {
+            $this->addError($field.' does not exist to order by');
         }
     }
 
@@ -318,6 +335,12 @@ class DataSQL
      */
     public function useMapping($use=true) {
         $this->use_mapping = $use;
+    }
+
+    public function setView($view) {
+        if(!is_string($view) && null !==$view) return($this->addError('setView($view), Wrong value'));
+
+        $this->view = $view;
     }
 
     function join ($type,DataSQL &$object,$on) {
