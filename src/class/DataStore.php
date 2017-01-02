@@ -188,7 +188,7 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                         }
 
                     } else {
-                        $this->setError('Structure of the data does not match with schema');
+                        $this->setError($this->entity_name.': Structure of the data does not match with schema');
                     }
                 }
             }
