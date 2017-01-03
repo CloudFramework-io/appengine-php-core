@@ -3172,7 +3172,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             }
 
             // Let's find it and return
-            if(!isset($this->models[$model])) return($this->core->errors->add("Model $model does not exist"));
+            if(!isset($this->models[$model])) return($this->addError("Model $model does not exist"));
             switch ($this->models[$model]['type']) {
                 case "db":
                     list($type,$table) = explode(':',$model,2);
