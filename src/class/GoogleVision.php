@@ -69,9 +69,6 @@ class GoogleVision extends Google
             return($this->addError('Excepción capturada: ',  $e->getMessage()));
         }
 
-
-
-
         /** @var Google_Service_Vision_AnnotateImageResponse $item */
         foreach ($res->getResponses() as $item) {
             if(null !== $item->getError()) {
