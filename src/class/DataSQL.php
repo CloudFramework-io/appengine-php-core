@@ -212,7 +212,7 @@ class DataSQL
      * @param $data
      * @return bool|null|void
      */
-    public function update($data) {
+    public function update(&$data) {
         if(!is_array($data) ) return($this->addError('update($data) $data has to be an array with key->value'));
 
         // Let's convert from Mapping into SQL fields
@@ -226,6 +226,30 @@ class DataSQL
         }
 
         $ret= $this->core->model->dbUpdate($this->entity_name.' update record: '.json_encode($data),$this->entity_name,$data);
+        if($this->core->model->error) $this->addError($this->core->model->errorMsg);
+        return($ret);
+
+    }
+
+    /**
+     * Update a record in db
+     * @param $data
+     * @return bool|null|void
+     */
+    public function upsert(&$data) {
+        if(!is_array($data) ) return($this->addError('upsert($data) $data has to be an array with key->value'));
+
+        // Let's convert from Mapping into SQL fields
+        if($this->use_mapping) {
+            $mapdata = $data;
+            $data = [];
+            foreach ($mapdata as $key=>$value) {
+                if(!isset($this->entity_schema['mapping'][$key]['field'])) return($this->addError('upsert($data) $data contains a wrong mapped key: '.$key));
+                $data[$this->entity_schema['mapping'][$key]['field']] = $value;
+            }
+        }
+
+        $ret= $this->core->model->dbUpSert($this->entity_name.' update record: '.json_encode($data),$this->entity_name,$data);
         if($this->core->model->error) $this->addError($this->core->model->errorMsg);
         return($ret);
 

@@ -3234,7 +3234,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
          * @param $data
          * @return bool|null|void
          */
-        public function dbUpdate($title, $table, $data) {
+        public function dbUpdate($title, $table, &$data) {
 
             // Verify we have the object created
             if(!$this->dbInit()) return($this->errorMsg);
@@ -3245,6 +3245,55 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             $this->db->cloudFrameWork('update',$data,$table);
             if($this->db->error()) return($this->addError($this->db->getError()));
             else return true;
+
+        }
+
+        /**
+         * Upsert a record into the database. If it exist rewrite it
+         * @param $title
+         * @param $table
+         * @param $data
+         * @return bool|null|void
+         */
+        public function dbUpsert($title, $table, &$data) {
+
+            // Verify we have the object created
+            if(!$this->dbInit()) return($this->errorMsg);
+
+            // Execute the query
+            $this->core->logs->add($title,'dbUpsert');
+            $this->db->cfmode=false; // Deactivate Cloudframework mode.
+            if(!isset($data[0])) $data = [$data];
+            foreach ($data as $record) {
+                $this->db->cloudFrameWork('replace',$record,$table);
+                if($this->db->error()) return($this->addError($this->db->getError()));
+            }
+
+            return true;
+        }
+
+        /**
+         * Insert
+         * @param $title
+         * @param $table
+         * @param $data
+         * @return bool|null|void
+         */
+        public function dbInsert($title, $table, &$data) {
+
+            // Verify we have the object created
+            if(!$this->dbInit()) return($this->errorMsg);
+
+            // Execute the query
+            $this->core->logs->add($title,'dbInsert');
+            $this->db->cfmode=false; // Deactivate Cloudframework mode.
+            if(!isset($data[0])) $data = [$data];
+            foreach ($data as $record) {
+                $this->db->cloudFrameWork('insert',$record,$table);
+                if($this->db->error()) return($this->addError($this->db->getError()));
+            }
+
+            return true;
 
         }
 
