@@ -3214,7 +3214,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
          * @param $params
          * @return array|void
          */
-        public function dbQuery($title, $SQL, $params) {
+        public function dbQuery($title, $SQL, $params=[]) {
 
             // Verify we have the object created
             if(!$this->dbInit()) return($this->errorMsg);
@@ -3243,6 +3243,20 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             $this->core->logs->add($title,'dbUpdate');
             $this->db->cfmode=false; // Deactivate Cloudframework mode.
             $this->db->cloudFrameWork('update',$data,$table);
+            if($this->db->error()) return($this->addError($this->db->getError()));
+            else return true;
+
+        }
+
+        public function dbCommand($title, $q,$params=[]) {
+
+            // Verify we have the object created
+            if(!$this->dbInit()) return($this->errorMsg);
+
+            // Execute the query
+            $this->core->logs->add($title,'dbCommand');
+            $this->db->cfmode=false; // Deactivate Cloudframework mode.
+            $this->db->command($q,$params);
             if($this->db->error()) return($this->addError($this->db->getError()));
             else return true;
 
