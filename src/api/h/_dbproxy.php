@@ -14,7 +14,26 @@ class API extends RESTful
             $this->db->connect();
             if($this->db->error()) $this->setError('Error connecting db',503);
             else {
-                $ret = $this->db->getDataFromQuery('SELECT '.$this->formParams['q']);
+
+                // Decode params
+                if(isset($this->formParams['params'])) $params = json_decode($this->formParams['params']);
+                if(!is_array($params)) $params=[];
+
+                // Execute command
+                switch ($this->formParams['command']) {
+
+                    case "update":
+                        $this->db->command('UPDATE '.$this->formParams['q'],$params);
+                        if(!$this->db->error()) {
+                            $ret = ['affected_rows'=>$this->db->getAffectedRows()];
+                        }
+                        break;
+                    default:
+                        $ret = $this->db->getDataFromQuery('SELECT '.$this->formParams['q'],$params);
+                        break;
+                }
+
+                // Analyze errors
                 if($this->db->error()) $this->setError('Error in query: '.$this->db->getQuery());
                 else {
                     $this->db->close();
