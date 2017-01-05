@@ -62,11 +62,11 @@ class DataSQL
     }
 
     /**
-     * Return the fields defined in the schema mapping
+     * Return the mapped field namesdefined in the schema mapping
      * @return array
      */
     function getMappingFields() {
-        return array_keys($this->mapping);
+        return array_values($this->mapping);
     }
 
     /**
@@ -75,14 +75,20 @@ class DataSQL
      * @return array|null
      */
     function getSQLSelectFields($fields=null) {
-        if(null === $fields || empty($fields)) $fields = $this->getFields();
+        if(null === $fields || empty($fields)) {
+            if($this->use_mapping)
+                $fields = $this->getMappingFields();
+            else
+                $fields = $this->getFields();
+        }
         if(!$this->use_mapping || !count($this->mapping)) {
             return $this->entity_name.'.'.implode(','.$this->entity_name.'.',$fields);
         }
         else {
             $ret = '';
             foreach ($this->mapping as $field=>$fieldMapped) {
-                if(null != $fields && !in_array($field,$fields)) continue;
+                if(null != $fields && !in_array($fieldMapped,$fields)) continue;
+
                 if($this->view && (!isset($this->entity_schema['mapping'][$fieldMapped]['views']) || !in_array($this->view,$this->entity_schema['mapping'][$fieldMapped]['views']))) continue;
                 if($ret) $ret.=',';
                 $ret .= "{$this->entity_name}.{$field} AS {$fieldMapped}";
@@ -189,6 +195,7 @@ class DataSQL
 
         // --- FIELDS
         $sqlFields = $this->getQuerySQLFields($fields);
+
 
         // --- QUERY
         $from = $this->getQuerySQLFroms();
@@ -334,12 +341,17 @@ class DataSQL
     function getQuerySQLFields($fields=null) {
         if(!$fields) $fields=$this->queryFields;
         if($fields && is_string($fields)) $fields = explode(',',$fields);
+
         $ret =  $this->getSQLSelectFields($fields);
+
         foreach ($this->joins as $join) {
+
             /** @var DataSQL $object */
             $object = $join[1];
             $ret.=','.$object->getQuerySQLFields();
+
         }
+
         return $ret;
     }
 
@@ -367,7 +379,12 @@ class DataSQL
         $this->view = $view;
     }
 
-    function join ($type,DataSQL &$object,$on) {
+    /**
+     * @param $type Could be inner or left
+     * @param DataSQL $object
+     * @param $on
+     */
+    function join ($type, DataSQL &$object, $on) {
         $this->joins[] = [$type,$object,$on];
     }
 
