@@ -2636,7 +2636,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                 $this->core->errors->set('Localization has received a wrong spacename: ');
                 return false;
             }
-            $code = preg_replace('/[^a-z0-9_\-;]/', '', strtolower($code));
+            $code = preg_replace('/[^a-z0-9_\-;\.]/', '', strtolower($code));
             if (!strlen($code)) {
                 $this->core->errors->set('Localization has received a wrong code: ');
                 return false;

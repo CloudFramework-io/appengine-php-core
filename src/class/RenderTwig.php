@@ -107,6 +107,7 @@ if (!defined ("_RenderTwig_CLASS_") ) {
         var $twig = null;
         private  $index = '';
         var $load_from_cache = false;
+        var $showTags = false;
 
 
         function __construct(Core &$core, $config)
@@ -239,12 +240,18 @@ if (!defined ("_RenderTwig_CLASS_") ) {
                 $this->twig->addFunction($function);
 
                 $function = new \Twig_SimpleFunction('l', function ($dic, $key, $config = []) {
-                    return $this->core->localization->get($dic, $key, $config);
+                    if($this->showTags )
+                        return "{{ l('{$dic}','{$key}') }}";
+                    else
+                        return $this->core->localization->get($dic, $key, $config);
                 });
                 $this->twig->addFunction($function);
 
                 $function = new \Twig_SimpleFunction('w', function ($dic, $key, $config = []) {
-                    return $this->core->localization->get($dic, $key, $config);
+                    if($this->showTags )
+                        return "{{ l('{$dic}','{$key}') }}";
+                    else
+                        return $this->core->localization->get($dic, $key, $config);
                 });
                 $this->twig->addFunction($function);
 
@@ -266,7 +273,12 @@ if (!defined ("_RenderTwig_CLASS_") ) {
                 $function = new \Twig_SimpleFunction('getData', function () { return $this->core->getData(); });
                 $this->twig->addFunction($function);
 
-                $function = new \Twig_SimpleFunction('getDataKey', function ($key) { return $this->core->getDataKey($key); });
+                $function = new \Twig_SimpleFunction('getDataKey', function ($key) {
+                    if($this->showTags )
+                        return '{{ '."getDataKey('{$key}')".' }}';
+                    else
+                        return $this->core->getDataKey($key);
+                });
                 $this->twig->addFunction($function);
 
                 $function = new \Twig_SimpleFunction('getAuthVar', function ($key) { return $this->core->user->getVar($key); });
