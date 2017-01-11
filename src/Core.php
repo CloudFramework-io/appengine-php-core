@@ -2457,6 +2457,12 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                 $this->core->logs->add('localizeCachePath: ' . ((empty($this->core->config->get('localizeCachePath'))) ? 'empty' : '***'));
             }
 
+            // Evaluate data conversion
+            if($config['data']) {
+                $ret = vsprintf($ret,$config['data']);
+            }
+
+            // Return
             return $ret;
         }
 

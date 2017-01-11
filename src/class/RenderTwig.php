@@ -240,17 +240,13 @@ if (!defined ("_RenderTwig_CLASS_") ) {
                 $this->twig->addFunction($function);
 
                 $function = new \Twig_SimpleFunction('l', function ($dic, $key, $config = []) {
-                    if($this->showTags )
-                        return "{{ l('{$dic}','{$key}') }}";
-                    else
-                        return $this->core->localization->get($dic, $key, $config);
-                });
-                $this->twig->addFunction($function);
+                    if($this->showTags ) {
+                        if($config)
+                            return "{{ l('{$dic}','{$key}'," . json_encode($config) . ") }}";
+                        else
+                            return "{{ l('{$dic}','{$key}') }}";
 
-                $function = new \Twig_SimpleFunction('w', function ($dic, $key, $config = []) {
-                    if($this->showTags )
-                        return "{{ l('{$dic}','{$key}') }}";
-                    else
+                    } else
                         return $this->core->localization->get($dic, $key, $config);
                 });
                 $this->twig->addFunction($function);
