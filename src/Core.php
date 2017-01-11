@@ -2374,6 +2374,9 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
         var $wapploca = [];
         var $files_readed = [];
         private $init = false;
+        var $error = false;
+        var $errorMsg = [];
+        var $cache = true;
 
         function __construct(Core &$core)
         {
@@ -2388,15 +2391,17 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                 $this->core->config->set('localizeCachePath', $this->core->config->get('LocalizePath'));
 
             // Read from Cache last Dics
-            if (!isset($_GET['_reloadDics']) && !isset($_GET['_nocacheDics'])) {
-                $this->data = $this->core->cache->get('Core:Localization:Data');
-                if (!is_array($this->data)) $this->data = [];
-            }
+            if($this->cache) {
+                if (!isset($_GET['_reloadDics']) && !isset($_GET['_nocacheDics'])) {
+                    $this->data = $this->core->cache->get('Core:Localization:Data');
+                    if (!is_array($this->data)) $this->data = [];
+                }
 
-            // $this->core->config->get('wapploca_cache_expiration_time') default 3600
-            if ($this->core->config->get('WAPPLOCA') && !isset($_GET['_nocacheDics'])) {
-                $this->wapploca = $this->core->cache->get('Core:Localization:WAPPLOCA', $this->core->config->get('wapploca_cache_expiration_time'));
-                if (!is_array($this->wapploca)) $this->wapploca = [];
+
+                if ($this->core->config->get('WAPPLOCA') && !isset($_GET['_nocacheDics'])) {
+                    $this->wapploca = $this->core->cache->get('Core:Localization:WAPPLOCA', $this->core->config->get('wapploca_cache_expiration_time'));
+                    if (!is_array($this->wapploca)) $this->wapploca = [];
+                }
             }
 
             $this->init = true;
@@ -2486,7 +2491,10 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
         {
             if(!$this->init) $this->init();
 
-            if (!strlen($this->core->config->get('localizeCachePath'))) return false;
+
+            if (!strlen($this->core->config->get('localizeCachePath'))) {
+                $this->core->config->set('localizeCachePath',$this->core->system->app_path.'/localize');
+            }
             if (!strlen($lang)) $lang = $this->core->config->getLang();
             $ok = true;
             $this->core->__p->add('Localization->readFromFile: ', strtoupper($lang)."-{$locFile}", 'note');
@@ -2498,13 +2506,17 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                     $ret = @file_get_contents($filename);
                     if ($ret !== false) {
                         $this->data[$locFile][$lang] = json_decode($ret, true);
-                        $this->core->cache->set('Core:Localization:Data', $this->data);
+
+                        // Cache result
+                        if($this->cache)
+                            $this->core->cache->set('Core:Localization:Data', $this->data);
+
                         $this->core->__p->add('Success reading ' . strtoupper($lang) . '_Core_' . $locFile . '.json');
 
                     } else {
                         $this->core->__p->add('Error reading ' .  strtoupper($lang) . '_Core_' . $locFile . '.json');
-                        $this->core->logs->add('Error reading ' . $filename);
-                        $this->core->logs->add(error_get_last());
+                        $this->addError('CoreLoalization.readFromFile error. No file: '.$filename);
+                        $this->addError(error_get_last());
                         $ok = false;
                     }
                 } catch (Exception $e) {
@@ -2538,7 +2550,10 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                     $this->core->logs->add(error_get_last());
                 } else {
                     $this->core->__p->add('Success Writting ' . strtoupper($lang) . '_Core_' . $locFile . '.json');
-                    $this->core->cache->set('Core:Localization:Data', $this->data);
+
+                    // Cache the result
+                    if($this->cache)
+                        $this->core->cache->set('Core:Localization:Data', $this->data);
                 }
             } catch (Exception $e) {
                 $ok = false;
@@ -2583,7 +2598,11 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                     } else {
                         if (is_array($ret['data'])) {
                             $this->wapploca[$key] = $ret['data'];
-                            $this->core->cache->set('Core:Localization:WAPPLOCA', $this->wapploca);
+
+                            // Cache the result
+                            if($this->cache)
+                                $this->core->cache->set('Core:Localization:WAPPLOCA', $this->wapploca);
+
                         } else {
                             $this->core->logs->add('WAPPLOCA return data is not an array');
                             $this->core->logs->add($ret);
@@ -2623,6 +2642,12 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                 return false;
             }
             return true;
+        }
+
+        function addError($value)
+        {
+            $this->error = true;
+            $this->errorMsg[] = $value;
         }
     }
 

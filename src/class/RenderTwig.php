@@ -159,9 +159,15 @@ if (!defined ("_RenderTwig_CLASS_") ) {
             $this->core->__p->add('RenderTwig->setTwig: ', $index, 'note');
             switch ($this->templates[$index]['type']) {
                 case "file":
+
                     // Convert the path into relative path to generate the same keys
                     $path = dirname($this->templates[$index]['template']);
-                    $loader = new \Twig_Loader_Filesystem($path);
+                    try {
+                        $loader = new \Twig_Loader_Filesystem($path);
+                    } catch (Exception $e) {
+                        return($this->addError($e->getMessage()));
+                    }
+
                     break;
                 case "url":
                     $template = '';  // Raw content of the HTML
@@ -275,13 +281,16 @@ if (!defined ("_RenderTwig_CLASS_") ) {
             if(!strlen($this->index) || !is_object($this->twig)) return false;
             else {
                 $this->core->__p->add('RenderTwig->render: ', $this->index, 'note');
-                if($this->templates[$this->index]['type']=='file') {
-                    if(!is_array($data)) $data = [$data];
-                    $ret = $this->twig->render(basename($this->index.'.htm.twig'),$data);
-                } else {
-                    $ret = $this->twig->render($this->index,$data);
+                try {
+                    if($this->templates[$this->index]['type']=='file') {
+                        if(!is_array($data)) $data = [$data];
+                        $ret = $this->twig->render(basename($this->index.'.htm.twig'),$data);
+                    } else {
+                        $ret = $this->twig->render($this->index,$data);
+                    }
+                } catch (Exception $e) {
+                    $this->addError($e->getMessage());
                 }
-
                 $this->core->__p->add('RenderTwig->render: ', '', 'endnote');
                 return $ret;
             }

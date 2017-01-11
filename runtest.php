@@ -23,7 +23,7 @@ if(true) {
     if(!class_exists('Test')) die($path.'/tests/'.$script[0].' does not include a "Class Test'."\n\n");
 
     /** @var Tests $test */
-    $test = new Test($core);
+    $test = new Test($core,$argv);
     $test->params = $script;
     if(strlen($params))
         parse_str($params,$test->formParams);

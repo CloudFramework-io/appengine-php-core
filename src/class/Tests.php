@@ -4,6 +4,15 @@ include_once __DIR__.'/RESTful.php';
 if (!defined("_Tests_CLASS_")) {
     define("_Tests_CLASS_", TRUE);
 
+    function recursiveCheck(&$data,&$pattern)
+    {
+        foreach ($data as $key=>$info) {
+            if(isset($pattern[$key]) && $pattern[$key]!= $info) return false;
+            elseif(is_array($info)) return(recursiveCheck($info,$pattern));
+        }
+        return true;
+    }
+    
     class Tests extends RESTful
     {
         var $tests;
@@ -11,6 +20,18 @@ if (!defined("_Tests_CLASS_")) {
         var $response = null;
         var $response_headers = null;
         var $headers = [];
+        var $argv;
+
+        /**
+         * Scripts constructor.
+         * @param Core $core
+         * @param null $argv
+         */
+        function __construct(Core $core, $argv=null)
+        {
+            parent::__construct($core);
+            $this->argv = $argv;
+        }
 
         function sendTerminal($info) {
             if(is_string($info)) echo $info;
@@ -52,6 +73,7 @@ if (!defined("_Tests_CLASS_")) {
                 if($this->core->errors->lines) $this->addsError("Error connecting  [{$this->core->errors->data[0]}]");
 
             $this->response_headers = $this->core->request->responseHeaders;
+            return(!$this->error);
 
         }
 
@@ -64,6 +86,7 @@ if (!defined("_Tests_CLASS_")) {
                 if($this->core->errors->lines) $this->addsError("Error connecting  [{$this->core->errors->data[0]}]");
 
             $this->response_headers = $this->core->request->responseHeaders;
+            return(!$this->error);
 
         }
 
@@ -84,14 +107,7 @@ if (!defined("_Tests_CLASS_")) {
             if(!is_array($json)) $this->addsError('pattern is not array nor json');
             echo json_encode($json);
 
-            function recursiveCheck(&$data,&$pattern)
-            {
-                foreach ($data as $key=>$info) {
-                    if(isset($pattern[$key]) && $pattern[$key]!= $info) return false;
-                    elseif(is_array($info)) return(recursiveCheck($info,$pattern));
-                }
-                return true;
-            }
+
             if(recursiveCheck($response,$json)) echo " [OK]";
             else $this->addsError('Failing checksIfResponseContainsJSON.');
             echo "\n";
@@ -128,6 +144,20 @@ if (!defined("_Tests_CLASS_")) {
             }
             echo "\n";
 
+        }
+
+        function hasOption($option) {
+            return(in_array('--'.$option, $this->argv));
+        }
+
+        function getOptionValue($option) {
+            if(is_array($this->argv)) foreach ($this->argv as $item) {
+                if(strpos($item,'--'.$option.'=')===0) {
+                    list($foo,$ret) = explode('=',$item);
+                    return $ret;
+                }
+            }
+            return null;
         }
     }
 }

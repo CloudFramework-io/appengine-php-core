@@ -127,14 +127,12 @@ class DataSQL
         }
 
         // Fields to returned
-        if(!$fields) $sqlFields = $this->getSQLSelectFields();
-        else {
-            if(is_string($fields)) $fields = explode(',',$fields);
-            $sqlFields = $this->getSQLSelectFields($fields);
-        }
+        $sqlFields = $this->getQuerySQLFields($fields);
+        $from = $this->getQuerySQLFroms();
+
 
         // Query
-        $SQL = "SELECT {$sqlFields} FROM {$this->entity_name} WHERE {$where}";
+        $SQL = "SELECT {$sqlFields} FROM {$from} WHERE {$where}";
         if(!$sqlFields) return($this->addError('No fields to select found: '.json_encode($fields)));
 
         return $this->core->model->dbQuery($this->entity_name.' fetch by querys: '.json_encode($keysWhere),$SQL,$params);

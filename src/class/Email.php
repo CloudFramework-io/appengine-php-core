@@ -46,8 +46,8 @@ if (!defined ("_GOOGLEAPPSEMAIL_CLASS_") ) {
                 if(strlen($from[1]))
                     $this->setFromName($from[1]);
             } else
-                if(!strlen($from) && strlen($this->core->config->get('defaultEmailSender')))
-                    $this->setFrom($this->core->config->get("defaultEmailSender"));
+                if(!strlen($from) && strlen($this->core->config->get('EmailDefaultEmailSender')))
+                    $this->setFrom($this->core->config->get("EmailDefaultEmailSender"));
                 else
                     $this->setFrom($from);
 
@@ -84,9 +84,9 @@ if (!defined ("_GOOGLEAPPSEMAIL_CLASS_") ) {
 
         function useSendGridCredentials($user='',$passw='') {
 
-            if(!strlen($user) && is_object($adnbp)) {
-                $user = $this->core->config->get("sendGridUser");
-                $passw = $this->core->config->get("sendGridPassword");
+            if(!strlen($user)) {
+                $user = $this->core->config->get("EmailSendGridUser");
+                $passw = $this->core->config->get("EmailSendGridPassword");
             }
             $_ret = true;
             if(!strlen($user) || !strlen($passw) ) {
