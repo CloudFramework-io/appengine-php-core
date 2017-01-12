@@ -123,7 +123,8 @@ class GoogleVision extends Google
                 foreach ($image->getDominantColors() as $dominantColor) {
                     /** @var  Google_Service_Vision_Color $color */
                     $color = $dominantColor->getColor();
-                    $colors[] = ['color'=>[$color->getRed(),$color->getGreen(),$color->getBlue(),$color->getAlpha()],'score'=>$dominantColor->score];
+                    if(is_object($color))
+                        $colors[] = ['color'=>[$color->getRed(),$color->getGreen(),$color->getBlue(),$color->getAlpha()],'score'=>$dominantColor->score];
                 }
                 if($safe) $ret['imageProperties'][] = ['colors'=>$colors];
 
