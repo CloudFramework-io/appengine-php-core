@@ -397,6 +397,8 @@ class DataSQL
     }
 
     function getDBQuery() {
+        if(!is_object($this->core->model->db)) return null;
+        
         return($this->core->model->db->getQuery());
     }
 

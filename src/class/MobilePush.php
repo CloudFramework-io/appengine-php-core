@@ -17,6 +17,7 @@ if (!defined ("_mobilePush_CLASS_") ) {
         function __construct(Core &$core)
         {
             $this->core = $core;
+
         }
 
         function setAPNS($phrase, $cert, $url = 'tls://gateway.sandbox.push.apple.com:2195')
@@ -25,13 +26,13 @@ if (!defined ("_mobilePush_CLASS_") ) {
                 $this->apns['phrase'] = $phrase;
                 $this->apns['cert'] = $cert;
                 $this->apns['url'] = $url;
+
+
                 if ($this->apnConnection) fclose($this->apnConnection);
                 $ctx = stream_context_create();
                 stream_context_set_option($ctx, 'ssl', 'local_cert', $this->apns['cert']);
                 stream_context_set_option($ctx, 'ssl', 'passphrase', $this->apns['phrase']);
                 //stream_context_set_option($ctx, 'ssl', 'cafile', __DIR__.'/entrust_2048_ca.cer');
-
-
                 try {
                     $this->apnConnection = stream_socket_client(
                         $this->apns['url'], $err,
@@ -67,6 +68,24 @@ if (!defined ("_mobilePush_CLASS_") ) {
         }
 
         /**
+         * Send a message into iOS devices
+         * @param $deviceToken
+         * @param $mssg
+         * @param $badge
+         * @param array $extrapayload
+         * @return bool
+         */
+        function sendAPNSMessage($deviceToken, $mssg, $badge, $extrapayload=[])
+        {
+            return ($this->_sendAPNSMessage('msg', $deviceToken, $mssg, $badge, $extrapayload));
+        }
+
+        function sendAPNSLocKey($deviceToken, $locKey, $mssg, $badge, $extrapayload=[])
+        {
+            return ($this->_sendAPNSMessage('locKey', $deviceToken, $mssg, $badge, $extrapayload));
+        }
+
+        /**
          * Send a message to the the APNS with $deviceToken destination
          * Based on: http://www.tagwith.com/question_138013_ssl-connect-to-apns-server-in-local-environment-stream-socket-client-failed
          * Also.. http://stackoverflow.com/questions/28995197/apns-php-stream-socket-client-failed-to-enable-crypto
@@ -74,6 +93,7 @@ if (!defined ("_mobilePush_CLASS_") ) {
         function _sendAPNSMessage($type, $deviceToken, $txt, $badge,$extrapayload=[])
         {
             if ($this->error) return (false);
+
             if (!$this->apnConnection) {
                 $this->error = true;
                 $this->errorMsg = 'Use setAPNS($phrase,$cert[,$url]) before to call this method.';
@@ -113,16 +133,19 @@ if (!defined ("_mobilePush_CLASS_") ) {
                 $maxtries = 2;
                 $tries = 0;
                 $sleep = 1;
-
+                $err_extra = '';
                 do {
                     $this->error = false;
-                    if ($tries > 0) sleep(1); // Wait one second to try more thant 1 time
+                    if ($tries > 0) sleep(5); // Wait one second to try more thant 1 time
                     // Send it to the server
                     try {
                         $result = fwrite($this->apnConnection, $msg, strlen($msg));
+                        if(!$result ) $err_extra.=' ..trying: '.json_encode(error_get_last());
                     } catch (Exception $e) {
                         $this->error = true;
                         $this->errorMsg = $e->getMessage() . ' sending ' . $msg . ' (' . strlen($msg) . ')';
+                        $err_extra.=' ..exception: '.json_encode($e->getMessage());
+
                     }
                     $tries++;
                 } while (($this->error || !$result) && $tries < $maxtries);
@@ -130,7 +153,7 @@ if (!defined ("_mobilePush_CLASS_") ) {
 
                 if (!$this->error && !$result) {
                     $this->error = true;
-                    $this->errorMsg = 'Message not delivered';
+                    $this->errorMsg = 'Message not delivered: '.$err_extra;
                 }
 
             }
@@ -138,15 +161,7 @@ if (!defined ("_mobilePush_CLASS_") ) {
             return (!$this->error);
         }
 
-        function sendAPNSMessage($deviceToken, $mssg, $badge, $extrapayload=[])
-        {
-            return ($this->_sendAPNSMessage('msg', $deviceToken, $mssg, $badge, $extrapayload));
-        }
 
-        function sendAPNSLocKey($deviceToken, $locKey, $mssg, $badge, $extrapayload=[])
-        {
-            return ($this->_sendAPNSMessage('locKey', $deviceToken, $mssg, $badge, $extrapayload));
-        }
 
         /**
          * Android Messages
