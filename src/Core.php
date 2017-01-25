@@ -2425,6 +2425,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             // The $locFile does not exist
             if (!isset($_GET['_debugDics'])) {
 
+
                 // Trying read from file
                 if (!isset($this->data[$locFile][$lang]) && !isset($this->files_readed[$locFile][$lang])  ) {
                     $this->readFromFile($locFile, $lang);
@@ -2637,7 +2638,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
         {
             if(!$this->init) $this->init();
 
-            $locFile = preg_replace('/[^A-z_\-]/', '', $locFile);
+            $locFile = preg_replace('/[^A-z0-9_\-]/', '', $locFile);
             if (!strlen($locFile)) {
                 $this->core->errors->set('Localization has received a wrong spacename: ');
                 return false;
