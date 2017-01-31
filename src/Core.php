@@ -3027,8 +3027,15 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
          * @desc Fetches all the headers
          * @return array
          */
-        function getUrlHeaders($url,$format=0)
+        function getUrlHeaders($url)
         {
+            if(!$this->core->is->validURL($url)) return($this->core->errors->add('invalid url: '.$url));
+            if(!($headers = @get_headers($url))) {
+                $this->core->errors->add(error_get_last()['message']);
+            }
+            return $headers;
+
+            /*
             $url_info=parse_url($url);
             if (isset($url_info['scheme']) && $url_info['scheme'] == 'https') {
                 $port = 443;
@@ -3075,6 +3082,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                 $this->core->errors->add(error_get_last());
                 return false;
             }
+            */
         }
 
         function addError($value)

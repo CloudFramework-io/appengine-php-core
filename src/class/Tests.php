@@ -62,6 +62,7 @@ if (!defined("_Tests_CLASS_")) {
             if(!($headers = $this->core->request->getUrlHeaders($server))) $this->addsError('You have provided a wrong url: '.$server);
             echo "   ".$headers[0]."\n";
             $this->server = $server;
+            return(!$this->error);
         }
 
         function gets($url,$data=null,$raw=false)
@@ -82,6 +83,19 @@ if (!defined("_Tests_CLASS_")) {
             if(!$this->server) $this->addsError('Missing server. User $this->connects($server) first.');
             echo "   ** Test posts info into ".$this->server.$url."\n";
             $this->response = $this->core->request->post($this->server.$url,$data,$this->headers,$raw);
+            if(!$this->response )
+                if($this->core->errors->lines) $this->addsError("Error connecting  [{$this->core->errors->data[0]}]");
+
+            $this->response_headers = $this->core->request->responseHeaders;
+            return(!$this->error);
+
+        }
+
+        function puts($url,$data=null,$raw=false)
+        {
+            if(!$this->server) $this->addsError('Missing server. User $this->connects($server) first.');
+            echo "   ** Test posts info into ".$this->server.$url."\n";
+            $this->response = $this->core->request->put($this->server.$url,$data,$this->headers,$raw);
             if(!$this->response )
                 if($this->core->errors->lines) $this->addsError("Error connecting  [{$this->core->errors->data[0]}]");
 
