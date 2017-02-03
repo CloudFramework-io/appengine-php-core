@@ -21,6 +21,8 @@ if (!defined("_Tests_CLASS_")) {
         var $response_headers = null;
         var $headers = [];
         var $argv;
+        var $errors = false;
+        var $errorsMsg=[];
 
         /**
          * Scripts constructor.
@@ -62,7 +64,7 @@ if (!defined("_Tests_CLASS_")) {
             if(!($headers = $this->core->request->getUrlHeaders($server))) $this->addsError('You have provided a wrong url: '.$server);
             echo "   ".$headers[0]."\n";
             $this->server = $server;
-            return(!$this->error);
+            return(!$this->errors);
         }
 
         function gets($url,$data=null,$raw=false)
@@ -74,7 +76,7 @@ if (!defined("_Tests_CLASS_")) {
                 if($this->core->errors->lines) $this->addsError("Error connecting  [{$this->core->errors->data[0]}]");
 
             $this->response_headers = $this->core->request->responseHeaders;
-            return(!$this->error);
+            return(!$this->errors);
 
         }
 
@@ -87,7 +89,7 @@ if (!defined("_Tests_CLASS_")) {
                 if($this->core->errors->lines) $this->addsError("Error connecting  [{$this->core->errors->data[0]}]");
 
             $this->response_headers = $this->core->request->responseHeaders;
-            return(!$this->error);
+            return(!$this->errors);
 
         }
 
@@ -100,7 +102,7 @@ if (!defined("_Tests_CLASS_")) {
                 if($this->core->errors->lines) $this->addsError("Error connecting  [{$this->core->errors->data[0]}]");
 
             $this->response_headers = $this->core->request->responseHeaders;
-            return(!$this->error);
+            return(!$this->errors);
 
         }
 
@@ -110,7 +112,7 @@ if (!defined("_Tests_CLASS_")) {
 
             if(strpos($this->response_headers[0]," {$code} ")===false) $this->addsError('Failing checksIfResponseCodeIs. Response is: '.$this->response_headers[0]);
             echo "[OK]\n";
-            return(!$this->error);
+            return(!$this->errors);
         }
 
         function checksIfResponseContainsJSON($json) {
@@ -125,7 +127,7 @@ if (!defined("_Tests_CLASS_")) {
             if(recursiveCheck($response,$json)) echo " [OK]";
             else $this->addsError('Failing checksIfResponseContainsJSON.');
             echo "\n";
-            return(!$this->error);
+            return(!$this->errors);
         }
 
 
@@ -138,16 +140,14 @@ if (!defined("_Tests_CLASS_")) {
                 if(strpos($this->response,$item)===false) $this->addsError('Failing check.');
             }
             echo " [OK]\n";
-            return(!$this->error);
+            return(!$this->errors);
         }
 
         function addsError($error) {
             if(is_array($error)) $error = json_encode($error,JSON_PRETTY_PRINT);
-            echo("\n\n   the test failed: {$error}\n\n");
-            if($this->core->errors->lines) {
-                _printe($this->core->errors->data);
-            }
-            die();
+            $this->errorsMsg[] = $error;
+            $this->errors = true;
+
         }
 
         function addsHeaders($headers) {
@@ -172,6 +172,20 @@ if (!defined("_Tests_CLASS_")) {
                 }
             }
             return null;
+        }
+
+        function ends() {
+            if($this->errors) {
+                echo("\n\n   the test failed:\n\n");
+                $this->says($this->errorsMsg);
+            } else {
+                echo("\n\n   OK :)\n\n");
+
+            }
+            if($this->core->errors->lines) {
+                _printe($this->core->errors->data);
+            }
+            die();
         }
     }
 }
