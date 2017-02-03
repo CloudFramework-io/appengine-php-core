@@ -133,8 +133,8 @@ if (!defined("_Tests_CLASS_")) {
 
         function checksIfResponseContains($text) {
             if(!is_array($text)) $text=[$text];
-            if(!$this->server) $this->addsError('Missing server. User $this->connects($server) first.');
-            if(!$this->response) $this->addsError('Missing response. User $this->(gets/posts/puts/deletes) first.');
+            if(!$this->server) return($this->addsError('Missing server. User $this->connects($server) first.'));
+            if(!$this->response) return($this->addsError('Missing response. User $this->(gets/posts/puts/deletes) first.'));
             echo "      cheks if response contains: ".json_encode($text);
             foreach ($text as $item) {
                 if(strpos($this->response,$item)===false) $this->addsError('Failing check.');
