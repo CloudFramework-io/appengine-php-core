@@ -486,8 +486,6 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                 $where = null;
             }
             if (strlen($order)) $_q .= " ORDER BY $order";
-            _printe($_q);
-
 
             $this->lastQuery = $_q . ((is_array($where)) ? ' ' . json_encode($where) : '') . ' limit=' . $limit.' page='.$this->page;
             try {
