@@ -3256,6 +3256,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
          */
         public function dbQuery($title, $SQL, $params=[]) {
 
+            if(!is_string($SQL)) return($this->addError('Wrong $SQL method parameter in: dbQuery($title, $SQL, $params=[]) '));
             // Verify we have the object created
             if(!$this->dbInit()) return($this->errorMsg);
 
