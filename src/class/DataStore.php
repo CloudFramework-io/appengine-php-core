@@ -446,8 +446,9 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                 foreach ($where as $key => $value) {
                     $comp = '=';
                     if(preg_match('/[=><]/',$key)) {
+
                         unset($where[$key]);
-                        if(strpos($key,'>=')==0 || strpos($key,'<=')==0) {
+                        if(strpos($key,'>=')===0 || strpos($key,'<=')===0) {
                             $comp = substr($key,0,2);
                             $key = trim(substr($key,2));
 
@@ -455,6 +456,7 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                             $comp = substr($key,0,1);
                             $key = trim(substr($key,1));
                         }
+
                         if(!array_key_exists($key,$where)){
                             $idkey =  null;
                             $where[$key.$idkey] = $value;
@@ -484,7 +486,6 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                 $where = null;
             }
             if (strlen($order)) $_q .= " ORDER BY $order";
-
 
             $this->lastQuery = $_q . ((is_array($where)) ? ' ' . json_encode($where) : '') . ' limit=' . $limit.' page='.$this->page;
             try {
