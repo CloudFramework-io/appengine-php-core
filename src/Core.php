@@ -3347,7 +3347,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                 if($this->db->error()) return($this->addError($this->db->getError()));
             }
 
-            return true;
+            return $this->db->getInsertId();
 
         }
 
