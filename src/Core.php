@@ -2361,6 +2361,14 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                 "\0"
             );
         }
+
+        /**
+         * It says if the call is being doing by Cron Appengine Service.
+         * @return boolean
+         */
+        function isCron() {
+            return(!empty($this->getHeader('X-Appengine-Cron')));
+        }
     }
 
     /**
