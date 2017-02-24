@@ -578,7 +578,14 @@ if (!defined("_RESTfull_CLASS_")) {
         }
 
 
-        function send($pretty=false,$return=false,$argv=[])
+        /**
+         * Echo the result
+         * @param bool $pretty if true, returns the JSON string with JSON_PRETTY_PRINT
+         * @param bool $return if true, instead to echo then return the output.
+         * @param array $argv if we are running from a terminal it will receive the command line args.
+         * @return mixed
+         */
+        function send($pretty=false, $return=false, $argv=[])
         {
             // Close potential open connections
             $this->core->model->dbClose();
@@ -652,8 +659,11 @@ if (!defined("_RESTfull_CLASS_")) {
 
 
             // IF THE CALL comes from a queue then LOG the result to facilitate the debud
-            if($this->formParams['cloudframework_queued'] && !strpos($this->core->system->url['url'],'/queue/')) {
-                $this->core->logs->add('RESULT FROM QUEUE', $ret, LOG_DEBUG);
+            if(($this->core->security->isCron() || $this->formParams['cloudframework_queued']) && !strpos($this->core->system->url['url'],'/queue/')) {
+                $title = ($this->formParams['cloudframework_queued'])?'RESULT FROM QUEUE ':'';
+                if($this->core->security->isCron())
+                    $title .= 'USING CRON';
+                $this->core->logs->add($title, $ret, LOG_DEBUG);
             }
 
             // ending script
