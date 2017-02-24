@@ -2367,6 +2367,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
          * @return boolean
          */
         function isCron() {
+            if($this->core->is->development() && $_SERVER['HTTP_AUTHORIZATION']=='cron' ) return true;
             return(!empty($this->getHeader('X-Appengine-Cron')));
         }
     }
