@@ -619,8 +619,8 @@ if (!defined("_RESTfull_CLASS_")) {
                 syslog(LOG_INFO, 'CloudFramework RESTFul: '. json_encode($this->core->logs->data,JSON_FORCE_OBJECT));
             }
 
-            // If I have been called from a queue the response has to be 200 to avoid loops
-            if (isset($this->formParams['cloudframework_queued'])) {
+            // If I have been called from a queue or from a Cron the response has to be 200 to avoid recalls
+            if ($this->core->security->isCron() || isset($this->formParams['cloudframework_queued'])) {
                 if ($this->core->errors->lines) {
                     $ret['queued_return_error'] = $this->core->errors->data;
                     $this->error = 0;
