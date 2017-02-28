@@ -2712,12 +2712,12 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
         /**
          * Call External Cloud Service Caching the result
          */
-        function getCache($rute, $data = null, $verb = 'GET', $extraheaders = null, $raw = false)
+        function getCache($route, $data = null, $verb = 'GET', $extraheaders = null, $raw = false)
         {
-            $_qHash = hash('md5', $rute . json_encode($data) . $verb);
+            $_qHash = hash('md5', $route . json_encode($data) . $verb);
             $ret = $this->core->cache->get($_qHash);
             if (isset($_GET['refreshCache']) || $ret === false || $ret === null) {
-                $ret = $this->get($rute, $data, $extraheaders, $raw);
+                $ret = $this->get($route, $data, $extraheaders, $raw);
                 // Only cache successful responses.
                 if (is_array($this->responseHeaders) && isset($headers[0]) && strpos($headers[0], 'OK')) {
                     $this->core->cache->set($_qHash, $ret);
@@ -2726,10 +2726,10 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             return ($ret);
         }
 
-        function getCurl($rute, $data = null, $verb = 'GET', $extra_headers = null, $raw = false)
+        function getCurl($route, $data = null, $verb = 'GET', $extra_headers = null, $raw = false)
         {
-            $this->core->__p->add('Request->getCurl: ', "$rute " . (($data === null) ? '{no params}' : '{with params}'), 'note');
-            $rute = $this->getServiceUrl($rute);
+            $this->core->__p->add('Request->getCurl: ', "$route " . (($data === null) ? '{no params}' : '{with params}'), 'note');
+            $route = $this->getServiceUrl($route);
             $this->responseHeaders = null;
             $options['http']['header'] = ['Connection: close', 'Expect:', 'ACCEPT:']; // improve perfomance and avoid 100 HTTP Header
 
@@ -2758,10 +2758,13 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             // Build contents received in $data as an array
             if (is_array($data)) {
                 if ($verb == 'GET') {
-                    if (is_array($data)) {
-                        if (strpos($rute, '?') === false) $rute .= '?';
-                        else $rute .= '&';
-                        foreach ($data as $key => $value) $rute .= $key . '=' . rawurlencode($value) . '&';
+                    foreach ($data as $key => $value) {
+                        if (is_array($value)) {
+                            // This could be improved becuase the coding will produce 1738 format and 3986 format
+                            $route .= http_build_query([$key => $value]) . '&';
+                        } else {
+                            $route .= $key . '=' . rawurlencode($value) . '&';
+                        }
                     }
                 } else {
                     if ($raw) {
@@ -2801,7 +2804,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             }
 
             // Cache
-            $ch = curl_init($rute);
+            $ch = curl_init($route);
             curl_setopt_array($ch, $curl_options);
             $ret = curl_exec($ch);
 
@@ -2812,7 +2815,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             } else {
                 $this->addError(error_get_last());
                 $this->addError([('Curl error ' . curl_errno($ch)) => curl_error($ch)]);
-                $this->addError(['Curl url' => $rute]);
+                $this->addError(['Curl url' => $route]);
                 $ret = false;
             }
             curl_close($ch);
@@ -2824,9 +2827,9 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
         }
 
 
-        function get_json_decode($rute, $data = null, $extra_headers = null, $send_in_json = false)
+        function get_json_decode($route, $data = null, $extra_headers = null, $send_in_json = false)
         {
-            $this->rawResult = $this->get($rute, $data, $extra_headers, $send_in_json);
+            $this->rawResult = $this->get($route, $data, $extra_headers, $send_in_json);
             $ret = json_decode($this->rawResult, true);
             if (JSON_ERROR_NONE === json_last_error()) $this->rawResult = '';
             else {
@@ -2835,9 +2838,9 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             return $ret;
         }
 
-        function post_json_decode($rute, $data = null, $extra_headers = null, $send_in_json = false)
+        function post_json_decode($route, $data = null, $extra_headers = null, $send_in_json = false)
         {
-            $this->rawResult = $this->post($rute, $data, $extra_headers, $send_in_json);
+            $this->rawResult = $this->post($route, $data, $extra_headers, $send_in_json);
             $ret = json_decode($this->rawResult, true);
             if (JSON_ERROR_NONE === json_last_error()) $this->rawResult = '';
             else {
@@ -2846,9 +2849,9 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             return $ret;
         }
 
-        function put_json_decode($rute, $data = null, $extra_headers = null, $send_in_json = false)
+        function put_json_decode($route, $data = null, $extra_headers = null, $send_in_json = false)
         {
-            $this->rawResult = $this->put($rute, $data, $extra_headers, $send_in_json);
+            $this->rawResult = $this->put($route, $data, $extra_headers, $send_in_json);
             $ret = json_decode($this->rawResult, true);
             if (JSON_ERROR_NONE === json_last_error()) $this->rawResult = '';
             else {
@@ -2857,34 +2860,34 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             return $ret;
         }
 
-        function get($rute, $data = null, $extra_headers = null, $send_in_json = false)
+        function get($route, $data = null, $extra_headers = null, $send_in_json = false)
         {
-            return $this->call($rute, $data, 'GET', $extra_headers, $send_in_json);
+            return $this->call($route, $data, 'GET', $extra_headers, $send_in_json);
         }
 
-        function post($rute, $data = null, $extra_headers = null, $send_in_json = false)
+        function post($route, $data = null, $extra_headers = null, $send_in_json = false)
         {
-            return $this->call($rute, $data, 'POST', $extra_headers, $send_in_json);
+            return $this->call($route, $data, 'POST', $extra_headers, $send_in_json);
         }
 
-        function put($rute, $data = null, $extra_headers = null, $send_in_json = false)
+        function put($route, $data = null, $extra_headers = null, $send_in_json = false)
         {
-            return $this->call($rute, $data, 'PUT', $extra_headers, $send_in_json);
+            return $this->call($route, $data, 'PUT', $extra_headers, $send_in_json);
         }
 
-        function delete($rute, $extra_headers = null)
+        function delete($route, $extra_headers = null)
         {
-            return $this->call($rute, null, 'DELETE', $extra_headers);
+            return $this->call($route, null, 'DELETE', $extra_headers);
         }
 
-        function call($rute, $data = null, $verb = 'GET', $extra_headers = null, $raw = false)
+        function call($route, $data = null, $verb = 'GET', $extra_headers = null, $raw = false)
         {
-            $rute = $this->getServiceUrl($rute);
+            $route = $this->getServiceUrl($route);
             $this->responseHeaders = null;
 
-            syslog(LOG_INFO,"request {$verb} {$rute} ".(($data === null) ? '{no params}' : '{with params}'));
+            syslog(LOG_INFO,"request {$verb} {$route} ".(($data === null) ? '{no params}' : '{with params}'));
 
-            $this->core->__p->add("Request->{$verb}: ", "$rute " . (($data === null) ? '{no params}' : '{with params}'), 'note');
+            $this->core->__p->add("Request->{$verb}: ", "$route " . (($data === null) ? '{no params}' : '{with params}'), 'note');
             // Performance for connections
             $options = array('ssl' => array('verify_peer' => false));
             $options['http']['ignore_errors'] = '1';
@@ -2930,17 +2933,14 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             // Build contents received in $data as an array
             if (is_array($data)) {
                 if ($verb == 'GET') {
-                    if (is_array($data)) {
-                        if (strpos($rute, '?') === false) $rute .= '?';
-                        else $rute .= '&';
-                        foreach ($data as $key => $value) {
-                            if (is_array($value)) {
-                                foreach ($value as $item) {
-                                    $rute .= $key . '=' . rawurlencode($item) . '&';
-                                }
-                            } else {
-                                $rute .= $key . '=' . rawurlencode($value) . '&';
-                            }
+                    if (strpos($route, '?') === false) $route .= '?';
+                    else $route .= '&';
+                    foreach ($data as $key => $value) {
+                        if (is_array($value)) {
+                            // This could be improved becuase the coding will produce 1738 format and 3986 format
+                            $route .= http_build_query([$key => $value]) . '&';
+                        } else {
+                            $route .= $key . '=' . rawurlencode($value) . '&';
                         }
                     }
                 } else {
@@ -2967,16 +2967,16 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             $context = stream_context_create($options);
 
             try {
-                $ret = @file_get_contents($rute, false, $context);
+                $ret = @file_get_contents($route, false, $context);
 
                 // Return response headers
                 if(isset($http_response_header)) $this->responseHeaders = $http_response_header;
                 else $this->responseHeaders = ['$http_response_header'=>'undefined'];
 
                 // If we have an error
-                if ($ret === false)
-                    $this->addError(error_get_last());
-                else {
+                if ($ret === false) {
+                    $this->addError(['route_error'=>$route,'reponse_headers'=>$this->responseHeaders,'system_error'=>error_get_last()]);
+                } else {
                     $code = $this->getLastResponseCode();
                     if ($code === null) {
                         $this->addError('Return header not found');
@@ -2995,7 +2995,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                 $this->addError($e->getMessage());
             }
 
-            syslog(($this->error)?LOG_DEBUG:LOG_INFO,"end request {$verb} {$rute} ".(($data === null) ? '{no params}' : '{with params}'));
+            syslog(($this->error)?LOG_DEBUG:LOG_INFO,"end request {$verb} {$route} ".(($data === null) ? '{no params}' : '{with params}'));
 
             $this->core->__p->add("Request->{$verb}: ", '', 'endnote');
             return ($ret);
