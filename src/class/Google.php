@@ -67,7 +67,9 @@ if (!defined ("_Google_CLASS_") ) {
         function verifyToken($token) {
             $ret =$this->core->request->get_json_decode('https://www.googleapis.com/oauth2/v1/tokeninfo',['access_token'=>$token]);
             if(isset($ret['error'])) return($this->addError($ret));
-            if($this->client->getClientId() != $ret['issued_to']) return($this->addError('This token has not been generated with system client_id'));
+            if($this->client->getClientId() != $ret['issued_to']) {
+                $this->core->logs->add('This token has not been generated with internal system client_id');
+            }
             return true;
         }
     }
