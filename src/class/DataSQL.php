@@ -333,9 +333,42 @@ class DataSQL
                     $where.="{$this->entity_name}.{$key} IS NOT NULL";
                     break;
                 default:
-                    if($this->fields[$key]=='int') $where.="{$this->entity_name}.{$key}=%s";
-                    else $where.="{$this->entity_name}.{$key}='%s'";
-                    $params[] = $value;
+                    // IN
+                    if(is_array($value)) {
+                        if($this->fields[$key]=='int') {
+                            $where.="{$this->entity_name}.{$key} IN (%s)";
+                            $params[] = implode(',',$value);
+                        }
+                        else {
+                            $where.="{$this->entity_name}.{$key} IN ('%s')";
+                            $params[] = implode("','",$value);
+
+                        }
+                    }
+                    // =
+                    else {
+                        $op = '=';
+
+                        // Add operators
+                        if(strpos($value,'>=')===0) {
+                            $op='>=';
+                            $value = str_replace('>=','',$value);
+                        }elseif(strpos($value,'<=')===0) {
+                            $op='<=';
+                            $value = str_replace('<=','',$value);
+                        }elseif(strpos($value,'>')===0) {
+                            $op='>';
+                            $value = str_replace('>','',$value);
+                        }elseif(strpos($value,'<')===0) {
+                            $op='<';
+                            $value = str_replace('<','',$value);
+                        }
+
+                        if($this->fields[$key]=='int') $where.="{$this->entity_name}.{$key} {$op} %s";
+                        else $where.="{$this->entity_name}.{$key} {$op} '%s'";
+                        $params[] = $value;
+                    }
+
                     break;
 
             }
