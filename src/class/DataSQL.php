@@ -316,6 +316,7 @@ class DataSQL
         $where = ''; $params = [];
         if(!count($keysWhere)) $keysWhere = $this->queryWhere;
 
+
         foreach ($keysWhere as $key=>$value) {
 
             if($this->use_mapping) {
@@ -325,7 +326,8 @@ class DataSQL
                 if(!isset($this->fields[$key])) return($this->addError('fetch($keysWhere, $fields=null) $keyWhere contains a wrong key: '.$key));
             }
             if($where) $where.=' AND ';
-            switch ($value) {
+
+            switch (strval($value)) {
                 case "__null__":
                     $where.="{$this->entity_name}.{$key} IS NULL";
                     break;
@@ -389,7 +391,6 @@ class DataSQL
 
             }
         }
-
         return [$where,$params];
     }
 
