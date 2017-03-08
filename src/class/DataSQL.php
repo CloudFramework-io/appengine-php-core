@@ -350,24 +350,27 @@ class DataSQL
                     // =
                     else {
                         $op = '=';
-
-                        // Add operators
-                        if(strpos($value,'>=')===0) {
-                            $op='>=';
-                            $value = str_replace('>=','',$value);
-                        }elseif(strpos($value,'<=')===0) {
-                            $op='<=';
-                            $value = str_replace('<=','',$value);
-                        }elseif(strpos($value,'>')===0) {
-                            $op='>';
-                            $value = str_replace('>','',$value);
-                        }elseif(strpos($value,'<')===0) {
-                            $op='<';
-                            $value = str_replace('<','',$value);
+                        if($this->fields[$key]=='int') {
+                            // Add operators
+                            if(strpos($value,'>=')===0) {
+                                $op='>=';
+                                $value = str_replace('>=','',$value);
+                            }elseif(strpos($value,'<=')===0) {
+                                $op='<=';
+                                $value = str_replace('<=','',$value);
+                            }elseif(strpos($value,'>')===0) {
+                                $op='>';
+                                $value = str_replace('>','',$value);
+                            }elseif(strpos($value,'<')===0) {
+                                $op='<';
+                                $value = str_replace('<','',$value);
+                            }
+                            $where.="{$this->entity_name}.{$key} {$op} %s";
                         }
-
-                        if($this->fields[$key]=='int') $where.="{$this->entity_name}.{$key} {$op} %s";
-                        else $where.="{$this->entity_name}.{$key} {$op} '%s'";
+                        else {
+                            if(strpos($value,'%')!==false) $op = 'like';
+                            $where.="{$this->entity_name}.{$key} {$op} '%s'";
+                        }
                         $params[] = $value;
                     }
 
