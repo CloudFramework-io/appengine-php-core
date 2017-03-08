@@ -11,6 +11,8 @@ class DataSQL
     var $mapping = [];
     private $use_mapping = false;
     private $limit = 0;
+    private $page = 0;
+    private $offset = 0;
     private $order = '';
     private $joins = [];
     private $queryFields = '';
@@ -148,6 +150,23 @@ class DataSQL
     }
 
     /**
+     * Set a page in the select query or fetch method.
+     * @param int $page
+     */
+    function setPage($page) {
+        $this->page = intval($page);
+    }
+
+
+    /**
+     * Set a offset in the select query or fetch method.
+     * @param int $offset
+     */
+    function setOffset($offset) {
+        $this->offset = intval($offset);
+    }
+
+    /**
      * Defines the fields to return in a query. If empty it will return all of them
      * @param $fields
      */
@@ -203,7 +222,15 @@ class DataSQL
 
         // --- ORDER BY
         if($this->order) $SQL.= " ORDER BY {$this->order}";
-        if($this->limit) $SQL.= " limit {$this->limit}";
+        if($this->limit) {
+            $SQL.= " limit {$this->limit}";
+            if($this->page) {
+                $this->offset = $this->limit*$this->page;
+            }
+            if($this->offset) {
+                $SQL .= " offset {$this->offset}";
+            }
+        }
 
         if(!$sqlFields) return($this->addError('No fields to select found: '.json_encode($fields)));
 
