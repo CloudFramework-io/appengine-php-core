@@ -381,12 +381,34 @@ class DataSQL
         // Loop the wheres
         foreach ($keysWhere as $key=>$value) {
 
-            if($this->use_mapping) {
-                if(!isset($this->entity_schema['mapping'][$key]['field'])) return($this->addError('fetch($keysWhere, $fields=null) $keyWhere contains a wrong mapped key: '.$key));
-                $key = $this->entity_schema['mapping'][$key]['field'];
-            } else {
-                if(!isset($this->fields[$key])) return($this->addError('fetch($keysWhere, $fields=null) $keyWhere contains a wrong key: '.$key));
+            // Complex query
+            if(strpos($key,'(')!== false || strpos($key,'%')!== false || stripos($key,' and ') || stripos($key,' or ')) {
+                if($where) $where.=' AND ';
+                $where.= $key;
+
+
+                // Avoid params
+                if($value===null) continue;
+
+                // Verify $value is array of values
+                if(!is_array($value)) $value = [$value];
+
+                // Add new params
+                $params = array_merge($params,$value);
+                continue;
             }
+            // Simple where
+            else {
+                if($this->use_mapping) {
+                    if(!isset($this->entity_schema['mapping'][$key]['field'])) return($this->addError('fetch($keysWhere, $fields=null) $keyWhere contains a wrong mapped key: '.$key));
+                    $key = $this->entity_schema['mapping'][$key]['field'];
+                } else {
+                    if(!isset($this->fields[$key])) return($this->addError('fetch($keysWhere, $fields=null) $keyWhere contains a wrong key: '.$key));
+                }
+            }
+
+
+
             if($where) $where.=' AND ';
 
             switch (strval($value)) {
