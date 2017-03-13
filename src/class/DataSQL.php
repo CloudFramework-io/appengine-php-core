@@ -191,6 +191,20 @@ class DataSQL
     }
 
     /**
+     * Array with key=>value
+     * Especial values:
+     *              '__null__'
+     *              '__notnull__'
+     *              '__empty__'
+     *              '__notempty__'
+     * @param Array $keysWhere
+     */
+    function addQueryWhere($keysWhere) {
+        if(empty($keysWhere) ) return($this->addError('setQueryWhere($keysWhere) $keyWhere can not be empty'));
+        $this->queryWhere = array_merge($this->queryWhere ,$keysWhere);
+    }
+
+    /**
      * Return records from the db object
      * @param array $keysWhere
      * @param null $fields
@@ -327,9 +341,14 @@ class DataSQL
 
     /** About Order */
     function unsetOrder() {$this->order='';}
-
     /**
-     * Add Order into a query
+     * Set Order into a query with a field
+     * @param $field
+     * @param $type
+     */
+    function setOrder($field, $type) {$this->unsetOrder(); $this->addOrder($field, $type);}
+    /**
+     * Add Order into a query with a new field
      * @param $field
      * @param $type
      */
@@ -354,9 +373,12 @@ class DataSQL
 
         // Where condition for the SELECT
         $where = ''; $params = [];
+
+        // Custom query rewrites previous where.
         if(!count($keysWhere)) $keysWhere = $this->queryWhere;
 
 
+        // Loop the wheres
         foreach ($keysWhere as $key=>$value) {
 
             if($this->use_mapping) {
