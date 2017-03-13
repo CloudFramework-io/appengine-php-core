@@ -10,13 +10,15 @@ class DataSQL
     var $fields = [];
     var $mapping = [];
     private $use_mapping = false;
-    private $limit = 0;
-    private $page = 0;
-    private $offset = 0;
-    private $order = '';
+    var $limit = 0;
+    var $page = 0;
+    var $offset = 0;
+    var $order = '';
     private $joins = [];
     private $queryFields = '';
     private $queryWhere = [];
+    private $virtualFields = [];
+    private $groupBy = '';
     private $view = null;
 
     /**
@@ -194,18 +196,19 @@ class DataSQL
      * @param null $fields
      * @return array|void
      */
-    function fetch($keysWhere=[], $fields=null) {
+    function fetch($keysWhere=[], $fields=null, $params=[]) {
 
         if($this->error) return false;
         //--- WHERE
         // Array with key=>value or empty
         if(is_array($keysWhere) ) {
-            list($where, $params) = $this->getQuerySQLWhereAndParams($keysWhere);
+            list($where, $_params) = $this->getQuerySQLWhereAndParams($keysWhere);
+            $params = array_merge($params,$_params);
         }
+
         // String
         elseif(is_string($keysWhere) && !empty($keysWhere)) {
             $where =$keysWhere;
-            $params = [];
         } else {
             return($this->addError('fetch($keysWhere,$fields=null) $keyWhere has a wrong value'));
         }
@@ -213,12 +216,22 @@ class DataSQL
         // --- FIELDS
         $sqlFields = $this->getQuerySQLFields($fields);
 
+        // virtual fields
+        if(is_array($this->virtualFields) && count($this->virtualFields))
+            foreach ($this->virtualFields as $field=>$value) {
+                $sqlFields.=",{$value} as {$field}";
+            }
+
 
         // --- QUERY
         $from = $this->getQuerySQLFroms();
         $SQL = "SELECT {$sqlFields} FROM {$from}";
         if($where) $SQL.=" WHERE {$where}";
 
+        // --- GROUP BY
+        if($this->groupBy) {
+            $SQL .= " GROUP BY  {$this->groupBy}";
+        }
 
         // --- ORDER BY
         if($this->order) $SQL.= " ORDER BY {$this->order}";
@@ -473,6 +486,30 @@ class DataSQL
     function join ($type, DataSQL &$object, $on) {
         $this->joins[] = [$type,$object,$on];
     }
+
+    /**
+     * @param $group String The group by fields
+     */
+    function setGroupBy ($group) {
+        $this->groupBy = $group;
+    }
+
+    /**
+     * @param $field String virtual field name
+     * @param $value String value or other field
+     */
+    function addVirtualField ($field,$value) {
+        $this->virtualFields[$field] = $value;
+    }
+
+    /**
+     * @param $field String virtual field name
+     * @param $value String value or other field
+     */
+    function setVirtualField ($field,$value) {
+        $this->virtualFields = [$field=>$value];
+    }
+
 
     /**
      * Add an error in the class
