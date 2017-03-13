@@ -308,7 +308,7 @@ class DataSQL
             }
         }
 
-        $ret= $this->core->model->dbUpSert($this->entity_name.' update record: '.json_encode($data),$this->entity_name,$data);
+        $ret= $this->core->model->dbUpSert($this->entity_name.' upsert record: '.json_encode($data),$this->entity_name,$data);
         if($this->core->model->error) $this->addError($this->core->model->errorMsg);
         return($ret);
 
