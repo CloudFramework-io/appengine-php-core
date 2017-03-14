@@ -217,6 +217,7 @@ class DataSQL
         // Array with key=>value or empty
         if(is_array($keysWhere) ) {
             list($where, $_params) = $this->getQuerySQLWhereAndParams($keysWhere);
+            if($this->error) return;
             $params = array_merge($params,$_params);
         }
 
@@ -261,6 +262,7 @@ class DataSQL
 
         if(!$sqlFields) return($this->addError('No fields to select found: '.json_encode($fields)));
 
+        _printe('ee',$SQL,$params);
         $ret= $this->core->model->dbQuery($this->entity_name.' fetch by querys: '.json_encode($keysWhere),$SQL,$params);
         if($this->core->model->error) $this->addError($this->core->model->errorMsg);
         return($ret);
