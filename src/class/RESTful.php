@@ -120,17 +120,22 @@ if (!defined("_RESTfull_CLASS_")) {
                 $this->params = explode('/', $this->serviceParam);
             }
 
+            // Based on: http://www.restapitutorial.com/httpstatuscodes.html
             $this->addCodeLib('ok','OK',200);
             $this->addCodeLib('inserted','Inserted succesfully',201);
-            $this->addCodeLib('method-error','Wrong method.',405);
-            $this->addCodeLib('params-error','Wrong paramaters.',400);
+            $this->addCodeLib('no-content','No content',204);
             $this->addCodeLib('form-params-error','Wrong form paramaters.',400);
             $this->addCodeLib('system-error','There is a problem in the platform.',503);
             $this->addCodeLib('datastore-error','There is a problem with the DataStore.',503);
             $this->addCodeLib('db-error','There is a problem in the DataBase.',503);
+            $this->addCodeLib('params-error','Wrong paramaters.',400);
             $this->addCodeLib('security-error','You don\'t have right credentials.',401);
             $this->addCodeLib('not-allowed','You are not allowed.',403);
             $this->addCodeLib('not-found','Not Found',404);
+            $this->addCodeLib('method-error','Wrong method.',405);
+            $this->addCodeLib('conflict','There are conflicts.',409);
+            $this->addCodeLib('gone','The resource is not longer available.',410);
+            $this->addCodeLib('unsupported-media','Unsupported Media Type.',415);
             if(method_exists($this,'__codes')) {
                 $this->__codes();
             }
