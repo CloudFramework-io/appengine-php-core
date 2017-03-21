@@ -1018,8 +1018,8 @@ if (!defined ("_MYSQLI_CLASS_") ) {
         }
 
         function getSimpleModelFromTable($table) {
+            $fields = ['model'=>[],'mapWithEntity'=>$table,'mapping'=>[]];
             $table = $this->getModelFromTable($table);
-            $fields = [];
             if(isset($table['model']['fields'])) foreach ($table['model']['fields'] as $field=>$values) {
                 $fields['model'][$field][0] = $values['type'];
                 $fields['model'][$field][1] = (preg_match('/(varchar|varbinary|char)/',$values['type']))?'string':((preg_match('/(timestamp|datetime)/',$values['type']))?'datetime':((preg_match('/(date)/',$values['type']))?'date':'integer'));
@@ -1036,6 +1036,11 @@ if (!defined ("_MYSQLI_CLASS_") ) {
                 if($values['index']) $fields['model'][$field][1].='|isIndex';
                 if(strlen($values['default'])) $fields['model'][$field][1].='|defaultvalue='.$values['default'];
                 $fields['model'][$field][1].='|description='.$values['description'];
+
+                // Mapping
+                $fields['mapping'][$field] = ['field'=>$field
+                    ,'type'=>(preg_match('/(varchar|varbinary|char)/',$values['type']))?'string':((preg_match('/(timestamp|datetime)/',$values['type']))?'datetime':((preg_match('/(date)/',$values['type']))?'date':'integer'))
+                    ,'validaton'=>$fields['model'][$field][1]];
             }
             return $fields;
         }
