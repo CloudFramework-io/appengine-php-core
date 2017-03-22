@@ -488,7 +488,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
     {
         var $url, $app,$root_path, $app_path, $app_url;
         var $config = [];
-        var $ip, $user_agent, $format, $time_zone;
+        var $ip, $user_agent, $os, $lang, $format, $time_zone;
 
         function __construct($root_path = '')
         {
@@ -515,8 +515,10 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             $this->app_path = $this->root_path;
 
             // Remote user:
-            $this->ip = ($_SERVER['REMOTE_ADDR'] == '::1') ? 'localhost' : $_SERVER['REMOTE_ADDR'];
+            $this->ip = $this->getClientIP();
             $this->user_agent = $_SERVER['HTTP_USER_AGENT'];
+            $this->os = $this->getOS();
+            $this->lang = $_SERVER['HTTP_ACCEPT_LANGUAGE'];
 
             // About timeZone, Date & Number format
             if (isset($_SERVER['PWD']) && strlen($_SERVER['PWD'])) date_default_timezone_set('UTC'); // necessary for shell run
@@ -534,6 +536,66 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             // TODO default formats, currencies, timezones, etc..
             $this->config['setLanguageByPath'] = false;
 
+        }
+
+        function getClientIP() {
+
+            return  ($_SERVER['REMOTE_ADDR'] == '::1') ? 'localhost' : $_SERVER['REMOTE_ADDR'];
+            // Popular approaches we don't trust.
+            // http://stackoverflow.com/questions/3003145/how-to-get-the-client-ip-address-in-php#comment50230065_3003233
+            // http://stackoverflow.com/questions/15699101/get-the-client-ip-address-using-php
+            /*
+            if (getenv('HTTP_CLIENT_IP'))
+                $ipaddress = getenv('HTTP_CLIENT_IP');
+            else if (getenv('HTTP_X_FORWARDED_FOR'))
+                $ipaddress = getenv('HTTP_X_FORWARDED_FOR');
+            else if (getenv('HTTP_X_FORWARDED'))
+                $ipaddress = getenv('HTTP_X_FORWARDED');
+            else if (getenv('HTTP_FORWARDED_FOR'))
+                $ipaddress = getenv('HTTP_FORWARDED_FOR');
+            else if (getenv('HTTP_FORWARDED'))
+                $ipaddress = getenv('HTTP_FORWARDED');
+            else if (getenv('REMOTE_ADDR'))
+                $ipaddress = getenv('REMOTE_ADDR');
+            else
+                $ipaddress = 'UNKNOWN';
+            return $ipaddress;
+            */
+
+        }
+
+        public function getOS()
+        {
+            $os_platform = "Unknown OS Platform";
+            $os_array = array(
+                '/windows nt 6.2/i'     => 'Windows 8',
+                '/windows nt 6.1/i'     => 'Windows 7',
+                '/windows nt 6.0/i'     => 'Windows Vista',
+                '/windows nt 5.2/i'     => 'Windows Server 2003/XP x64',
+                '/windows nt 5.1/i'     => 'Windows XP',
+                '/windows xp/i'         => 'Windows XP',
+                '/windows nt 5.0/i'     => 'Windows 2000',
+                '/windows me/i'         => 'Windows ME',
+                '/win98/i'              => 'Windows 98',
+                '/win95/i'              => 'Windows 95',
+                '/win16/i'              => 'Windows 3.11',
+                '/macintosh|mac os x/i' => 'Mac OS X',
+                '/mac_powerpc/i'        => 'Mac OS 9',
+                '/linux/i'              => 'Linux',
+                '/ubuntu/i'             => 'Ubuntu',
+                '/iphone/i'             => 'iPhone',
+                '/ipod/i'               => 'iPod',
+                '/ipad/i'               => 'iPad',
+                '/android/i'            => 'Android',
+                '/blackberry/i'         => 'BlackBerry',
+                '/webos/i'              => 'Mobile'
+            );
+            foreach ($os_array as $regex => $value) {
+                if (preg_match($regex, $_SERVER['HTTP_USER_AGENT'])) {
+                    $os_platform = $value;
+                }
+            }
+            return ($os_platform)?:$_SERVER['HTTP_USER_AGENT'];
         }
 
         /**
@@ -2369,6 +2431,17 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
         function isCron() {
             if($this->core->is->development() && $_SERVER['HTTP_AUTHORIZATION']=='cron' ) return true;
             return(!empty($this->getHeader('X-Appengine-Cron')));
+        }
+
+        /**
+         * It generates a random unique string.
+         * @return string with a length of 32 chars
+         */
+        public function generateRandomString($pref='')
+        {
+            if(!abs(intval(32)) ) $length=32;
+            if(!$pref) $pref = rand();
+            return(base64_encode(md5(uniqid($pref))));
         }
     }
 
