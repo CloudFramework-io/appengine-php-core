@@ -582,9 +582,12 @@ if (!defined ("_MYSQLI_CLASS_") ) {
                 if($this->cfmode) $table ="CF_".$table;
 
             // Field Types of the table
+            // Reading from cache
             if(!isset($this->_queryFieldTypes[$table])) {
                 $this->_queryFieldTypes[$table] = $this->core->cache->get('cloudFrameWork_show_colums_'.$table,3600);
-                if(!is_array($this->_queryFieldTypes[$table]) || isset($_GET['nocache']) || isset($_GET['reload'])) {
+
+                // If GET params _nocache or _reloadDBFields are passed the reload from DB the columns
+                if(!is_array($this->_queryFieldTypes[$table]) || isset($_GET['_nocache']) || isset($_GET['_reloadDBFields'])) {
                     $this->_queryFieldTypes[$table] = $this->getDataFromQuery("SHOW COLUMNS FROM %s", $table);
                     $this->core->cache->set('cloudFrameWork_show_colums_'.$table,$this->_queryFieldTypes[$table]);
                 }
@@ -628,7 +631,7 @@ if (!defined ("_MYSQLI_CLASS_") ) {
                     $field = $allFields[$j];
 
                     if(!$fieldTypes[$field]['type']) {
-                        $this->setError("Wrong data array. $field doesn't exist in ".implode(',',array_keys($fieldTypes)));
+                        $this->setError("Wrong data array. $field does not exist in ".implode(',',array_keys($fieldTypes)));
                         return(false);
                     }
 
@@ -1018,6 +1021,7 @@ if (!defined ("_MYSQLI_CLASS_") ) {
         }
 
         function getSimpleModelFromTable($table) {
+
             $fields = ['model'=>[],'mapWithEntity'=>$table,'mapping'=>[]];
             $table = $this->getModelFromTable($table);
             if(isset($table['model']['fields'])) foreach ($table['model']['fields'] as $field=>$values) {
@@ -1040,7 +1044,7 @@ if (!defined ("_MYSQLI_CLASS_") ) {
                 // Mapping
                 $fields['mapping'][$field] = ['field'=>$field
                     ,'type'=>(preg_match('/(varchar|varbinary|char)/',$values['type']))?'string':((preg_match('/(timestamp|datetime)/',$values['type']))?'datetime':((preg_match('/(date)/',$values['type']))?'date':'integer'))
-                    ,'validaton'=>$fields['model'][$field][1]];
+                    ,'validation'=>$fields['model'][$field][1]];
             }
             return $fields;
         }

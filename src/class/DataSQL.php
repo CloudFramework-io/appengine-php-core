@@ -320,7 +320,7 @@ class DataSQL
      * @param $data
      * @return bool|null|void
      */
-    public function insert(&$data) {
+    public function insert($data) {
         if(!is_array($data) ) return($this->addError('insert($data) $data has to be an array with key->value'));
 
         // Let's convert from Mapping into SQL fields
@@ -570,6 +570,46 @@ class DataSQL
         if(!is_object($this->core->model->db)) return null;
         
         return($this->core->model->db->getQuery());
+    }
+
+    /**
+     * Return an array of the mapped fields ready to insert or update Validating the info
+     * @param $data
+     * @param array $dictionaries
+     * @return array
+     */
+    function getValidatedArrayFromData(&$data, $all=true, &$dictionaries=[]) {
+
+        if(!is_array($data) || !count($data)) return($this->addError('getCheckedArrayToInsert: empty or not valid data'));
+
+        $schema_to_validate = [];
+        if($this->use_mapping) {
+            if(!isset($this->entity_schema['mapping']) || !count($this->entity_schema['mapping'])) return($this->addError('getCheckedArrayToInsert: There is not mapping into '.$this->entity_name));
+            $schema_to_validate =  $this->entity_schema['mapping'];
+        }
+        else foreach ($this->entity_schema['model'] as $field=>$item) {
+            list($type,$foo) = explode('|',$item[1],2);
+            $schema_to_validate[$field] = ['type'=>$type,'validation'=>$item[1]];
+        }
+
+        $dataValidated = [];
+        foreach ($schema_to_validate as $field=>$value) {
+            if((isset($data[$field]) || $all) && isset($value['validation']) && stripos($value['validation'],'internal')===false) $dataValidated[$field] = $data[$field];
+
+        }
+        if(!count($dataValidated)) return($this->addError('getCheckedArrayToInsert: We did not found fields to validate into the data'));
+
+        /* @var $dv DataValidation */
+        $dv = $this->core->loadClass('DataValidation');
+        if(!$dv->validateModel($schema_to_validate,$dataValidated,$dictionaries,$all)) {
+            $this->addError($this->entity_name.': error validating Data in Model.: {'.$dv->field.'}. '.$dv->errorMsg);
+        }
+
+        return ($dataValidated);
+    }
+
+    public function getValidatedRecordToInsert(&$data) {
+
     }
 
 
