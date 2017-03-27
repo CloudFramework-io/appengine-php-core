@@ -3225,6 +3225,46 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             }
             return $ret;
         }
+
+        function sendCorsHeaders($methods = 'GET,POST,PUT', $origin = '')
+        {
+
+            // Rules for Cross-Domain AJAX
+            // https://developer.mozilla.org/en-US/docs/Web/HTTP/Access_control_CORS
+            // $origin =((strlen($_SERVER['HTTP_ORIGIN']))?preg_replace('/\/$/', '', $_SERVER['HTTP_ORIGIN']):'*')
+            if (!strlen($origin)) $origin = ((strlen($_SERVER['HTTP_ORIGIN'])) ? preg_replace('/\/$/', '', $_SERVER['HTTP_ORIGIN']) : '*');
+            header("Access-Control-Allow-Origin: $origin");
+            header("Access-Control-Allow-Methods: $methods");
+            header("Access-Control-Allow-Headers: Content-Type,Authorization,X-CloudFrameWork-AuthToken,X-CLOUDFRAMEWORK-SECURITY,X-DS-TOKEN,X-REST-TOKEN,X-EXTRA-INFO,X-WEB-KEY,X-SERVER-KEY,X-REST-USERNAME,X-REST-PASSWORD,X-APP-KEY");
+            header("Access-Control-Allow-Credentials: true");
+            header('Access-Control-Max-Age: 1000');
+
+            // To avoid angular Cross-Reference
+            if ($_SERVER['REQUEST_METHOD'] == 'OPTIONS') {
+                header("HTTP/1.1 200 OK");
+                exit();
+            }
+
+
+        }
+
+        function getHeader($str)
+        {
+            $str = strtoupper($str);
+            $str = str_replace('-', '_', $str);
+            return ((isset($_SERVER['HTTP_' . $str])) ? $_SERVER['HTTP_' . $str] : '');
+        }
+
+        function getHeaders()
+        {
+            $ret = array();
+            foreach ($_SERVER as $key => $value) if (strpos($key, 'HTTP_') === 0) {
+                $ret[str_replace('HTTP_', '', $key)] = $value;
+            }
+            return ($ret);
+        }
+
+
     }
 
 
