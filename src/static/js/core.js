@@ -1,6 +1,6 @@
 // cloudframework.io js Core class
-// It requires: jquery (min 2.1.1)
-// It requires jquery.cookies
+// It requires: jquery (min 2.1.1) https://code.jquery.com/jquery-git.min.js
+// It requires https://cdnjs.cloudflare.com/ajax/libs/jquery-cookie/1.4.1/jquery.cookie.min.js
 
 var core = new function () {
     this.version = '1.0';
@@ -183,7 +183,7 @@ var core = new function () {
             if (results==null) return null;
             else return true;
         } else {
-            return results[1] || 0;
+            return results[1] || true;
         }
     };
 };
