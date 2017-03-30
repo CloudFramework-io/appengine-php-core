@@ -36,7 +36,12 @@ if (!defined ("_SmartDate_CLASS_") ) {
             $ret = [];
             $inc = ($end > $init) ? 1 : -1;
 
-            $date = new DateTime();
+            // Init date Y-m-01 for month and year to avoid Feb 28 jump
+            if($type=='d') $initDate = date('Y-m-d');
+            else $initDate = date('Y-m-01');
+
+            $date = new DateTime($initDate);
+
             $date->modify("$init {$type}");
             $ret[] = $date->format($format);
             for ($i = $init; $i != $end; $i += $inc) {
