@@ -14,9 +14,10 @@ class API extends RESTful
         if(!($subscription = $pubsub->getSubscription('testsubscription','testtopic'))) return($this->setErrorFromCodelib('system-error',$pubsub->errorMsg));
 
         // Send a message in a topic
-        //if(!($message_id = $pubsub->publish('Test message '.uniqid('pubsub'),['test'=>1],$topic))) return($this->setErrorFromCodelib('system-error',$pubsub->errorMsg));
+        if(!($message_id = $pubsub->publish('Test message '.uniqid('pubsub'),['fieldTest'=>'FieldValue'],$topic))) return($this->setErrorFromCodelib('system-error',$pubsub->errorMsg));
 
-        $this->addReturnData([$topic->info(),$pubsub->getSubscriptions(),$pubsub->getSubscriptionMessages($subscription)]);
+        //$this->addReturnData([$topic->info(),$pubsub->getSubscriptions(),$pubsub->getSubscriptionMessages($subscription)]);
+        $this->addReturnData([$topic->info(),$subscription->info(),$pubsub->getSubscriptions(),$message_id]);
 
     }
 }
