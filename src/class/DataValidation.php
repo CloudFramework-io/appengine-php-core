@@ -64,7 +64,7 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
 
                     if( null===$data[$key] || (is_string($data[$key]) && !strlen($data[$key])) ||  (is_array($data[$key]) && !count($data[$key]))) {
                         // OPTIONAL: -- Allow empty values if we have optional in options
-                        if(strpos($value['validation'],'allownull')!==false) {
+                        if(stripos($value['validation'],'allownull')!==false) {
                             continue;  // OK.. next
                         }else {
                             if(!key_exists($key,$data))
