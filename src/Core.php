@@ -3474,6 +3474,30 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
 
         }
 
+        /**
+         * Delete a record into the database. If it exist rewrite it
+         * @param $title
+         * @param $table
+         * @param $data
+         * @return bool|null|void
+         */
+        public function dbDelete($title, $table, &$data) {
+
+            // Verify we have the object created
+            if(!$this->dbInit()) return($this->errorMsg);
+
+            // Execute the query
+            $this->core->logs->add($title,'dbDelete');
+            $this->db->cfmode=false; // Deactivate Cloudframework mode.
+            if(!isset($data[0])) $data = [$data];
+            foreach ($data as $record) {
+                $this->db->cloudFrameWork('delete',$record,$table);
+                if($this->db->error()) return($this->addError($this->db->getError()));
+            }
+
+            return true;
+        }
+
         public function dbClose() {
             if(is_object($this->db)) $this->db->close();
         }

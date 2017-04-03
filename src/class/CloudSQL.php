@@ -928,7 +928,7 @@ if (!defined ("_MYSQLI_CLASS_") ) {
                         $_q = "DELETE FROM $key  WHERE ". $tables[$table]['selectWhere'];
                         if(!strlen($tables[$table]['selectWhere']) || !is_array($tables[$table]['values']))  $this->setError("No DELETE condition in $_q");
                         else {
-                            $this->command($_q,array_merge($value['values']));
+                            $this->command($_q,$value['values']);
                         }
                         if($this->error()) return false;
                         else return $this->_affectedRows;
