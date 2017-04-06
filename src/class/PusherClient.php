@@ -12,6 +12,7 @@ if (!defined ("_Google_CLASS_") ) {
         private $core;
         var $error = false;
         var $errorMsg = [];
+        /** @var Pusher $object */
         var $object = null;
         /**
          * Constructor
@@ -48,6 +49,31 @@ if (!defined ("_Google_CLASS_") ) {
 
         }
 
+        /**
+         * Allow authorize a token into a channel
+         * https://pusher.com/docs/authenticating_users
+         * @param $channel_name
+         * @param $socket_id
+         * @return string|void
+         */
+        public function socket_auth($channel_name, $socket_id) {
+            try {
+                $ret = $this->object->socket_auth($channel_name,$socket_id);
+                return $ret;
+            } catch (Exception $e) {
+                return($this->addError($e->getMessage()));
+            }
+        }
+
+        public function trigger ($channel_name,$event_name,$message) {
+            try {
+                $data['message'] = $this->formParams['message'];
+                $ret = $this->object->trigger($channel_name,$event_name,['message'=>$message]);
+                return $ret;
+            } catch (Exception $e) {
+                return($this->addError($e->getMessage()));
+            }
+        }
 
         private function addError($msg) {
             $this->error = true;
