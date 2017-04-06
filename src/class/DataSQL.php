@@ -451,8 +451,14 @@ class DataSQL
                             $params[] = implode(',',$value);
                         }
                         else {
-                            $where.="{$this->entity_name}.{$key} IN ('%s')";
-                            $params[] = implode("','",$value);
+                            // Securing slashed
+                            $value = array_map(function($str) {
+                                return addslashes($str);
+                            }, $value);
+
+                            // Add an IN
+                            $where.="{$this->entity_name}.{$key} IN ('".implode("','",$value)."')";
+                            //$params[] = implode("','",$value);
 
                         }
                     }
