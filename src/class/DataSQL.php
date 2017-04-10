@@ -41,9 +41,20 @@ class DataSQL
         if(!is_array($this->entity_schema)) return($this->addError('Missing schema in '.$this->entity_name));
         foreach ($this->entity_schema['model'] as $field =>$item) {
             if(stripos($item[1],'isKey')!==false) {
-                $this->keys[] = [$field,(stripos($item[0],'int')!== false)?'int':'char'];
+                $this->keys[] = [$field,(stripos($item[0],'int')!== false
+                    || stripos($item[0],'bit')!== false
+                    || stripos($item[0],'float')!== false
+                    || stripos($item[0],'double')!== false
+                    || stripos($item[0],'number')!== false)?'int':'char'];
             }
-            $this->fields[$field] = (stripos($item[0],'int')!== false)?'int':'char';
+
+            // Detect numbers
+            $this->fields[$field] = (stripos($item[0],'int')!== false
+                || stripos($item[0],'bit')!== false
+                || stripos($item[0],'float')!== false
+                || stripos($item[0],'double')!== false
+                || stripos($item[0],'number')!== false
+            )?'int':'char';
         }
         if(!count($this->keys)) return($this->addError('Missing Keys in the schema: '.$this->entity_name));
 
@@ -404,6 +415,7 @@ class DataSQL
 
 
         // Loop the wheres
+        if(is_array($keysWhere))
         foreach ($keysWhere as $key=>$value) {
 
             // Complex query
