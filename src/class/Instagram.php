@@ -14,9 +14,18 @@ if (!defined ("_Instagram_CLASS_") ) {
         function __construct (Core &$core,$config=null)
         {
             $this->core = $core;
-            $this->config = $config;
+
+            // Read id and secret based on installed credentials
+            $this->config = $this->core->config->get('Instagram_Client');
+            if (!isset($this->config['client_id']))
+                return ($this->addError('Missing client_id config var inside Instagram_Client.'));
+
+            if (!isset($this->config['client_secret']))
+                return ($this->addError('Missing client_secret config var inside Instagram_Client.'));
+
             if(isset($config['access_token'])) $this->access_token = $config['access_token'];
             if(isset($config['user_id'])) $this->user_id = $config['user_id'];
+
         }
 
         public function getUserRecent($user_id='', $maxId = '', $minId = '', $maxTimestamp = '', $minTimestamp = '') {

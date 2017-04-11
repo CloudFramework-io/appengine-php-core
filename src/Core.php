@@ -2256,12 +2256,14 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
         }
 
         /**
-         * @param $token          Id generated with setDSToken
+         * @param $token Id generated with setDSToken
          * @param string $prefix Prefix to separate tokens Between apps
          * @param int $time MAX TIME to expire the token
+         * @param string $fingerprint_hash fingerprint_has to use.. if '' we will generate it using: $this->core->system->getRequestFingerPrint()['hash']
+         * @param boolean $use_fingerprint_security Says it we are going to apply fingerprint security
          * @return array|mixed    The content contained in DS.JSONZIP
          */
-        function getDSToken($token, $prefixStarts = '', $time = 0, $fingerprint_hash='')
+        function getDSToken($token, $prefixStarts = '', $time = 0, $fingerprint_hash='',$use_fingerprint_security=true)
         {
             $ret = null;
 
@@ -2284,7 +2286,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                 $this->core->errors->add(['getDSToken' => 'Token not found.']);
             } elseif (!$retToken[0]['status']) {
                 $this->core->errors->add(['getDSToken' => 'Token is no longer active.']);
-            } elseif ($fingerprint_hash != $retToken[0]['fingerprint']) {
+            } elseif ($use_fingerprint_security && $fingerprint_hash != $retToken[0]['fingerprint']) {
                 $this->core->errors->add(['getDSToken' => 'Token fingerprint does not match. Security violation.']);
             } elseif ($time > 0 && ((new DateTime())->getTimestamp()) - (new DateTime($retToken[0]['dateInsert']))->getTimestamp() >= $time) {
                 $this->core->errors->add(['getDSToken' => 'Token expired']);
@@ -3472,6 +3474,30 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
 
             return $this->db->getInsertId();
 
+        }
+
+        /**
+         * Delete a record into the database. If it exist rewrite it
+         * @param $title
+         * @param $table
+         * @param $data
+         * @return bool|null|void
+         */
+        public function dbDelete($title, $table, &$data) {
+
+            // Verify we have the object created
+            if(!$this->dbInit()) return($this->errorMsg);
+
+            // Execute the query
+            $this->core->logs->add($title,'dbDelete');
+            $this->db->cfmode=false; // Deactivate Cloudframework mode.
+            if(!isset($data[0])) $data = [$data];
+            foreach ($data as $record) {
+                $this->db->cloudFrameWork('delete',$record,$table);
+                if($this->db->error()) return($this->addError($this->db->getError()));
+            }
+
+            return true;
         }
 
         public function dbClose() {

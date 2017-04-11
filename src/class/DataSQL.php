@@ -41,9 +41,20 @@ class DataSQL
         if(!is_array($this->entity_schema)) return($this->addError('Missing schema in '.$this->entity_name));
         foreach ($this->entity_schema['model'] as $field =>$item) {
             if(stripos($item[1],'isKey')!==false) {
-                $this->keys[] = [$field,(stripos($item[0],'int')!== false)?'int':'char'];
+                $this->keys[] = [$field,(stripos($item[0],'int')!== false
+                    || stripos($item[0],'bit')!== false
+                    || stripos($item[0],'float')!== false
+                    || stripos($item[0],'double')!== false
+                    || stripos($item[0],'number')!== false)?'int':'char'];
             }
-            $this->fields[$field] = (stripos($item[0],'int')!== false)?'int':'char';
+
+            // Detect numbers
+            $this->fields[$field] = (stripos($item[0],'int')!== false
+                || stripos($item[0],'bit')!== false
+                || stripos($item[0],'float')!== false
+                || stripos($item[0],'double')!== false
+                || stripos($item[0],'number')!== false
+            )?'int':'char';
         }
         if(!count($this->keys)) return($this->addError('Missing Keys in the schema: '.$this->entity_name));
 
@@ -296,7 +307,7 @@ class DataSQL
      * @param $data
      * @return bool|null|void
      */
-    public function upsert(&$data) {
+    public function upsert($data) {
         if(!is_array($data) ) return($this->addError('upsert($data) $data has to be an array with key->value'));
 
         // Let's convert from Mapping into SQL fields
@@ -328,12 +339,36 @@ class DataSQL
             $mapdata = $data;
             $data = [];
             foreach ($mapdata as $key=>$value) {
-                if(!isset($this->entity_schema['mapping'][$key]['field'])) return($this->addError('upsert($data) $data contains a wrong mapped key: '.$key));
+                if(!isset($this->entity_schema['mapping'][$key]['field'])) return($this->addError('insert($data) $data contains a wrong mapped key: '.$key));
                 $data[$this->entity_schema['mapping'][$key]['field']] = $value;
             }
         }
 
         $ret= $this->core->model->dbInsert($this->entity_name.' insert record: '.json_encode($data),$this->entity_name,$data);
+        if($this->core->model->error) $this->addError($this->core->model->errorMsg);
+        return($ret);
+
+    }
+
+    /**
+     * Delete a record in db
+     * @param $data
+     * @return bool|null|void
+     */
+    public function delete($data) {
+        if(!is_array($data) ) return($this->addError('delete($data) $data has to be an array with key->value'));
+
+        // Let's convert from Mapping into SQL fields
+        if($this->use_mapping) {
+            $mapdata = $data;
+            $data = [];
+            foreach ($mapdata as $key=>$value) {
+                if(!isset($this->entity_schema['mapping'][$key]['field'])) return($this->addError('delete($data) $data contains a wrong mapped key: '.$key));
+                $data[$this->entity_schema['mapping'][$key]['field']] = $value;
+            }
+        }
+
+        $ret= $this->core->model->dbDelete($this->entity_name.' delete record: '.json_encode($data),$this->entity_name,$data);
         if($this->core->model->error) $this->addError($this->core->model->errorMsg);
         return($ret);
 
@@ -384,6 +419,7 @@ class DataSQL
 
 
         // Loop the wheres
+        if(is_array($keysWhere))
         foreach ($keysWhere as $key=>$value) {
 
             // Complex query
@@ -432,8 +468,14 @@ class DataSQL
                             $params[] = implode(',',$value);
                         }
                         else {
-                            $where.="{$this->entity_name}.{$key} IN ('%s')";
-                            $params[] = implode("','",$value);
+                            // Securing slashed
+                            $value = array_map(function($str) {
+                                return addslashes($str);
+                            }, $value);
+
+                            // Add an IN
+                            $where.="{$this->entity_name}.{$key} IN ('".implode("','",$value)."')";
+                            //$params[] = implode("','",$value);
 
                         }
                     }
