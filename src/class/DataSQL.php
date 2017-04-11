@@ -347,25 +347,29 @@ class DataSQL
      * @param $field
      * @param $type
      */
-    function setOrder($field, $type) {$this->unsetOrder(); $this->addOrder($field, $type);}
+    function setOrder($field, $type='ASC') {$this->unsetOrder(); $this->addOrder($field, $type);}
     /**
      * Add Order into a query with a new field
      * @param $field
      * @param $type
      */
-    function addOrder($field, $type) {
+    function addOrder($field, $type='ASC') {
 
         // Let's convert from Mapping into SQL fields
-        if($this->use_mapping) {
-            if(isset($this->entity_schema['mapping'][$field]['field'])) $field = $this->entity_schema['mapping'][$field]['field'];
+        if(strtolower($field)=='rand()') $this->order = $field;
+        else {
+            if($this->use_mapping) {
+                if(isset($this->entity_schema['mapping'][$field]['field'])) $field = $this->entity_schema['mapping'][$field]['field'];
+            }
+
+            if(isset($this->fields[$field]))  {
+                if(strlen($this->order)) $this->order.=', ';
+                $this->order.= $this->entity_name.'.'.$field.((strtoupper(trim($type))=='DESC')?' DESC':' ASC');
+            } else {
+                $this->addError($field.' does not exist to order by');
+            }
         }
 
-        if(isset($this->fields[$field]))  {
-            if(strlen($this->order)) $this->order.=', ';
-            $this->order.= $this->entity_name.'.'.$field.((strtoupper(trim($type))=='DESC')?' DESC':' ASC');
-        } else {
-            $this->addError($field.' does not exist to order by');
-        }
     }
 
 
@@ -400,6 +404,7 @@ class DataSQL
             }
             // Simple where
             else {
+                // TODO: support >,>=
                 if($this->use_mapping) {
                     if(!isset($this->entity_schema['mapping'][$key]['field'])) return($this->addError('fetch($keysWhere, $fields=null) $keyWhere contains a wrong mapped key: '.$key));
                     $key = $this->entity_schema['mapping'][$key]['field'];
