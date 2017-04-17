@@ -489,6 +489,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
         var $url, $app,$root_path, $app_path, $app_url;
         var $config = [];
         var $ip, $user_agent, $os, $lang, $format, $time_zone;
+        var $geo;
 
         function __construct($root_path = '')
         {
@@ -535,6 +536,12 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             // General conf
             // TODO default formats, currencies, timezones, etc..
             $this->config['setLanguageByPath'] = false;
+
+            // GEO BASED ON GOOGLE APPENGINE VARS
+            $this->geo['COUNTRY'] = $_SERVER['HTTP_X_APPENGINE_COUNTRY'];
+            $this->geo['CITY'] = $_SERVER['HTTP_X_APPENGINE_CITY'];
+            $this->geo['REGION'] = $_SERVER['HTTP_X_APPENGINE_REGION'];
+            $this->geo['COORDINATES'] = $_SERVER['HTTP_X_APPENGINE_CITYLATLONG'];
 
         }
 
