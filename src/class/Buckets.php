@@ -112,6 +112,7 @@ if (!defined ("_Buckets_CLASS_") ) {
                     $ret =  CloudStorageTools::getPublicUrl($file,$ssl);
             } return $ret;
         }
+
         function scan($path='') {
             $ret = array();
             $tmp = scandir('gs://'.$this->bucket.$path);
@@ -125,7 +126,7 @@ if (!defined ("_Buckets_CLASS_") ) {
             return(scandir('gs://'.$this->bucket.$path));
         }
 
-        function deleAllFiles($path='') { $this->deleteFiles($path,'*');}
+        function deleteAllFiles($path='') { $this->deleteFiles($path,'*');}
         function deleteFiles($path='',$file) {
             if(is_array($file)) $files=$file;
             else if($file == '*') $files = $this->fastScan($path);
