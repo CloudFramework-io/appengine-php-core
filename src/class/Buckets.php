@@ -11,6 +11,7 @@ if (!defined ("_Buckets_CLASS_") ) {
         private $core;
         var $bucket = '';
         var $error = false;
+        var $code = '';
         var $errorMsg = array();
         var $max = array();
         var $uploadedFiles = array();
@@ -22,7 +23,9 @@ if (!defined ("_Buckets_CLASS_") ) {
             $this->core = $core;
 
             if(strlen($bucket)) $this->bucket = $bucket;
-            else $this->bucket = CloudStorageTools::getDefaultGoogleStorageBucketName();
+            else $this->bucket = $this->core->config->get('bucketUploadPath');
+            if(!$this->bucket) return($this->addError('Missing bucketUploadPath config var or $bucket in the constructor'));
+
             $this->vars['upload_max_filesize'] = ini_get('upload_max_filesize');
             $this->vars['max_file_uploads'] = ini_get('max_file_uploads');
             $this->vars['file_uploads'] = ini_get('file_uploads');
@@ -50,7 +53,7 @@ if (!defined ("_Buckets_CLASS_") ) {
         }
 
         /**
-         * @param string $dest_bucket optional.. if this is passed then it has to start with: gs://
+         * @param string $dest_bucket optional.. if this is passed then it has to start with: gs:// or / for local enviroments with google_app_engine.disable_readonly_filesystem=1 in php.ini
          * @param array $options ['public'=>(bool),'ssl'=>(bool),'apply_hash_to_filenames'=>(bool),'allowed_extensions'=>(array),'content_types'=>(array)]
          * @return array
          */
@@ -60,8 +63,32 @@ if (!defined ("_Buckets_CLASS_") ) {
             $public=($options['public'])?true:false;
             $ssl=($options['ssl'])?true:false;
             $apply_hash_to_filenames = ($options['apply_hash_to_filenames'])?true:false;
-            $allowed_extensions = (is_array($options['allowed_extensions']))?$options['allowed_extensions']:[];
-            $content_types = (is_array($options['content_types']))?$options['content_types']:[];
+            $allowed_extensions = ($options['allowed_extensions'])?explode(',',strtolower($options['allowed_extensions'])):[];
+            $allowed_content_types = ($options['allowed_content_types'])?explode(',',strtolower($options['allowed_content_types'])):[];
+
+            // Calculate base_dir
+            $base_dir = '';
+            if($dest_bucket) {
+                if(strpos($dest_bucket,'gs://')===0) $base_dir = $dest_bucket;
+                else {
+                    if($this->core->is->development()) {
+                        $base_dir = $dest_bucket;
+                    } else {
+                        $dir_sep = (substr($dest_bucket,0,1)=='/')?'':'/';
+                        $base_dir = 'gs:/'.$dir_sep.$dest_bucket;
+                    }
+                }
+            } else {
+                if($this->core->is->development()) {
+                    $base_dir = $this->bucket;
+                } else {
+                    $base_dir = $this->bucket;
+                }
+            }
+
+            if(!is_dir($base_dir)) {
+                return($this->addError('the path to write the files does not exist: '.$base_dir));
+            }
 
 
             if($this->isUploaded)  {
@@ -69,8 +96,52 @@ if (!defined ("_Buckets_CLASS_") ) {
                     for($i=0,$tr=count($files);$i<$tr;$i++) {
                         $value = $files[$i];
                         if(!$value['error']) {
-                            if(!strlen($dest_bucket)) $dest = 'gs://'.$this->bucket.'/'.$value['name'];
-                            else $dest = $dest_bucket.'/'.$value['name'];
+
+                            // Extension calculation
+                            $extension = '';
+                            if(strpos($value['name'],'.')) {
+                                $parts = explode('.',$value['name']);
+                                $extension = '.'.strtolower($parts[count($parts)-1]);
+                            }
+
+                            // Do I have allowed extensions
+                            if($allowed_extensions) {
+                                $allow = false;
+                                if($extension)
+                                    foreach ($allowed_extensions as $allowed_extension) {
+                                        if('.'.trim($allowed_extension) == $extension ) {
+                                            $allow=true;
+                                            break;
+                                        }
+                                    }
+                                if(!$allow) return($this->addError($value['name'].' does not have any of the following extensions: '.$options['allowed_extensions'],'extensions'));
+                            }
+
+                            // Do I have allowed content types
+                            if($allowed_content_types) {
+
+                                $allow = false;
+                                foreach ($allowed_content_types as $allowed_content_type) {
+                                    if(strpos(strtolower($value['type']),trim($allowed_content_type)) !== false ) {
+                                        $allow=true;
+                                        break;
+                                    }
+                                }
+                                if(!$allow) return($this->addError($value['type'].' does not match with any of the following content-types: '.$options['allowed_content_types'],'content-type'));
+                            }
+
+                            // do not use the original name.. and transform to has+extension
+                            if($apply_hash_to_filenames) {
+
+                                $this->uploadedFiles[$key][$i]['hash_from_name'] = $value['name'];
+                                $value['name'] = date('Ymshis').uniqid('_upload'). md5($value['name']).$extension;
+                                $this->uploadedFiles[$key][$i]['name'] = $value['name'];
+                            }
+
+
+                            $dest = $base_dir.'/'.$value['name'];
+
+                            // Let's try to move the temporal files to their destinations.
                             try {
                                 $context = ['gs'=>['Content-Type' => $value['type']]];
                                 if($public) {
@@ -86,7 +157,6 @@ if (!defined ("_Buckets_CLASS_") ) {
                                     $this->addError(error_get_last());
                                     $this->uploadedFiles[$key][$i]['error'] = $this->errorMsg;
                                 }
-
 
                             }catch(Exception $e) {
                                 $this->addError($e->getMessage());
@@ -115,10 +185,10 @@ if (!defined ("_Buckets_CLASS_") ) {
 
         function scan($path='') {
             $ret = array();
-            $tmp = scandir('gs://'.$this->bucket.$path);
+            $tmp = scandir($this->bucket.$path);
             foreach ($tmp as $key => $value) {
-                $ret[$value] = array('type'=>(is_file('gs://'.$this->bucket.$path.'/'.$value))?'file':'dir');
-                if(isset($_REQUEST['__p'])) __p('is_dir: '.'gs://'.$this->bucket.$path.'/'.$value);
+                $ret[$value] = array('type'=>(is_file($this->bucket.$path.'/'.$value))?'file':'dir');
+                if(isset($_REQUEST['__p'])) __p('is_dir: '.$this->bucket.$path.'/'.$value);
             }
             return($ret);
         }
@@ -132,7 +202,7 @@ if (!defined ("_Buckets_CLASS_") ) {
             else if($file == '*') $files = $this->fastScan($path);
             else $file[] = file;
             foreach ($files as $key => $value) {
-                $value = 'gs://'.$this->bucket.$path.'/'.$value;
+                $value = $this->bucket.$path.'/'.$value;
                 $ret[$value] = 'ignored';
                 if(is_file($value)) {
                     $ret[$value] = 'deleting: '.unlink($value);
@@ -142,7 +212,7 @@ if (!defined ("_Buckets_CLASS_") ) {
         }
 
         function rmdir($path='')  {
-            $value = 'gs://'.$this->bucket.$path;
+            $value = $this->bucket.$path;
             $ret = false;
             try {
                 $ret = rmdir($value);
@@ -154,7 +224,7 @@ if (!defined ("_Buckets_CLASS_") ) {
         }
 
         function mkdir($path='')  {
-            $value = 'gs://'.$this->bucket.$path;
+            $value = $this->bucket.$path;
             $ret = false;
             try {
                 $ret = @mkdir($value);
@@ -171,12 +241,12 @@ if (!defined ("_Buckets_CLASS_") ) {
         }
 
         function isFile($file='')  {
-            $value = 'gs://'.$this->bucket.$file;
+            $value = $this->bucket.$file;
             return(is_file($value));
         }
 
         function isMkdir($path='')  {
-            $value = 'gs://'.$this->bucket.$path;
+            $value = $this->bucket.$path;
             $ret = is_dir($value);
             if(!$ret) try {
                 $ret = @mkdir($value);
@@ -195,7 +265,7 @@ if (!defined ("_Buckets_CLASS_") ) {
 
             $ret = false;
             try{
-                if(@file_put_contents('gs://'.$this->bucket.$path.'/'.$file, $data,0,$ctx) === false) {
+                if(@file_put_contents($this->bucket.$path.'/'.$file, $data,0,$ctx) === false) {
                     $this->addError(error_get_last());
                 }
             } catch(Exception $e) {
@@ -207,7 +277,7 @@ if (!defined ("_Buckets_CLASS_") ) {
         function getContents($file,$path='') {
             $ret = '';
             try{
-                $ret = @file_get_contents('gs://'.$this->bucket.$path.'/'.$file);
+                $ret = @file_get_contents($this->bucket.$path.'/'.$file);
                 if($ret=== false) {
                     $this->addError(error_get_last());
                 }
@@ -221,19 +291,20 @@ if (!defined ("_Buckets_CLASS_") ) {
         function getUploadUrl($returnUrl=null) {
             if(!$returnUrl) $returnUrl = $this->vars['retUploadUrl'];
             else $this->vars['retUploadUrl'] = $returnUrl;
-            $options = array( 'gs_bucket_name' => $this->bucket );
+            $options = array( 'gs_bucket_name' => str_replace('gs://','',$this->bucket) );
             $upload_url = CloudStorageTools::createUploadUrl($returnUrl, $options);
             return($upload_url);
         }
 
 
-        function setError($msg) {
+        function setError($msg,$code='') {
             $this->errorMsg = array();
-            $this->addError($msg);
+            $this->addError($msg,$code);
         }
-        function addError($msg) {
+        function addError($msg,$code='') {
             $this->error = true;
             $this->errorMsg[] = $msg;
+            $this->code = $code;
         }
     }
 }
