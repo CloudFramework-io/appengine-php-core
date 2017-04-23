@@ -5,8 +5,9 @@ class API extends RESTful
     private $buckets;
     function main()
     {
-
+        $this->sendCorsHeaders('GET,POST');
         if(!$this->checkMethod('GET,POST')) return;
+
         if(!$this->core->config->get('bucketUploadPathTest')) return($this->setErrorFromCodelib('system-error','missing bucketUploadPathTest config var'));
         $this->buckets = $this->core->loadClass('Buckets',$this->core->config->get('bucketUploadPathTest'));
         if($this->buckets->error) return($this->setErrorFromCodelib('system-error',$this->buckets->errorMsg));
@@ -33,11 +34,8 @@ class API extends RESTful
         $upload_properties = ['public'=>$public,'ssl'=>$ssl,'apply_hash_to_filenames'=>$apply_hash_to_filenames,'allowed_content_types'=>$allowed_content_types,'allowed_extensions'=>$allowed_extensions];
         $this->core->session->set('_uploadProperties',$upload_properties);
 
-
-
         // The return URL once the files have been sent to process those files
         $retUrl = $this->core->system->url['host_base_url'].'/h/api/_upload/manageFiles';
-
 
         // Gather uploadUrl
         $ret = array_merge(['uploadUrl' => $this->buckets->getUploadUrl($retUrl)],$this->buckets->vars,['uploadProperties'=>$upload_properties]);
