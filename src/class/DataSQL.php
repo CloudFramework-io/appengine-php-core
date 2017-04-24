@@ -69,6 +69,24 @@ class DataSQL
     }
 
     /**
+     * Reset init values
+     */
+    public function reset() {
+
+        $this->use_mapping = false;
+        $this->limit = 0;
+        $this->page = 0;
+        $this->offset = 0;
+        $this->order = '';
+        $this->joins = [];
+        $this->queryFields = '';
+        $this->queryWhere = [];
+        $this->virtualFields = [];
+        $this->groupBy = '';
+        $this->view = null;
+    }
+
+    /**
      * Return the fields defined for the table in the schema
      * @return array|null
      */
