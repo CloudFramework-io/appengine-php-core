@@ -328,7 +328,7 @@ if (!defined ("_RenderTwig_CLASS_") ) {
         {
             $this->error = true;
             $this->errorMsg[] = $value;
-            $this->core->errors->add('Missing TwigBucket config var');
+            $this->core->errors->add($value);
         }
 
         public static function autoload($class)
