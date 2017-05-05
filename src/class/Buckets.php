@@ -175,11 +175,10 @@ if (!defined ("_Buckets_CLASS_") ) {
         }
 
         function getPublicUrl($file,$ssl=false) {
-            global $adnbp;
             $ret = 'bucket missing';
             if(strlen($this->bucket)) {
                 if(strpos($file,'gs://')!==0 ) {
-                    $ret  = $this->core->system->url['host_base_url'].str_replace($_SERVER['DOCUMENT_ROOT'], '',$file);
+                    $ret  = $this->core->system->url['host_base_url'].str_replace($_SERVER['DOCUMENT_ROOT'], '',$this->bucket).$file;
                 } else
                     $ret =  CloudStorageTools::getPublicUrl($file,$ssl);
             } return $ret;
@@ -260,20 +259,20 @@ if (!defined ("_Buckets_CLASS_") ) {
         }
 
 
-        function putContents($file, $data, $path='',$ctype = 'text/plain' ) {
+        function putContents($file, $data, $path='',$options = ['gs' =>['Content-Type' => 'text/plain']] ) {
 
-            $options = array('gs' => array('Content-Type' => $ctype));
             $ctx = stream_context_create($options);
 
             $ret = false;
             try{
                 if(@file_put_contents($this->bucket.$path.'/'.$file, $data,0,$ctx) === false) {
                     $this->addError(error_get_last());
-                }
+                } else {$ret = true;}
             } catch(Exception $e) {
                 $this->addError($e->getMessage());
                 $this->addError(error_get_last());
             }
+            return($ret);
         }
 
         function getContents($file,$path='') {

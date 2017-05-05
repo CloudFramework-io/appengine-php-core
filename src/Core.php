@@ -3176,6 +3176,26 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             */
         }
 
+        /**
+         * @param $url
+         * @param $header key name of the header to get.. If not passed return all the array
+         * @return string|array
+         */
+        function getUrlHeader($url, $header=null) {
+            $ret = 'error';
+            $response = $this->getUrlHeaders($url);
+            $headers = [];
+            foreach ($response as $i=>$item) {
+                if($i==0) $headers['response'] = $item;
+                else {
+                    list($key,$value) = explode(':',strtolower($item),2);
+                    $headers[$key] = $value;
+                }
+            }
+            if($header) return($headers[strtolower($header)]);
+            else return $headers;
+        }
+
         function addError($value)
         {
             $this->error = true;
