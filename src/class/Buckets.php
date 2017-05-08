@@ -174,14 +174,28 @@ if (!defined ("_Buckets_CLASS_") ) {
             return($this->uploadedFiles);
         }
 
-        function getPublicUrl($file,$ssl=false) {
-            $ret = 'bucket missing';
-            if(strlen($this->bucket)) {
-                if(strpos($file,'gs://')!==0 ) {
-                    $ret  = $this->core->system->url['host_base_url'].str_replace($_SERVER['DOCUMENT_ROOT'], '',$this->bucket).$file;
-                } else
-                    $ret =  CloudStorageTools::getPublicUrl($file,$ssl);
-            } return $ret;
+        function getPublicUrl($file,$ssl=true) {
+
+            // Check $file
+            $ret = 'file missing';
+            if(!$file) return $ret;
+
+            // Check $this->bucket
+            if(strpos($file,'gs:')!==0 && strpos($file,'http:')!==0 && strpos($file,'https:')!==0) {
+                $ret = 'file missing';
+                if(!$this->bucket) return $ret;
+                $file = $this->bucket.$file;
+            }
+
+            // Calculating the return url
+            if(strpos($file,'gs://') !== 0 ) {
+                $ret  = $this->core->system->url['host_base_url'].str_replace($_SERVER['DOCUMENT_ROOT'], '',$file);
+            }
+            else {
+                $ret = CloudStorageTools::getPublicUrl($file, $ssl);
+            }
+            return $ret;
+
         }
 
         function scan($path='') {
