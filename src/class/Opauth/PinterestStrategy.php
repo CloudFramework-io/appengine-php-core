@@ -5,12 +5,11 @@
  *
  * More information on Opauth: http://opauth.org
  *
- * @copyright    Copyright ©2017 Adrian Martinez
+ * @author       Adrian Martinez
  * @link         http://opauth.org
  * @package      Opauth.PinterestStrategy
  * @license      MIT License
  */
-
 class PinterestStrategy extends OpauthStrategy {
     /**
      * Compulsory config keys, listed as unassociative arrays
