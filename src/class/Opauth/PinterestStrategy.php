@@ -1,11 +1,11 @@
 <?php
 /**
  * Pinterest strategy for Opauth
- * based on XXXXXXXXXXXX
+ * based on https://developers.pinterest.com/docs/api/overview/?
  *
  * More information on Opauth: http://opauth.org
  *
- * @copyright    Copyright © 2012 U-Zyn Chua (http://uzyn.com)
+ * @copyright    Copyright ©2017 Adrian Martinez
  * @link         http://opauth.org
  * @package      Opauth.PinterestStrategy
  * @license      MIT License
@@ -23,28 +23,25 @@ class PinterestStrategy extends OpauthStrategy {
      * eg. array('scope' => 'email');
      */
     public $defaults = array(
-        'redirect_uri' => '{complete_url_to_strategy}oauth_callback',
-        'scope' => 'read_public,write_public'
+        'redirect_uri' => '{complete_url_to_strategy}callback',
+        'scope' => 'read_public,write_public,read_relationships,write_relationships'
     );
 
     /**
      * Auth request
      */
     public function request(){
-        $url = 'https://api.pinterest.com/oauth/token';
+        $url = 'https://api.pinterest.com/oauth/';
 
         $params = array(
+            'response_type' =>'code',
+            'redirect_uri'=> $this->strategy['redirect_uri'],
             'client_id' => $this->strategy['client_id'],
-            'client_secret' => $this->strategy['client_secret'],
-            'grant_type'    => "authorization_code",
-            'code'          => ''
+            'state' => substr(md5(rand()), 0, 7)
         );
-/*
-        if (!empty($this->strategy['scope']))
-            $params['scope'] = $this->strategy['scope'];
-        if (!empty($this->strategy['response_type']))
-            $params['response_type'] = $this->strategy['response_type'];
-*/
+
+        if (!empty($this->strategy['scope'])) $params['scope'] = $this->strategy['scope'];
+
         // redirect to generated url
         $this->clientGet($url, $params);
     }
@@ -52,19 +49,17 @@ class PinterestStrategy extends OpauthStrategy {
     /**
      * Internal callback, after Pinterest's OAuth
      */
-    public function int_callback(){
+    public function callback(){
         if (array_key_exists('code', $_GET) && !empty($_GET['code'])){
-            $url = 'https://api.instagram.com/oauth/access_token';
+            $url = 'https://api.pinterest.com/v1/oauth/token';
 
             $params = array(
+                'grant_type' => 'authorization_code',
                 'client_id' =>$this->strategy['client_id'],
                 'client_secret' => $this->strategy['client_secret'],
-                'redirect_uri'=> $this->strategy['redirect_uri'],
-                'grant_type' => 'authorization_code',
                 'code' => trim($_GET['code'])
             );
             $response = $this->serverPost($url, $params, null, $headers);
-
             $results = json_decode($response);
 
             if (!empty($results) && !empty($results->access_token)){
@@ -105,8 +100,10 @@ class PinterestStrategy extends OpauthStrategy {
                     'code' => 'access_token_error',
                     'message' => 'Failed when attempting to obtain access token',
                     'raw' => array(
-                        'response' => $userinfo,
-                        'headers' => $headers
+                        'url' => $url,
+                        'response' => $results,
+                        'headers' => $headers,
+                        'params' =>$params
                     )
                 );
 
