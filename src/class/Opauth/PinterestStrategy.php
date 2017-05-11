@@ -23,7 +23,7 @@ class PinterestStrategy extends OpauthStrategy {
      * eg. array('scope' => 'email');
      */
     public $defaults = array(
-        'redirect_uri' => '{complete_url_to_strategy}callback',
+        'redirect_uri' => '{complete_url_to_strategy}int_callback',
         'scope' => 'read_public,write_public,read_relationships,write_relationships'
     );
 
@@ -48,8 +48,9 @@ class PinterestStrategy extends OpauthStrategy {
 
     /**
      * Internal callback, after Pinterest's OAuth
+     * based on https://developers.pinterest.com/docs/api/users/ model
      */
-    public function callback(){
+    public function int_callback(){
         if (array_key_exists('code', $_GET) && !empty($_GET['code'])){
             $url = 'https://api.pinterest.com/v1/oauth/token';
 
@@ -59,29 +60,31 @@ class PinterestStrategy extends OpauthStrategy {
                 'client_secret' => $this->strategy['client_secret'],
                 'code' => trim($_GET['code'])
             );
-            $response = $this->serverPost($url, $params, null, $headers);
-            $results = json_decode($response);
 
-            if (!empty($results) && !empty($results->access_token)){
-                $userinfo = $this->userinfo($results->user->id, $results->access_token);
+            $response = $this->serverPost($url, $params, null, $headers);
+            $results = json_decode($response,true);
+
+            if (!empty($results) && !empty($results['access_token'])){
+                $userinfo = $this->userinfo($results['access_token']);
 
                 $this->auth = array(
                     'provider' => 'Pinterest',
-                    'uid' => $userinfo->id,
+                    'uid' => $userinfo['id'],
                     'info' => array(
-                        'name' => $userinfo->full_name,
-                        'nickname' => $userinfo->username,
-                        'image' => $userinfo->profile_picture
+                        'name' => $userinfo['first_name'].(($userinfo['last_name'])?' '.$userinfo['last_name']:''),
+                        'nickname' => $userinfo['username'],
+                        'image' => $userinfo['image']['60x60']['url'],
+                        'bio' => $userinfo['bio'],
+                        'url'=> $userinfo['url']
                     ),
                     'credentials' => array(
-                        'token' => $results->access_token,
-                        //'expires' => date('c', time() + $results->expires_in)
+                        'token' => $results['access_token'],
                     ),
                     'raw' => $userinfo
                 );
 
-                if (!empty($userinfo->website)) $this->auth['info']['urls']['website'] = $userinfo->website;
-                if (!empty($userinfo->bio)) $this->auth['info']['description'] = $userinfo->bio;
+                if (!empty($userinfo->website)) $this->auth['info']['urls']['website'] = $userinfo['website'];
+                if (!empty($userinfo->bio)) $this->auth['info']['description'] = $userinfo['bio'];
 
                 /**
                  * NOTE:
@@ -102,8 +105,6 @@ class PinterestStrategy extends OpauthStrategy {
                     'raw' => array(
                         'url' => $url,
                         'response' => $results,
-                        'headers' => $headers,
-                        'params' =>$params
                     )
                 );
 
@@ -130,13 +131,15 @@ class PinterestStrategy extends OpauthStrategy {
      * @param	string	$access_token
      * @return	array	Parsed JSON results
      */
-    private function userinfo($uid, $access_token){
-        $userinfo = $this->serverGet('https://api.instagram.com/v1/users/'.$uid.'/', array('access_token' => $access_token), null, $headers);
+    private function userinfo($access_token){
+
+        $headers = null; // it will be rewrited in serverGet
+        $userinfo = $this->serverGet('https://api.pinterest.com/v1/me/', array('access_token' => $access_token,'fields'=>'id,first_name,last_name,url,username,bio,created_at,counts,image'), null, $headers);
 
         if (!empty($userinfo)){
-            $results = json_decode($userinfo);
+            $results = json_decode($userinfo,true);
 
-            return $results->data;
+            return $results['data'];
         }
         else{
             $error = array(
@@ -148,7 +151,6 @@ class PinterestStrategy extends OpauthStrategy {
                     'headers' => $headers
                 )
             );
-
             $this->errorCallback($error);
         }
     }
