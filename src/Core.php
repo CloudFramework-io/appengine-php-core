@@ -89,7 +89,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
         /** @var CoreModel $model Object to control DataModels */
         public $model;
 
-        var $_version = '20161202b';
+        var $_version = '20170516';
         var $data = null;
 
 
@@ -254,7 +254,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                 }
 
                 // Specific logic
-                if (!$this->errors->lines && !empty($this->config->get('logic'))) {
+                if (!empty($this->config->get('logic'))) {
                     try {
                         include_once $this->system->app_path . '/logic/' . $this->config->get('logic');
                         if (class_exists('Logic')) {
