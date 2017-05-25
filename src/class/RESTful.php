@@ -128,7 +128,7 @@ if (!defined("_RESTfull_CLASS_")) {
             $this->addCodeLib('system-error','There is a problem in the platform.',503);
             $this->addCodeLib('datastore-error','There is a problem with the DataStore.',503);
             $this->addCodeLib('db-error','There is a problem in the DataBase.',503);
-            $this->addCodeLib('params-error','Wrong paramaters.',400);
+            $this->addCodeLib('params-error','Wrong parameters.',400);
             $this->addCodeLib('security-error','You don\'t have right credentials.',401);
             $this->addCodeLib('not-allowed','You are not allowed.',403);
             $this->addCodeLib('not-found','Not Found',404);
