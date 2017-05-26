@@ -64,13 +64,13 @@ if (!defined ("_Google_CLASS_") ) {
             $this->errorMsg[] = $value;
         }
 
-        function verifyToken($token,$user_id=null) {
-            $ret =$this->core->request->get_json_decode('https://www.googleapis.com/oauth2/v1/tokeninfo',['access_token'=>$token]);
+        function verifyToken($id_token, $uid=null) {
+            $ret =$this->core->request->get_json_decode('https://www.googleapis.com/oauth2/v3/tokeninfo',['id_token'=>$id_token]);
             if(isset($ret['error'])) return($this->addError($ret));
 
-            if($user_id && $user_id != $ret['user_id']) return($this->addError('user_id does not match'));
+            if($uid && $uid != $ret['sub']) return($this->addError('uid does not match with login_provider_indetifier'));
 
-            if($this->client->getClientId() != $ret['issued_to']) {
+            if($this->client->getClientId() != $ret['aud']) {
                 $this->core->logs->add('This token has not been generated with internal system client_id');
             }
             return $ret;
