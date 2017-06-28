@@ -11,7 +11,9 @@
  * @package com.adnbp.class.email
  */
 
-require_once 'google/appengine/api/mail/Message.php';
+if(!isset($_SERVER['PWD'])) {
+    include_once 'google/appengine/api/mail/Message.php';
+}
 use google\appengine\api\mail\Message;
 
 
@@ -29,8 +31,10 @@ if (!defined ("_GOOGLEAPPSEMAIL_CLASS_") ) {
         var $errorMsg = '';
         var $error = false;
         var $_debug = false;
-        var $_sengrid = null;
-        var $_sengridmail = null;
+        /** @var SendGrid $_sengrid */
+        var $_sendgrid = null;
+        /** @var SendGridMail $_sengridmail */
+        var $_sendgridmail = null;
         var $core = null;
 
         function Email (Core &$core,$params=[]) {
@@ -69,6 +73,7 @@ if (!defined ("_GOOGLEAPPSEMAIL_CLASS_") ) {
         function setBcc($bcc) { $this->data['bcc'] = $bcc; }
 
         function setTo($txt) { $this->data['to'] = $txt; }
+        function setCategory($txt) { $this->data['category'] = $txt; }
 
         function setHtmlBody($txt) { $this->data['htmlBody']= $txt; }
         function setHtml($txt) { $this->data['htmlBody']= $txt; }
@@ -165,6 +170,7 @@ if (!defined ("_GOOGLEAPPSEMAIL_CLASS_") ) {
                 $this->_sendgridmail->setTos($to);
                 if(strlen($this->data['cc'])) $this->_sendgridmail->setCc($this->data['cc']);
                 if(strlen($this->data['bcc'])) $this->_sendgridmail->setBcc($this->data['bcc']);
+                if(strlen($this->data['category'])) $this->_sendgridmail->setCategory($this->data['category']);
                 $res = $this->_sendgrid->send($this->_sendgridmail);
 
                 $ret =false;
