@@ -759,6 +759,11 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             return (stripos($_SERVER['SERVER_SOFTWARE'], 'Development') === false && !isset($_SERVER['PWD']));
         }
 
+        function script()
+        {
+            return (isset($_SERVER['PWD']));
+        }
+
         function dirReadble($dir)
         {
             if (strlen($dir)) return (is_dir($dir));
@@ -3037,7 +3042,8 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                     $options['http']['content'] = $build_data;
 
                     // You have to calculate the Content-Length to run as script
-                    //$options['http']['header'] .= sprintf('Content-Length: %d', strlen($build_data)) . "\r\n";
+                    if($this->core->is->script())
+                        $options['http']['header'] .= sprintf('Content-Length: %d', strlen($build_data)) . "\r\n";
                 }
             }
             // Take data as a valid JSON
