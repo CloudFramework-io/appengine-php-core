@@ -630,8 +630,9 @@ if (!defined ("_MYSQLI_CLASS_") ) {
 
                     $field = $allFields[$j];
 
-                    if(!$fieldTypes[$field]['type']) {
-                        $this->setError("Wrong data array. $field does not exist in ".implode(',',array_keys($fieldTypes)));
+                    if(!isset($fieldTypes) || !$fieldTypes[$field]['type']) {
+                        if(!isset($fieldTypes)) $fieldTypes = [];
+                        $this->setError("Wrong data array. $field does not exist in table {$table}: ".implode(',',array_keys($fieldTypes)));
                         return(false);
                     }
 

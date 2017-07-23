@@ -39,6 +39,9 @@ if (!defined ("_Instagram_CLASS_") ) {
                 $params['max_timestamp'] = $maxTimestamp;
                 $params['min_timestamp'] = $minTimestamp;
                 $url = 'https://api.instagram.com/v1/users/self';
+
+                $this->core->request->error = false;
+                $this->core->request->errorMsg = [];
                 $ret = $this->core->request->get($url,$params);
                 if(strlen($ret) && !$this->core->request->error) {
                     $ret = json_decode($ret,true);
@@ -65,6 +68,8 @@ if (!defined ("_Instagram_CLASS_") ) {
             if (strlen($user_id) && strlen($this->access_token)) {
                 $params['access_token'] = $this->access_token;
                 $url = 'https://api.instagram.com/v1/users/self';
+                $this->core->request->error = false;
+                $this->core->request->errorMsg = [];
                 $ret = $this->core->request->get($url,$params);
                 if(strlen($ret) ) {
                     $ret = json_decode($ret,true);

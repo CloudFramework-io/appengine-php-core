@@ -410,6 +410,7 @@ class DataSQL
 
         // Let's convert from Mapping into SQL fields
         if(strtolower($field)=='rand()') $this->order = $field;
+        elseif(strpos($field,'.')!==null ) $this->order = $field.((strtoupper(trim($type))=='DESC')?' DESC':' ASC');
         else {
             if($this->use_mapping) {
                 if(isset($this->entity_schema['mapping'][$field]['field'])) $field = $this->entity_schema['mapping'][$field]['field'];
