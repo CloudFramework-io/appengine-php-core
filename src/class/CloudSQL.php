@@ -651,7 +651,7 @@ if (!defined ("_MYSQLI_CLASS_") ) {
                     $tables[$table]['insertPercents'] .= $sep.(($fieldTypes[$field]['isNum'])?"%s":(($data[$field] === 'NULL')?"%s":"'%s'"));
 
                     if($fieldTypes[$field]['isKey']) {
-                        if(strlen($tables[$table]['updateWhereFields'])) $tables[$table]['updateWhereFields'].=',';
+                        if(strlen($tables[$table]['updateWhereFields'])) $tables[$table]['updateWhereFields'].=' AND ';
                         $tables[$table]['updateWhereFields'] .= $field."=".(($fieldTypes[$field]['isNum'])?"%s":"'%s'");
                         $tables[$table]['updateWhereValues'][] = $data[$field];
                     }
