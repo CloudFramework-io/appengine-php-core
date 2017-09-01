@@ -597,7 +597,7 @@ if (!defined("_RESTfull_CLASS_")) {
 
             // Prepare the return data
             $ret = array();
-            $ret['success'] = ($this->core->errors->lines) ? false : true;
+            $ret['success'] = ($this->error) ? false : true;
             $ret['status'] = $this->getReturnStatus();
             $ret['code'] = $this->getReturnCode();
             if($this->core->is->terminal())
