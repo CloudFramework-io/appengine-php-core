@@ -47,7 +47,7 @@ if (!defined ("_Instagram_CLASS_") ) {
                     $ret = json_decode($ret,true);
                     if($ret['meta']['code']==200) {
                         $data = ['user'=>$ret['data']];
-                            $s = 'https://api.instagram.com/v1/users/%s/media/recent/';
+                        $s = 'https://api.instagram.com/v1/users/%s/media/recent/';
                         $url = sprintf($s,$user_id);
                         $ret = $this->core->request->get($url,$params);
                         if(strlen($ret) && !$this->core->request->error) {
