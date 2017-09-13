@@ -129,6 +129,9 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             // Config objects based in config
             $this->cache->setSpaceName($this->config->get('cacheSpacename'));
 
+            // If the $this->system->app_path ends in / delete the char.
+            $this->system->app_path = preg_replace('/\/$/','',$this->system->app_path);
+
         }
 
         function setAppPath($dir)
@@ -163,20 +166,16 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
         function dispatch()
         {
 
-            // If the $this->system->app_path ends in / delete the char.
-            $this->system->app_path = preg_replace('/\/$/','',$this->system->app_path);
-
             // API end points. By default $this->config->get('core_api_url') is '/h/api'
-            if (strpos($this->system->url['url'], $this->config->get('core_api_url')) === 0) {
-                if (!strlen($this->system->url['parts'][2])) $this->errors->add('missing api end point');
+            if ($this->isApiPath()) {
+
+                if (!strlen($this->system->url['parts'][$this->system->url['parts_base_index']])) $this->errors->add('missing api end point');
                 else {
 
-
-                    $apifile = $this->system->url['parts'][2];
+                    $apifile = $this->system->url['parts'][$this->system->url['parts_base_index']];
 
                     // -----------------------
                     // Evaluating tests API cases
-
                     // path to file
                     if ($apifile[0] == '_' || $apifile == 'queue') {
                         $pathfile = __DIR__ . "/api/h/{$apifile}.php";
@@ -206,7 +205,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                         if(!isset($api_class)) $api_class = 'API';
 
                         if (class_exists($api_class)) {
-                            $api = new $api_class($this);
+                            $api = new $api_class($this,$this->system->url['parts_base_url']);
                             if ($api->params[0] == '__codes') {
                                 $__codes = $api->codeLib;
                                 foreach ($__codes as $key => $value) {
@@ -329,7 +328,26 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                 return false;
             } else return true;
         }
+
+        /**
+         * Is the current route part of the API?
+         * @return bool
+         */
+        private function isApiPath() {
+            $paths = explode(',',$this->config->get('core_api_url'));
+            foreach ($paths as $path) {
+                if(strpos($this->system->url['url'], $path) === 0) {
+                    $path = preg_replace('/\/$/','',$path);
+                    $this->system->url['parts_base_index'] = count(explode('/',$path))-1;
+                    $this->system->url['parts_base_url'] = $path;
+                    return true;
+                }
+            }
+            return false;
+        }
     }
+
+
 
     /**
      * Class to track performance
@@ -510,6 +528,8 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             $this->url['host_url_uri'] = (($_SERVER['HTTPS'] == 'on') ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
             $this->url['script_name'] = $_SERVER['SCRIPT_NAME'];
             $this->url['parts'] = explode('/', substr($this->url['url'], 1));
+            $this->url['parts_base_index'] = 0;
+            $this->url['parts_base_url'] = '/';
 
             // paths
             $this->root_path = $root_path;
