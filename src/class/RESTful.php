@@ -622,6 +622,15 @@ if (!defined("_RESTfull_CLASS_")) {
             if ($this->core->logs->lines) {
                 $ret['logs'] = $this->core->logs->data;
                 syslog(LOG_INFO, 'CloudFramework RESTFul: '. json_encode($this->core->logs->data,JSON_FORCE_OBJECT));
+
+                //Restrict output
+                if($this->core->config->get('core_api_logs_allowed_ips')) {
+                    if(!$this->core->security->isCron() &&  !strpos($this->core->system->url['url'],'/queue/')) {
+                        if(strpos($this->core->config->get('core_api_logs_allowed_ips'),$this->core->system->ip)===false) {
+                            $ret['logs'] = 'only core_api_logs_allowed_ips. Current ip: '.$this->core->system->ip;
+                        }
+                    }
+                }
             }
 
             // If I have been called from a queue or from a Cron the response has to be 200 to avoid recalls
