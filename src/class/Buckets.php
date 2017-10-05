@@ -99,6 +99,9 @@ if (!defined ("_Buckets_CLASS_") ) {
                         $value = $files[$i];
                         if(!$value['error']) {
 
+                            // If the name of the file uploaded has special chars, the system convert it into mime-encode-utf8
+                            if(strpos($value['name'],'=?UTF-8') !== false) $value['name'] = iconv_mime_decode($value['name'],0,'UTF-8');
+
                             // Extension calculation
                             $extension = '';
                             if(strpos($value['name'],'.')) {
