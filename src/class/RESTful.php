@@ -125,9 +125,6 @@ if (!defined("_RESTfull_CLASS_")) {
             $this->addCodeLib('inserted','Inserted succesfully',201);
             $this->addCodeLib('no-content','No content',204);
             $this->addCodeLib('form-params-error','Wrong form paramaters.',400);
-            $this->addCodeLib('system-error','There is a problem in the platform.',503);
-            $this->addCodeLib('datastore-error','There is a problem with the DataStore.',503);
-            $this->addCodeLib('db-error','There is a problem in the DataBase.',503);
             $this->addCodeLib('params-error','Wrong parameters.',400);
             $this->addCodeLib('security-error','You don\'t have right credentials.',401);
             $this->addCodeLib('not-allowed','You are not allowed.',403);
@@ -136,6 +133,9 @@ if (!defined("_RESTfull_CLASS_")) {
             $this->addCodeLib('conflict','There are conflicts.',409);
             $this->addCodeLib('gone','The resource is not longer available.',410);
             $this->addCodeLib('unsupported-media','Unsupported Media Type.',415);
+            $this->addCodeLib('system-error','There is a problem in the platform.',503);
+            $this->addCodeLib('datastore-error','There is a problem with the DataStore.',503);
+            $this->addCodeLib('db-error','There is a problem in the DataBase.',503);
             if(method_exists($this,'__codes')) {
                 $this->__codes();
             }
@@ -602,20 +602,6 @@ if (!defined("_RESTfull_CLASS_")) {
             $ret['code'] = $this->getReturnCode();
             if($this->core->is->terminal())
                 $ret['exec'] = '['.$_SERVER['PWD']. '] php '.implode(' ',$argv);
-            else
-                $ret['url'] = (($_SERVER['HTTPS'] == 'on') ? 'https://' : 'http://') . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
-            $ret['method'] = $this->method;
-            $ret['ip'] = $this->core->system->ip;
-
-            // Debug params
-            if (isset($this->formParams['_debug'])) {
-                $ret['header'] = $this->getResponseHeader();
-                $ret['session'] = session_id();
-                $ret['ip'] = $this->core->system->ip;
-                $ret['user_agent'] = ($this->core->system->user_agent != null) ? $this->core->system->user_agent : $this->requestHeaders['User-Agent'];
-                $ret['urlParams'] = $this->params;
-                $ret['form-raw Params'] = $this->formParams;
-            }
 
             if (is_array($this->returnData)) $ret = array_merge($ret, $this->returnData);
 
@@ -654,8 +640,21 @@ if (!defined("_RESTfull_CLASS_")) {
                         $ret['__p'] = $this->core->__p->data;
                     }
 
-                    $ret['_totTime'] = $this->core->__p->getTotalTime(5) . ' secs';
-                    $ret['_totMemory'] = $this->core->__p->getTotalMemory(5) . ' Mb';
+                    // Debug params
+                    if (isset($this->formParams['_debug'])) {
+                        if(!$this->core->is->terminal())
+                            $ret['_debug']['url'] = (($_SERVER['HTTPS'] == 'on') ? 'https://' : 'http://') . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
+                        $ret['_debug']['method'] = $this->method;
+                        $ret['_debug']['ip'] = $this->core->system->ip;
+                        $ret['_debug']['header'] = $this->getResponseHeader();
+                        $ret['_debug']['session'] = session_id();
+                        $ret['_debug']['ip'] = $this->core->system->ip;
+                        $ret['_debug']['user_agent'] = ($this->core->system->user_agent != null) ? $this->core->system->user_agent : $this->requestHeaders['User-Agent'];
+                        $ret['_debug']['urlParams'] = $this->params;
+                        $ret['_debug']['form-raw Params'] = $this->formParams;
+                        $ret['_debug']['_totTime'] = $this->core->__p->getTotalTime(5) . ' secs';
+                        $ret['_debug']['_totMemory'] = $this->core->__p->getTotalMemory(5) . ' Mb';
+                    }
 
                     // If the API->main does not want to send $ret standard it can send its own data
                     if (count($this->rewrite)) $ret = $this->rewrite;
