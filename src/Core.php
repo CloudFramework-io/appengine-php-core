@@ -166,6 +166,13 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
         function dispatch()
         {
 
+            // Evaluate to add headers in the response.
+            if($headers = $this->config->get('core.dispatch.headers')) {
+                if(is_array($headers)) foreach ($headers as $key=>$value) {
+                    header("$key: $value");
+                }
+            }
+
             // API end points. By default $this->config->get('core_api_url') is '/h/api'
             if ($this->isApiPath()) {
 
