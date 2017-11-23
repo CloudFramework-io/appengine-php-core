@@ -166,7 +166,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
         function dispatch()
         {
 
-            // Evaluate to add headers in the response.
+            // core.dispatch.headers: Evaluate to add headers in the response.
             if($headers = $this->config->get('core.dispatch.headers')) {
                 if(is_array($headers)) foreach ($headers as $key=>$value) {
                     header("$key: $value");
