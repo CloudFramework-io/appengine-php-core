@@ -10,5 +10,6 @@ class API extends RESTful
         $data['params'] = $this->params;
         $data['formParams'] = $this->formParams;
         $this->addReturnData($data);
+        $this->core->logs->add('Logs to add [$this->core->logs->add(\'Logs to add\')]');
     }
 }

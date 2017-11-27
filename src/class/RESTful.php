@@ -34,8 +34,6 @@ if (!defined("_RESTfull_CLASS_")) {
 
         function __construct(Core &$core, $apiUrl = '/h/api')
         {
-
-
             $this->core = $core;
             // FORCE Ask to the browser the basic Authetication
             if (isset($_REQUEST['_forceBasicAuth'])) {
@@ -108,8 +106,9 @@ if (!defined("_RESTfull_CLASS_")) {
             if (strpos($_SERVER['REQUEST_URI'], '?') !== false)
                 list($this->url, $this->urlParams) = explode('?', $_SERVER['REQUEST_URI'], 2);
 
-            // API URL Split
-            list($foo, $url) = explode($apiUrl . '/', $this->url, 2);
+            // API URL Split. If $this->core->system->url['parts_base_url'] take it out
+            $url = $this->url;
+            list($foo, $url) = explode($this->core->system->url['parts_base_url'] . '/', $this->url, 2);
             $this->service = $url;
             $this->serviceParam = '';
             $this->params = [];
@@ -148,7 +147,7 @@ if (!defined("_RESTfull_CLASS_")) {
             // Rules for Cross-Domain AJAX
             // https://developer.mozilla.org/en-US/docs/Web/HTTP/Access_control_CORS
             // $origin =((strlen($_SERVER['HTTP_ORIGIN']))?preg_replace('/\/$/', '', $_SERVER['HTTP_ORIGIN']):'*')
-            if (!strlen($origin)) $origin = ((strlen($_SERVER['HTTP_ORIGIN'])) ? preg_replace('/\/$/', '', $_SERVER['HTTP_ORIGIN']) : '*');
+            if (!strlen($origin)) $origin = ((array_key_exists('HTTP_ORIGIN',$_SERVER) && strlen($_SERVER['HTTP_ORIGIN'])) ? preg_replace('/\/$/', '', $_SERVER['HTTP_ORIGIN']) : '*');
             header("Access-Control-Allow-Origin: $origin");
             header("Access-Control-Allow-Methods: $methods");
             header("Access-Control-Allow-Headers: Content-Type,Authorization,X-CloudFrameWork-AuthToken,X-CLOUDFRAMEWORK-SECURITY,X-DS-TOKEN,X-REST-TOKEN,X-EXTRA-INFO,X-WEB-KEY,X-SERVER-KEY,X-REST-USERNAME,X-REST-PASSWORD,X-APP-KEY");
@@ -610,9 +609,10 @@ if (!defined("_RESTfull_CLASS_")) {
                 syslog(LOG_INFO, 'CloudFramework RESTFul: '. json_encode($this->core->logs->data,JSON_FORCE_OBJECT));
 
                 //Restrict output
-                if($this->core->config->get('core_api_logs_allowed_ips')) {
+                if($this->core->config->get('core_api_logs_allowed_ips') || $this->core->config->get('restful.logs.allowed_ips')) {
+                    $_allowed_ips = ($this->core->config->get('restful.logs.allowed_ips'))?:$this->core->config->get('core_api_logs_allowed_ips');
                     if(!$this->core->security->isCron() &&  !strpos($this->core->system->url['url'],'/queue/')) {
-                        if(strpos($this->core->config->get('core_api_logs_allowed_ips'),$this->core->system->ip)===false) {
+                        if(strpos($_allowed_ips,$this->core->system->ip)===false) {
                             $ret['logs'] = 'only core_api_logs_allowed_ips. Current ip: '.$this->core->system->ip;
                         }
                     }
@@ -641,19 +641,19 @@ if (!defined("_RESTfull_CLASS_")) {
                     }
 
                     // Debug params
-                    if (isset($this->formParams['_debug'])) {
+                    if (isset($this->formParams['__debug'])) {
                         if(!$this->core->is->terminal())
-                            $ret['_debug']['url'] = (($_SERVER['HTTPS'] == 'on') ? 'https://' : 'http://') . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
-                        $ret['_debug']['method'] = $this->method;
-                        $ret['_debug']['ip'] = $this->core->system->ip;
-                        $ret['_debug']['header'] = $this->getResponseHeader();
-                        $ret['_debug']['session'] = session_id();
-                        $ret['_debug']['ip'] = $this->core->system->ip;
-                        $ret['_debug']['user_agent'] = ($this->core->system->user_agent != null) ? $this->core->system->user_agent : $this->requestHeaders['User-Agent'];
-                        $ret['_debug']['urlParams'] = $this->params;
-                        $ret['_debug']['form-raw Params'] = $this->formParams;
-                        $ret['_debug']['_totTime'] = $this->core->__p->getTotalTime(5) . ' secs';
-                        $ret['_debug']['_totMemory'] = $this->core->__p->getTotalMemory(5) . ' Mb';
+                            $ret['__debug']['url'] = (($_SERVER['HTTPS'] == 'on') ? 'https://' : 'http://') . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
+                        $ret['__debug']['method'] = $this->method;
+                        $ret['__debug']['ip'] = $this->core->system->ip;
+                        $ret['__debug']['header'] = $this->getResponseHeader();
+                        $ret['__debug']['session'] = session_id();
+                        $ret['__debug']['ip'] = $this->core->system->ip;
+                        $ret['__debug']['user_agent'] = ($this->core->system->user_agent != null) ? $this->core->system->user_agent : $this->requestHeaders['User-Agent'];
+                        $ret['__debug']['urlParams'] = $this->params;
+                        $ret['__debug']['form-raw Params'] = $this->formParams;
+                        $ret['__debug']['_totTime'] = $this->core->__p->getTotalTime(5) . ' secs';
+                        $ret['__debug']['_totMemory'] = $this->core->__p->getTotalMemory(5) . ' Mb';
                     }
 
                     // If the API->main does not want to send $ret standard it can send its own data
@@ -672,7 +672,7 @@ if (!defined("_RESTfull_CLASS_")) {
 
 
             // IF THE CALL comes from a queue then LOG the result to facilitate the debud
-            if(($this->core->security->isCron() || $this->formParams['cloudframework_queued']) && !strpos($this->core->system->url['url'],'/queue/')) {
+            if(($this->core->security->isCron() || array_key_exists('cloudframework_queued',$this->formParams)) && !strpos($this->core->system->url['url'],'/queue/')) {
                 $title = ($this->formParams['cloudframework_queued'])?'RESULT FROM QUEUE ':'';
                 if($this->core->security->isCron())
                     $title .= 'USING CRON';

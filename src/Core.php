@@ -9,6 +9,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
     define("_ADNBP_CORE_CLASSES_", TRUE);
 
     // Global functions
+
     /**
      * Echo in output a group of vars passed as args
      * @param mixed $args Element to print.
@@ -40,6 +41,31 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
         if (key_exists('PWD', $_SERVER)) echo "\n";
         else echo "</pre>";
     }
+
+
+    function __fatal_handler() {
+        global $core;
+        $errfile = "unknown file";
+        $errstr  = "shutdown";
+        $errno   = E_CORE_ERROR;
+        $errline = 0;
+
+        $error = error_get_last();
+
+
+        if( $error !== NULL) {
+            $errno   = $error["type"];
+            $errfile = $error["file"];
+            $errline = $error["line"];
+            $errstr  = $error["message"];
+
+            $core->errors->add(["ErrorCode"=>$errno, "ErrorMessage"=>$errstr, "File"=>$errfile, "Line"=>$errline],'Fatal Error');
+            if($core->is->development())
+                _print( ["ErrorCode"=>$errno, "ErrorMessage"=>$errstr, "File"=>$errfile, "Line"=>$errline]);
+        }
+    }
+
+    register_shutdown_function( "__fatal_handler" );
 
     /**
      * Print a group of mixed vars passed as arguments
@@ -89,7 +115,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
         /** @var CoreModel $model Object to control DataModels */
         public $model;
 
-        var $_version = '20170516';
+        var $_version = '20171126';
         var $data = null;
 
 
@@ -192,11 +218,11 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                         $pathfile = $this->system->app_path . "/api/{$apifile}.php";
                         if (!file_exists($pathfile)) {
                             $pathfile = '';
-                            // pathAPI is deprecated..
-                            if (strlen($this->config->get('ApiPath')))
+                            // ApiPath is deprecated..
+                            if (strlen($this->config->get('core.api.extra_path')))
+                                $pathfile = $this->config->get('core.api.extra_path') . "/{$apifile}.php";
+                            elseif (strlen($this->config->get('ApiPath')))
                                 $pathfile = $this->config->get('ApiPath') . "/{$apifile}.php";
-                            elseif (strlen($this->config->get('pathAPI')))
-                                $pathfile = $this->config->get('pathAPI') . "/{$apifile}.php";
                         }
                     }
 
@@ -205,7 +231,8 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
 
                     try {
                         if (strlen($pathfile)) {
-                            include_once $pathfile;
+                            @include_once $pathfile;
+
                         }
 
                         // By default the ClassName will be called API.. if the include set $api_class var, we will use that class name
@@ -213,7 +240,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
 
                         if (class_exists($api_class)) {
                             $api = new $api_class($this,$this->system->url['parts_base_url']);
-                            if ($api->params[0] == '__codes') {
+                            if (array_key_exists(0,$api->params) && $api->params[0] == '__codes') {
                                 $__codes = $api->codeLib;
                                 foreach ($__codes as $key => $value) {
                                     $__codes[$key] = $api->codeLibError[$key] . ', ' . $value;
@@ -227,7 +254,12 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
 
                         } else {
                             $api = new RESTful($this);
-                            $api->setError("api $apifile does not include a {$api_class} class extended from RESTFul with method ->main()", 404);
+                            if(is_file($pathfile)) {
+                                $api->setError("the code in '{$apifile}' does not include a {$api_class} class extended from RESTFul with method ->main()", 404);
+                            } else {
+                                $api->setError("the file for '{$apifile}' does not exist in api directory.", 404);
+
+                            }
                             $api->send();
                         }
                     } catch (Exception $e) {
@@ -341,7 +373,10 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
          * @return bool
          */
         private function isApiPath() {
-            $paths = explode(',',$this->config->get('core_api_url'));
+            if(!$this->config->get('core.api.urls')) return false;
+            $paths = $this->config->get('core.api.urls');
+            if(!is_array($paths)) $paths = explode(',',$this->config->get('core.api.urls'));
+
             foreach ($paths as $path) {
                 if(strpos($this->system->url['url'], $path) === 0) {
                     $path = preg_replace('/\/$/','',$path);
@@ -544,9 +579,9 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
 
             // Remote user:
             $this->ip = $this->getClientIP();
-            $this->user_agent = $_SERVER['HTTP_USER_AGENT'];
+            $this->user_agent = (array_key_exists('HTTP_USER_AGENT',$_SERVER))?$_SERVER['HTTP_USER_AGENT']:null;
             $this->os = $this->getOS();
-            $this->lang = $_SERVER['HTTP_ACCEPT_LANGUAGE'];
+            $this->lang = (array_key_exists('HTTP_ACCEPT_LANGUAGE',$_SERVER))?$_SERVER['HTTP_ACCEPT_LANGUAGE']:null;
 
             // About timeZone, Date & Number format
             if (isset($_SERVER['PWD']) && strlen($_SERVER['PWD'])) date_default_timezone_set('UTC'); // necessary for shell run
@@ -565,10 +600,10 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             $this->config['setLanguageByPath'] = false;
 
             // GEO BASED ON GOOGLE APPENGINE VARS
-            $this->geo['COUNTRY'] = $_SERVER['HTTP_X_APPENGINE_COUNTRY'];
-            $this->geo['CITY'] = $_SERVER['HTTP_X_APPENGINE_CITY'];
-            $this->geo['REGION'] = $_SERVER['HTTP_X_APPENGINE_REGION'];
-            $this->geo['COORDINATES'] = $_SERVER['HTTP_X_APPENGINE_CITYLATLONG'];
+            $this->geo['COUNTRY'] = (array_key_exists('HTTP_X_APPENGINE_COUNTRY',$_SERVER))?$_SERVER['HTTP_X_APPENGINE_COUNTRY']:null;
+            $this->geo['CITY'] = (array_key_exists('HTTP_X_APPENGINE_CITY',$_SERVER))?$_SERVER['HTTP_X_APPENGINE_CITY']:null;
+            $this->geo['REGION'] = (array_key_exists('HTTP_X_APPENGINE_REGION',$_SERVER))?$_SERVER['HTTP_X_APPENGINE_REGION']:null;
+            $this->geo['COORDINATES'] = (array_key_exists('HTTP_X_APPENGINE_CITYLATLONG',$_SERVER))?$_SERVER['HTTP_X_APPENGINE_CITYLATLONG']:null;
 
         }
 
@@ -2470,7 +2505,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
          * @return boolean
          */
         function isCron() {
-            if($this->core->is->development() && $_SERVER['HTTP_AUTHORIZATION']=='cron' ) return true;
+            if($this->core->is->development() && array_key_exists('HTTP_AUTHORIZATION',$_SERVER) && $_SERVER['HTTP_AUTHORIZATION']=='cron' ) return true;
             return(!empty($this->getHeader('X-Appengine-Cron')));
         }
 

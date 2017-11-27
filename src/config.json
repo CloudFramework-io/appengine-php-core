@@ -1,6 +1,6 @@
 {
   "wapploca_api_url":"https://wapploca.org/h/api/wapploca",
   "wapploca_cache_expiration_time":3600,
-  "core_api_url":"/h/api",
+  "core.api.urls":["/h/api"],
   "include:":"{{rootPath}}/config.json"
 }
