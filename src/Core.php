@@ -553,22 +553,36 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
 
         function __construct($root_path = '')
         {
+            // region  $server_var from $_SERVER
+            $server_var['HTTPS'] = (array_key_exists('HTTPS',$_SERVER))?$_SERVER['HTTPS']:null;
+            $server_var['DOCUMENT_ROOT'] = (array_key_exists('DOCUMENT_ROOT',$_SERVER))?$_SERVER['DOCUMENT_ROOT']:null;
+            $server_var['HTTP_HOST'] = (array_key_exists('HTTP_HOST',$_SERVER))?$_SERVER['HTTP_HOST']:null;
+            $server_var['REQUEST_URI'] = (array_key_exists('REQUEST_URI',$_SERVER))?$_SERVER['REQUEST_URI']:null;
+            $server_var['SCRIPT_NAME'] = (array_key_exists('SCRIPT_NAME',$_SERVER))?$_SERVER['SCRIPT_NAME']:null;
+            $server_var['HTTP_USER_AGENT'] = (array_key_exists('HTTP_USER_AGENT',$_SERVER))?$_SERVER['HTTP_USER_AGENT']:null;
+            $server_var['HTTP_ACCEPT_LANGUAGE'] = (array_key_exists('HTTP_ACCEPT_LANGUAGE',$_SERVER))?$_SERVER['HTTP_ACCEPT_LANGUAGE']:null;
+            $server_var['HTTP_X_APPENGINE_COUNTRY'] = (array_key_exists('HTTP_X_APPENGINE_COUNTRY',$_SERVER))?$_SERVER['HTTP_X_APPENGINE_COUNTRY']:null;
+            $server_var['HTTP_X_APPENGINE_CITY'] = (array_key_exists('HTTP_X_APPENGINE_CITY',$_SERVER))?$_SERVER['HTTP_X_APPENGINE_CITY']:null;
+            $server_var['HTTP_X_APPENGINE_REGION'] = (array_key_exists('HTTP_X_APPENGINE_REGION',$_SERVER))?$_SERVER['HTTP_X_APPENGINE_REGION']:null;
+            $server_var['HTTP_X_APPENGINE_CITYLATLONG'] = (array_key_exists('HTTP_X_APPENGINE_CITYLATLONG',$_SERVER))?$_SERVER['HTTP_X_APPENGINE_CITYLATLONG']:null;
+            // endregion
+
             if (!strlen($root_path)) $root_path = (strlen($_SERVER['DOCUMENT_ROOT'])) ? $_SERVER['DOCUMENT_ROOT'] : $_SERVER['PWD'];
 
-            $this->url['https'] = $_SERVER['HTTPS'];
-            $this->url['protocol'] = ($_SERVER['HTTPS'] == 'on') ? 'https' : 'http';
-            $this->url['host'] = $_SERVER['HTTP_HOST'];
-            $this->url['url_uri'] = $_SERVER['REQUEST_URI'];
+            $this->url['https'] = $server_var['HTTPS'];
+            $this->url['protocol'] = ($server_var['HTTPS'] == 'on') ? 'https' : 'http';
+            $this->url['host'] = $server_var['HTTP_HOST'];
+            $this->url['url_uri'] = $server_var['REQUEST_URI'];
 
-            $this->url['url'] = $_SERVER['REQUEST_URI'];
+            $this->url['url'] = $server_var['REQUEST_URI'];
             $this->url['params'] = '';
-            if (strpos($_SERVER['REQUEST_URI'], '?') !== false)
-                list($this->url['url'], $this->url['params']) = explode('?', $_SERVER['REQUEST_URI'], 2);
+            if (strpos($server_var['REQUEST_URI'], '?') !== false)
+                list($this->url['url'], $this->url['params']) = explode('?', $server_var['REQUEST_URI'], 2);
 
-            $this->url['host_base_url'] = (($_SERVER['HTTPS'] == 'on') ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'];
-            $this->url['host_url'] = (($_SERVER['HTTPS'] == 'on') ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . $this->url['url'];
-            $this->url['host_url_uri'] = (($_SERVER['HTTPS'] == 'on') ? 'https' : 'http') . '://' . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
-            $this->url['script_name'] = $_SERVER['SCRIPT_NAME'];
+            $this->url['host_base_url'] = (($server_var['HTTPS'] == 'on') ? 'https' : 'http') . '://' . $server_var['HTTP_HOST'];
+            $this->url['host_url'] = (($server_var['HTTPS'] == 'on') ? 'https' : 'http') . '://' . $server_var['HTTP_HOST'] . $this->url['url'];
+            $this->url['host_url_uri'] = (($server_var['HTTPS'] == 'on') ? 'https' : 'http') . '://' . $server_var['HTTP_HOST'] . $server_var['REQUEST_URI'];
+            $this->url['script_name'] = $server_var['SCRIPT_NAME'];
             $this->url['parts'] = explode('/', substr($this->url['url'], 1));
             $this->url['parts_base_index'] = 0;
             $this->url['parts_base_url'] = '/';
@@ -579,9 +593,9 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
 
             // Remote user:
             $this->ip = $this->getClientIP();
-            $this->user_agent = (array_key_exists('HTTP_USER_AGENT',$_SERVER))?$_SERVER['HTTP_USER_AGENT']:null;
+            $this->user_agent = $server_var['HTTP_USER_AGENT'];
             $this->os = $this->getOS();
-            $this->lang = (array_key_exists('HTTP_ACCEPT_LANGUAGE',$_SERVER))?$_SERVER['HTTP_ACCEPT_LANGUAGE']:null;
+            $this->lang = $server_var['HTTP_ACCEPT_LANGUAGE'];
 
             // About timeZone, Date & Number format
             if (isset($_SERVER['PWD']) && strlen($_SERVER['PWD'])) date_default_timezone_set('UTC'); // necessary for shell run
@@ -600,16 +614,18 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             $this->config['setLanguageByPath'] = false;
 
             // GEO BASED ON GOOGLE APPENGINE VARS
-            $this->geo['COUNTRY'] = (array_key_exists('HTTP_X_APPENGINE_COUNTRY',$_SERVER))?$_SERVER['HTTP_X_APPENGINE_COUNTRY']:null;
-            $this->geo['CITY'] = (array_key_exists('HTTP_X_APPENGINE_CITY',$_SERVER))?$_SERVER['HTTP_X_APPENGINE_CITY']:null;
-            $this->geo['REGION'] = (array_key_exists('HTTP_X_APPENGINE_REGION',$_SERVER))?$_SERVER['HTTP_X_APPENGINE_REGION']:null;
-            $this->geo['COORDINATES'] = (array_key_exists('HTTP_X_APPENGINE_CITYLATLONG',$_SERVER))?$_SERVER['HTTP_X_APPENGINE_CITYLATLONG']:null;
+            $this->geo['COUNTRY'] = $server_var['HTTP_X_APPENGINE_COUNTRY'];
+            $this->geo['CITY'] = $server_var['HTTP_X_APPENGINE_CITY'];
+            $this->geo['REGION'] = $server_var['HTTP_X_APPENGINE_REGION'];
+            $this->geo['COORDINATES'] = $server_var['HTTP_X_APPENGINE_CITYLATLONG'];
 
         }
 
         function getClientIP() {
 
-            return  ($_SERVER['REMOTE_ADDR'] == '::1') ? 'localhost' : $_SERVER['REMOTE_ADDR'];
+            $remote_address = (array_key_exists('REMOTE_ADDR',$_SERVER))?$_SERVER['REMOTE_ADDR']:'localhost';
+            return  ($remote_address == '::1') ? 'localhost' : $remote_address;
+
             // Popular approaches we don't trust.
             // http://stackoverflow.com/questions/3003145/how-to-get-the-client-ip-address-in-php#comment50230065_3003233
             // http://stackoverflow.com/questions/15699101/get-the-client-ip-address-using-php
@@ -660,7 +676,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                 '/webos/i'              => 'Mobile'
             );
             foreach ($os_array as $regex => $value) {
-                if (preg_match($regex, $_SERVER['HTTP_USER_AGENT'])) {
+                if (array_key_exists('HTTP_USER_AGENT',$_SERVER) && preg_match($regex, $_SERVER['HTTP_USER_AGENT'])) {
                     $os_platform = $value;
                 }
             }
@@ -813,12 +829,12 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
     {
         function development()
         {
-            return (stripos($_SERVER['SERVER_SOFTWARE'], 'Development') !== false || isset($_SERVER['PWD']));
+            return (array_key_exists('SERVER_SOFTWARE',$_SERVER) && stripos($_SERVER['SERVER_SOFTWARE'], 'Development') !== false || isset($_SERVER['PWD']));
         }
 
         function production()
         {
-            return (stripos($_SERVER['SERVER_SOFTWARE'], 'Development') === false && !isset($_SERVER['PWD']));
+            return (array_key_exists('SERVER_SOFTWARE',$_SERVER) &&  stripos($_SERVER['SERVER_SOFTWARE'], 'Development') === false && !isset($_SERVER['PWD']));
         }
 
         function script()
@@ -898,7 +914,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             if(null !== $debug)
                 $this->debug = true === $debug;
             else
-                if(stripos($_SERVER['SERVER_SOFTWARE'], 'Development') !== false) $this->debug = true;
+                if(array_key_exists('SERVER_SOFTWARE',$_SERVER) && stripos($_SERVER['SERVER_SOFTWARE'], 'Development') !== false) $this->debug = true;
 
             // Activate CacheInDirectory
             if (null !== $path) {
@@ -3651,7 +3667,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             $this->core = $core;
 
             // Params
-            $this->method = (strlen($_SERVER['REQUEST_METHOD'])) ? $_SERVER['REQUEST_METHOD'] : 'GET';
+            $this->method = (array_key_exists('REQUEST_METHOD',$_SERVER)) ? $_SERVER['REQUEST_METHOD'] : 'GET';
             if ($this->method == 'GET') {
                 $this->formParams = &$_GET;
                 if (isset($_GET['_raw_input_']) && strlen($_GET['_raw_input_'])) $this->formParams = (count($this->formParams)) ? array_merge($this->formParams, json_decode($_GET['_raw_input_'], true)) : json_decode($_GET['_raw_input_'], true);

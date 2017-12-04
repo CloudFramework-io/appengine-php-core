@@ -10,7 +10,12 @@ if(true) {
     $script = [];
 
     if(count($argv)>1) {
-        list($script, $params) = explode('?', str_replace('..', '', $argv[1]), 2);
+        if(strpos($argv[1],'?'))
+            list($script, $params) = explode('?', str_replace('..', '', $argv[1]), 2);
+        else {
+            $script = $argv[1];
+            $params = '';
+        }
         $script = explode('/', $script);
         $path = ($script[0][0] == '_') ? __DIR__ : $core->system->app_path;
     }

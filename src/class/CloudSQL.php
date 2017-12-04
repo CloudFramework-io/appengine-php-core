@@ -27,7 +27,7 @@ if (!defined ("_MYSQLI_CLASS_") ) {
         var $order = '';
         var $extraWhere = '';
 
-        function CloudSQLQueryObject ($data,$table='') {
+        function __construct ($data,$table='') {
             $this->data = $data;
             $this->table = $table;
         }
@@ -84,13 +84,9 @@ if (!defined ("_MYSQLI_CLASS_") ) {
                 $this->_port = trim($port);
                 $this->_dbsocket = trim($socket);
             }  else if(strlen( trim($this->core->config->get("dbServer")))  || trim($this->core->config->get("dbSocket"))) {
-                $this->_dbserver = trim($this->core->config->get("dbServer"));
-                $this->_dbuser = trim($this->core->config->get("dbUser"));
-                $this->_dbpassword = trim($this->core->config->get("dbPassword"));
-                $this->_dbdatabase = trim($this->core->config->get("dbName"));
-                $this->_dbsocket = trim($this->core->config->get("dbSocket"));
-                if(strlen(trim($this->core->config->get("dbPort"))))
-                    $this->_dbport = trim($this->core->config->get("dbPort"));
+                // It load from $this->core->config->get("vars"): dbServer,dbUser,dbPassword,dbName,dbSocket,dbPort,dbPort
+                $this->loadCoreConfigVars();
+                // It rewrites: $this->_dbserver, $this->_dbuser,$this->_dbpassword,$this->_dbdatabase ,$this->_dbsocket, $this->_dbport
             }
             if(!strlen($this->_dbserver.$this->_dbsocket)) $this->_dbserver='127.0.0.1';
             if(!strlen($this->_dbdatabase)) $this->_dbdatabase='mysql';
@@ -100,6 +96,16 @@ if (!defined ("_MYSQLI_CLASS_") ) {
                 'throw new CloudSQLError($errno, $errstr, $errfile, $errline);'
             ),E_WARNING);
 
+        }
+
+        function loadCoreConfigVars() {
+                $this->_dbserver = trim($this->core->config->get("dbServer"));
+                $this->_dbuser = trim($this->core->config->get("dbUser"));
+                $this->_dbpassword = trim($this->core->config->get("dbPassword"));
+                $this->_dbdatabase = trim($this->core->config->get("dbName"));
+                $this->_dbsocket = trim($this->core->config->get("dbSocket"));
+                if(strlen(trim($this->core->config->get("dbPort"))))
+                    $this->_dbport = trim($this->core->config->get("dbPort"));
         }
 
         function setConf($var,$value) {
@@ -281,7 +287,7 @@ if (!defined ("_MYSQLI_CLASS_") ) {
                 return(false);
             } else {
                 $n_percentsS = substr_count($q,'%s');
-                if(is_array($args[0]) && count($args)==1) {
+                if(count($args)==1 && is_array($args[0])) {
                     $params = $args[0];
 
                 } else {
