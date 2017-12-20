@@ -2591,6 +2591,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
         function get($locFile, $code, $config = [])
         {
             if(!$this->init) $this->init();
+            $ret = null;
 
             // Check syntax of $locFile & $code
             if (!$this->checkLocFileAndCode($locFile, $code)) return 'Err in: [' . $locFile . "{{$code}}" . ']';
@@ -2598,6 +2599,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             if (isset($config['lang']) && strlen($config['lang']) == 2) $lang = $config['lang'];
             // The $locFile does not exist
             if (!isset($_GET['_debugDics'])) {
+
 
 
                 // Trying read from file
@@ -2622,6 +2624,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                 }
             }
 
+
             if (isset($_GET['_debugDics'])) {
                 $ret = $lang . '_' . $locFile . ":({$code})";
             } else if (isset($this->data[$locFile][$lang][$code])) {
@@ -2633,7 +2636,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             }
 
             // Evaluate data conversion
-            if($config['data']) {
+            if(array_key_exists('data',$config) && $config['data']) {
                 $ret = vsprintf($ret,$config['data']);
             }
 
