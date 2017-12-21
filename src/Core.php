@@ -1531,12 +1531,24 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             $this->core = $core;
             $this->readConfigJSONFile($path);
 
-            // Set lang for the system
-            if (strlen($this->get('localizatonDefaultLang'))) $this->setLang($this->get('localizatonDefaultLang'));
 
-            // localizatonFieldParamName allow to change the lang by URL
-            if (strlen($this->get('localizatonFieldParamName'))) {
-                $field = $this->get('localizatonFieldParamName');
+            // region: Backward compatibitly with localizatonFieldParamName, localizatonDefaultLang, localizatonAllowedLangs
+            if (strlen($this->get('localizatonFieldParamName')) && !strlen($this->get('core.localization.param_name')))
+                $this->set('core.localization.param_name',$this->get('localizatonFieldParamName'));
+
+            if (strlen($this->get('localizatonDefaultLang')) && !strlen($this->get('core.localization.default_lang')))
+                $this->set('core.localization.default_lang',$this->get('localizatonDefaultLang'));
+
+            if (strlen($this->get('localizatonAllowedLangs')) && !strlen($this->get('core.localization.allowed_langs')))
+                $this->set('core.localization.allowed_langs',$this->get('localizatonAllowedLangs'));
+            // endregion
+
+            // Set lang for the system
+            if (strlen($this->get('core.localization.default_lang'))) $this->setLang($this->get('core.localization.default_lang'));
+
+            // core.localization.param_name allow to change the lang by URL
+            if (strlen($this->get('core.localization.param_name'))) {
+                $field = $this->get('core.localization.param_name');
                 if (!empty($_GET[$field])) $this->core->session->set('_CloudFrameWorkLang_', $_GET[$field]);
                 $lang = $this->core->session->get('_CloudFrameWorkLang_');
                 if (strlen($lang))
@@ -1582,10 +1594,10 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                 $this->core->logs->add('Warning config->setLang. Trying to pass an incorrect Lang: ' . $lang);
                 return false;
             }
-            if (strlen($this->get('localizatonAllowedLangs'))
-                && !preg_match('/(^|,)' . $lang . '(,|$)/', preg_replace('/[^A-z,]/', '', $this->get('localizatonAllowedLangs')))
+            if (strlen($this->get('core.localization.allowed_langs'))
+                && !preg_match('/(^|,)' . $lang . '(,|$)/', preg_replace('/[^A-z,]/', '', $this->get('core.localization.allowed_langs')))
             ) {
-                $this->core->logs->add('Warning in config->setLang. ' . $lang . ' is not included in {{localizatonAllowedLangs}}');
+                $this->core->logs->add('Warning in config->setLang. ' . $lang . ' is not included in {{core.localization.allowed_langs}}');
                 return false;
             }
 
@@ -2561,8 +2573,13 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
         function init() {
 
             // Maintain compatibilty with old variable
-            if (!strlen($this->core->config->get('localizeCachePath')) && strlen($this->core->config->get('LocalizePath')))
-                $this->core->config->set('localizeCachePath', $this->core->config->get('LocalizePath'));
+            if (!strlen($this->core->config->get('core.localization.cache_path')) && strlen($this->core->config->get('LocalizePath')))
+                $this->core->config->set('core.localization.cache_path', $this->core->config->get('LocalizePath'));
+
+            // Maintain compatibilty with old variable
+            if (!strlen($this->core->config->get('core.localization.cache_path')) && strlen($this->core->config->get('localizeCachePath')))
+                $this->core->config->set('core.localization.cache_path', $this->core->config->get('localizeCachePath'));
+
 
             // Read from Cache last Dics
             if($this->cache) {
@@ -2632,7 +2649,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             } else {
                 $this->core->logs->add("Missing configuration for Localizations: {$locFile}-{$lang}-{$code}");
                 $this->core->logs->add('WAPPLOCA: ' . ((empty($this->core->config->get('WAPPLOCA'))) ? 'empty' : '***'));
-                $this->core->logs->add('localizeCachePath: ' . ((empty($this->core->config->get('localizeCachePath'))) ? 'empty' : '***'));
+                $this->core->logs->add('core.localization.cache_path: ' . ((empty($this->core->config->get('core.localization.cache_path'))) ? 'empty' : '***'));
             }
 
             // Evaluate data conversion
@@ -2676,16 +2693,16 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             if(!$this->init) $this->init();
 
 
-            if (!strlen($this->core->config->get('localizeCachePath'))) {
-                $this->core->config->set('localizeCachePath',$this->core->system->app_path.'/localize');
+            if (!strlen($this->core->config->get('core.localization.cache_path'))) {
+                $this->core->config->set('core.localization.cache_path',$this->core->system->app_path.'/localize');
             }
             if (!strlen($lang)) $lang = $this->core->config->getLang();
             $ok = true;
             $this->core->__p->add('Localization->readFromFile: ', strtoupper($lang)."-{$locFile}", 'note');
-            // First read from local directory if {{localizeCachePath}} is defined.
+            // First read from local directory if {{core.localization.cache_path}} is defined.
             $this->files_readed[$locFile][$lang] = true;
-            if (strlen($this->core->config->get('localizeCachePath'))) {
-                $filename = $this->core->config->get('localizeCachePath') . '/' . strtoupper($lang) . '_Core_' . $locFile . '.json';
+            if (strlen($this->core->config->get('core.localization.cache_path'))) {
+                $filename = $this->core->config->get('core.localization.cache_path') . '/' . strtoupper($lang) . '_Core_' . $locFile . '.json';
                 try {
                     $ret = @file_get_contents($filename);
                     if ($ret !== false) {
@@ -2718,13 +2735,13 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             if(!$this->init) $this->init();
 
 
-            if (!strlen($this->core->config->get('localizeCachePath'))) return false;
+            if (!strlen($this->core->config->get('core.localization.cache_path'))) return false;
             if (!isset($this->data[$locFile])) return false;
             if (!strlen($lang)) $lang = $this->core->config->getLang();
             $ok = true;
             $this->core->__p->add('Localization->writeLocalization: ', strtoupper($lang) . '_Core_' . $locFile . '.json', 'note');
 
-            $filename = $this->core->config->get('localizeCachePath') . '/' . strtoupper($lang) . '_Core_' . $locFile . '.json';
+            $filename = $this->core->config->get('core.localization.cache_path') . '/' . strtoupper($lang) . '_Core_' . $locFile . '.json';
             try {
                 $ret = @file_put_contents($filename, json_encode($this->data[$locFile][$lang], JSON_PRETTY_PRINT));
                 if ($ret === false) {

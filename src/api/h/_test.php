@@ -128,15 +128,15 @@ class API extends RESTful
 
 
             // Testing Localize var
-            if (!strlen($this->core->config->get("localizeCachePath"))) {
-                $errMsg[] = 'Missing {{localizeCachePath}} config var.';
+            if (!strlen($this->core->config->get("core.localization.cache_path"))) {
+                $errMsg[] = 'Missing {{core.localization.cache_path}} config var.';
             } else {
-                if(!$this->core->is->dirWritable($this->core->config->get("localizeCachePath")))
-                    $errMsg[] = 'Error in dir {{localizeCachePath}}: '  . json_encode(error_get_last(), JSON_PRETTY_PRINT);
+                if(!$this->core->is->dirWritable($this->core->config->get("core.localization.cache_path")))
+                    $errMsg[] = 'Error in dir {{core.localization.cache_path}}: '  . json_encode(error_get_last(), JSON_PRETTY_PRINT);
                 else {
 
                     $notes[] = "Info about Localization: https://github.com/CloudFramework-io/appengine-php-core/wiki/Localization";
-                    $notes[] = "{{localizeCachePath}} is writable";
+                    $notes[] = "{{core.localization.cache_path}} is writable";
                     $notes[] = '$this->core->config->getLang() is ['.$this->core->config->getLang().']';
 
                     $loc = $this->core->localization->get('_test','test-example',['lang'=>'en']);
@@ -155,9 +155,9 @@ class API extends RESTful
 
 
 
-                    $notes[] = '{{localizatonFieldParamName}}='.(($this->core->config->get("localizatonFieldParamName"))?$this->core->config->get("localizatonFieldParamName"):'empty');
-                    $notes[] = '{{localizatonDefaultLang}}='.(($this->core->config->get("localizatonDefaultLang"))?$this->core->config->get("localizatonDefaultLang"):'empty');
-                    $notes[] = '{{localizatonAllowedLangs}}='.(($this->core->config->get("localizatonAllowedLangs"))?$this->core->config->get("localizatonAllowedLangs"):'empty');
+                    $notes[] = '{{core.localization.param_name}}='.(($this->core->config->get("core.localization.param_name"))?$this->core->config->get("core.localization.param_name"):'empty');
+                    $notes[] = '{{core.localization.default_lang}}='.(($this->core->config->get("core.localization.default_lang"))?$this->core->config->get("core.localization.default_lang"):'empty');
+                    $notes[] = '{{core.localization.allowed_langs}}='.(($this->core->config->get("core.localization.allowed_langs"))?$this->core->config->get("core.localization.allowed_langs"):'empty');
                     // $notes[] = '$this->core->config->getLang()='.$this->core->config->getLang();
                     // $notes[] = '{{WAPPLOCA}}='. (strlen($this->core->config->get("WAPPLOCA"))?'****':false);
 

@@ -40,7 +40,7 @@ class API extends RESTful
 				],
 				'Cache' => [
 					'cachePath' => ($this->core->config->get("cachePath")) ? (($showConfig) ? $this->core->config->get("cachePath") : '**Require a right SystemPassword**') : false,
-					'localizeCachePath' => ($this->core->config->get("localizeCachePath")) ? (($showConfig) ? $this->core->config->get("localizeCachePath") : '**Require a right SystemPassword**') : false,
+					'core.localization.cache_path' => ($this->core->config->get("core.localization.cache_path")) ? (($showConfig) ? $this->core->config->get("core.localization.cache_path") : '**Require a right SystemPassword**') : false,
 					'twigCachePath' => ($this->core->config->get("twigCachePath")) ? (($showConfig) ? $this->core->config->get("twigCachePath") : '**Require a right SystemPassword**') : false,
 
 				],
@@ -63,9 +63,9 @@ class API extends RESTful
 				],
 				'Localization' => [
 					'WAPPLOCA' => ($this->core->config->get("WAPPLOCA")) ?  (($showConfig) ? $this->core->config->get("WAPPLOCA") : '**Require a right SystemPassword**') : false,
-					'localizeCachePath' => ($this->core->config->get("localizeCachePath")) ? (($showConfig) ? $this->core->config->get("localizeCachePath") : '**Require a right SystemPassword**') : false,
-					'LocalizatonDefaultLang' => ($this->core->config->get("LocalizatonDefaultLang")) ? $this->core->config->get("LocalizatonDefaultLang") : 'does not exist. $core->config->lang will be \'en\'',
-					'LocalizatonAllowedLangs' => ($this->core->config->get("LocalizatonAllowedLangs")) ? $this->core->config->get("LocalizatonAllowedLangs") : 'does not exist. You can put the languages you want separated by , (en,es)',
+					'core.localization.cache_path' => ($this->core->config->get("core.localization.cache_path")) ? (($showConfig) ? $this->core->config->get("core.localization.cache_path") : '**Require a right SystemPassword**') : false,
+					'core.localization.default_lang' => ($this->core->config->get("core.localization.default_lang")) ? $this->core->config->get("core.localization.default_lang") : 'does not exist. $core->config->lang will be \'en\'',
+					'core.localization.allowed_langs' => ($this->core->config->get("core.localization.allowed_langs")) ? $this->core->config->get("core.localization.allowed_langs") : 'does not exist. You can put the languages you want separated by , (en,es)',
 
 				]
 			]
