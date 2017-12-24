@@ -3,7 +3,7 @@ class API extends RESTful
 {
     function main()
     {
-        $this->checkMethod('GET');
+        $this->checkMethod('GET,POST');
         $this->checkMandatoryFormParam('s');
         if(!$this->error) {
             $data = ['info'=>'the {{crypt}} output is what you store in your config files avoinding to show the real info in plain text'];

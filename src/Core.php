@@ -3445,7 +3445,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
         }
 
         public function processModels($models) {
-            if(is_array($models['DataBaseTables']))
+            if(array_key_exists('DataBaseTables',$models) && _array($models['DataBaseTables']))
                 foreach ($models['DataBaseTables'] as $model=>$dataBaseTable) {
                     $this->models['db:'.$model] = ['type'=>'db','data'=>$dataBaseTable];
                 }
@@ -3463,7 +3463,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             // If the model does not include the '(ds|db):' we add it.
             if(!strpos($model,':')) {
                 if(isset($this->models['db:'.$model])) $model = 'db:'.$model;
-                else $type = 'ds:'.$model;
+                else $model = 'ds:'.$model;
             }
 
             // Let's find it and return
