@@ -36,7 +36,7 @@ class API extends RESTful
 						"content" => ($showConfig) ? $this->core->config->get("CloudServiceSecret") : '**Require a right core.system.password**'
 
 					],
-					'authorizations' => $this->core->config->get('authorizations'),
+					'core.system.authorizations' => $this->core->config->get('core.system.authorizations'),
 				],
 				'Cache' => [
 					'cachePath' => ($this->core->config->get("cachePath")) ? (($showConfig) ? $this->core->config->get("cachePath") : '**Require a right core.system.password**') : false,

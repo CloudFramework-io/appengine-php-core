@@ -108,6 +108,7 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
          * @param $options
          */
         public function transformValue($data, $options) {
+
             if(strpos($options,'forcevalue:')!==false) {
                 $data = $this->extractOptionValue('forcevalue:',$options);
             }elseif(strpos($options,'defaultvalue:')!==false && !strlen($data)) {
@@ -164,7 +165,7 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
                 case "datetime": return $this->validateDateTime($data);
                 case "datetimeiso": return $this->validateDateTimeISO($data);
                 case "currency": return is_numeric($data);
-                case "boolean": return is_bool($data);
+                case "boolean": if(!is_bool($data) && ($data=='true' || $data=='false')) $data = ($data == 'true');return is_bool($data);
                 case "array": return is_array($data);
                 case "list": return is_array($data);
                 default: return false;
@@ -182,6 +183,7 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
             if(!$this->validateFixLength($key,$options,$data)) return false;
             if(!$this->validateEmail($key,$options,$data)) return false;
             if(!$this->validateRegexMatch($key,$options,$data)) return false;
+            if(!$this->validateValues($key,$options,$data)) return false;
             if(!$this->validateRange($key,$options,$data)) return false;
             if(!$this->validateUnsigned($key,$options,$data)) return false;
 
@@ -308,6 +310,18 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
                 $ok=true;
                 if(isset($options[0]) && strlen($options[0])) $ok = $data >= $options[0];
                 if($ok && isset($options[1]) && strlen($options[1])) $ok = $data <= $options[1];
+                if(!$ok) {
+                    $this->errorFields[] = ['key'=>$key,'method'=>__FUNCTION__,'options'=>$options,'data'=>$data];
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        public function validateValues($key,$options,$data) {
+            if(strlen($options) && (strpos($options,'values:')!==false)){
+                $options = explode(',',($this->extractOptionValue('values:',$options)));
+                $ok= in_array($data,$options);
                 if(!$ok) {
                     $this->errorFields[] = ['key'=>$key,'method'=>__FUNCTION__,'options'=>$options,'data'=>$data];
                     return false;

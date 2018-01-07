@@ -554,6 +554,11 @@ if (!defined("_RESTfull_CLASS_")) {
             return ($this->core->security->existBasicAuth() && $this->core->security->existBasicAuthConfig());
         }
 
+        /**
+         * Check if an Authorization-Header Basic has been sent and match with any core.system.authorizations config var.
+         * @param string $id
+         * @return bool
+         */
         function checkBasicAuthSecurity($id='')
         {
             $ret = false;
@@ -563,8 +568,6 @@ if (!defined("_RESTfull_CLASS_")) {
                 $this->setError('Missing "id" parameter in authorizations config file', 401);
             } elseif (strlen($id)>0 && $id != $basic_info['id']) {
                 $this->setError('This "id" parameter in authorizations is not allowed', 401);
-            } elseif (!is_array($info = $this->core->config->get('CLOUDFRAMEWORK-ID-' . $basic_info['id']))) {
-                $this->setError('Missing config CLOUDFRAMEWORK-ID-{id} specified in "authorizations" config paramater', 503);
             } else {
                 $ret = true;
                 $response['SECURITY-MODE'] = 'Basic Authorization: ' . $basic_info['_BasicAuthUser_'];

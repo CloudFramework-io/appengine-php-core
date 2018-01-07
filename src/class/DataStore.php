@@ -194,7 +194,7 @@ if (!defined ("_DATASTORE_CLASS_") ) {
             }
 
             // Bulk insertion
-            if(!$this->setError && count($entities)) try {
+            if(!$this->error && count($entities)) try {
 
                 $this->deleteCache(); // Delete Cache for next queries..
                 // The limit for bulk inserting is 500 records.
@@ -213,7 +213,7 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                             // Update Types: Geppoint, JSON, Datetime
                             if ($value instanceof Geopoint)
                                 $row[$key] = $value->getLatitude() . ',' . $value->getLongitude();
-                            elseif ($key == 'JSON')
+                            elseif ($key == 'JSON' || $this->schema['props'][$key][1]=='json')
                                 $row[$key] = json_decode($value, true);
                             elseif($value instanceof DateTime) {
                                 if($this->schema['props'][$key][1]=='date')
@@ -310,6 +310,8 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                             $ret->addString($key, $index);
                             break;
                     }
+
+                    if(count($props) == 1) $props[1] = null;
                     $this->schema['props'][$i++] = [$key, $props[0], $props[1]];
                     $this->schema['props'][$key] = [$key, $props[0], $props[1]];
                     $this->schema['props']['__model'][$key] = ['type'=> $props[0], 'validation'=>$props[1]];
@@ -498,7 +500,7 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                                 if(!is_null($value)){
                                     if($value instanceof Geopoint)
                                         $record->{$key} = $value->getLatitude().','.$value->getLongitude();
-                                    elseif($key=='JSON')
+                                    elseif($key=='JSON' || $this->schema['props'][$key][1]=='json')
                                         $record->{$key} = json_decode($value,true);
                                     elseif ($this->schema['props'][$key][1] == 'date') $record->{$key} = $value->format('Y-m-d');
                                     elseif ($this->schema['props'][$key][1] == 'datetime') $record->{$key} = $value->format('Y-m-d H:i:s e');
@@ -537,7 +539,7 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                                     if(!is_null($value)) {
                                         if($value instanceof Geopoint)
                                             $record->{$key} = $value->getLatitude().','.$value->getLongitude();
-                                        elseif($key=='JSON')
+                                        elseif($key=='JSON' || $this->schema['props'][$key][1]=='json')
                                             $record->{$key} = json_decode($value,true);
                                         elseif ($this->schema['props'][$key][1] == 'date') $record->{$key} = $value->format('Y-m-d');
                                         elseif ($this->schema['props'][$key][1] == 'datetime') $record->{$key} = $value->format('Y-m-d H:i:s e');
@@ -709,7 +711,7 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                     if (!is_null($value)) {
                         if($value instanceof Geopoint)
                             $record->{$key} = $value->getLatitude().','.$value->getLongitude();
-                        elseif($key=='JSON')
+                        elseif($key=='JSON'  || $this->schema['props'][$key][1]=='json')
                             $record->{$key} = json_decode($value,true);
                         elseif ($this->schema['props'][$key][1] == 'date') $record->{$key} = $value->format('Y-m-d');
                         elseif ($this->schema['props'][$key][1] == 'datetime') $record->{$key} = $value->format('Y-m-d H:i:s e');

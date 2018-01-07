@@ -723,7 +723,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             }
             $ret['hash'] = sha1(implode(",", $ret));
             $ret['ip'] = $this->ip;
-            $ret['http_referer'] = $_SERVER['HTTP_REFERER'];
+            $ret['http_referer'] = (array_key_exists('HTTP_REFERER',$_SERVER))?$_SERVER['HTTP_REFERER']:'unknown';
             $ret['time'] = date('Ymdhis');
             $ret['uri'] = $_SERVER['REQUEST_URI'];
             return ($ret);
@@ -2112,14 +2112,19 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             $ret = false;
             list($user, $passw) = $this->getBasicAuth();
 
+            // Kee backwards compatibility:
+            if($this->core->config->get('authorizations') && !$this->core->config->get('core.system.authorizations'))
+                $this->core->config->set('core.system.authorizations',$this->core->config->get('authorizations'));
+
+
             if ($user === null) {
                 $this->core->logs->add('checkBasicAuthWithConfig: No Authorization in headers ');
-            } elseif (!is_array($auth = $this->core->config->get('authorizations'))) {
-                $this->core->logs->add('checkBasicAuthWithConfig: no "authorizations" array in config. ');
+            } elseif (!is_array($auth = $this->core->config->get('core.system.authorizations'))) {
+                $this->core->logs->add('checkBasicAuthWithConfig: no "core.system.authorizations" array in config. ');
             } elseif (!isset($auth[$user])) {
-                $this->core->logs->add('checkBasicAuthWithConfig: key  does not match in "authorizations"');
+                $this->core->logs->add('checkBasicAuthWithConfig: key  does not match in "core.system.authorizations"');
             } elseif (!$this->core->system->checkPassword($passw, ((isset($auth[$user]['password']) ? $auth[$user]['password'] : '')))) {
-                $this->core->logs->add('checkBasicAuthWithConfig: password does not match in "authorizations"');
+                $this->core->logs->add('checkBasicAuthWithConfig: password does not match in "core.system.authorizations"');
 
                 // User and password match!!!
             } else {

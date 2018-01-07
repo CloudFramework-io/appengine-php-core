@@ -523,8 +523,9 @@ class Opauth {
         /**
          * Configurable settings
          */
+
         $this->config = array_merge(array(
-            'host' => ((array_key_exists('HTTPS', $_SERVER) && $_SERVER['HTTPS'])?'https':'http').'://'.$_SERVER['HTTP_HOST'],
+            'host' => ((array_key_exists('HTTPS', $_SERVER) && $_SERVER['HTTPS']=='on')?'https':'http').'://'.$_SERVER['HTTP_HOST'],
             'path' => $this->core->system->url['url'],
             'callback_url' => '{path}callback',
             'callback_transport' => 'session',
