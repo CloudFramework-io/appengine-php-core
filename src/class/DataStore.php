@@ -97,7 +97,7 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                 $this->core->__p->add('createEntities: ', $this->entity_name, 'note');
 
                 // converting $data into n,n dimmensions
-                if (!is_array($data[0])) $data = [$data];
+                if (!array_key_exists(0,$data) || !is_array($data[0])) $data = [$data];
 
                 // loop the array into $row
                 foreach ($data as $i => $row) {
@@ -432,7 +432,7 @@ if (!defined ("_DATASTORE_CLASS_") ) {
         function fetch($type = 'one', $fields = '*', $where = null, $order = null, $limit = null)
         {
             if ($this->error) return false;
-            $this->core->__p->add('fetch: ', $type . ' fields:' . $fields . ' where:' . $where . ' order:' . $order . ' limit:' . $limit, 'note');
+            $this->core->__p->add('fetch: ', $type . ' fields:' . $fields . ' where:' . json_encode($where) . ' order:' . $order . ' limit:' . $limit, 'note');
             $ret = [];
             if (!is_string($fields) || !strlen($fields)) $fields = '*';
             if (!strlen($limit)) $limit = $this->limit;

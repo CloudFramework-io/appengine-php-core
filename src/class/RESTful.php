@@ -208,7 +208,7 @@ if (!defined("_RESTfull_CLASS_")) {
             foreach ($keys as $key)if(is_string($key[0])) {
                 $fkey = $key[0];
                 $fmsg = (isset($key[1]))?$key[1]:'';
-                $fvalues = (is_array($key[2]))?$key[2]:[];
+                $fvalues = (array_key_exists(2,$key) && is_array($key[2]))?$key[2]:[];
                 $fmin = (isset($key[3]))?$key[3]:1;
                 $fcode = (isset($key[4]))?$key[4]:null;
                 $this->checkMandatoryFormParam($fkey,$fmsg,$fvalues,$fmin,$fcode);

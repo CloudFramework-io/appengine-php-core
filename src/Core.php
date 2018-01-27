@@ -115,7 +115,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
         /** @var CoreModel $model Object to control DataModels */
         public $model;
 
-        var $_version = '20171221';
+        var $_version = '20180127';
         var $data = null;
 
 
