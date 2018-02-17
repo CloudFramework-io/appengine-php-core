@@ -19,7 +19,6 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
             foreach ($model as $key=>$value) {
                 //  because $all==true  Ignore those fields that does not exist in $data and are optional or internal
                 if($all && !key_exists($key,$data) && isset($value['validation']) && (strpos($value['validation'], 'optional') !== false || strpos($value['validation'], 'internal') !== false)) continue;
-
                 // because $all==false Ignore those fields that does not exist in $data and they are not mandatory
                 if(!$all && !key_exists($key,$data) && (!isset($value['validation']) || strpos($value['validation'], 'mandatory') === false)) continue;
 

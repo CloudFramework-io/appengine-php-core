@@ -336,7 +336,6 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                     $this->schema['data']['mapData'][$key] = $key;
                 }
             }
-
             // Explore the entity
             foreach ($entity as $key=>$foo) {
                 $key_exist = true;
