@@ -465,6 +465,7 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                     $comp = '=';
                     if(preg_match('/[=><]/',$key)) {
 
+
                         unset($where[$key]);
                         if(strpos($key,'>=')===0 || strpos($key,'<=')===0) {
                             $comp = substr($key,0,2);
@@ -504,6 +505,7 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                 $where = null;
             }
             if (strlen($order)) $_q .= " ORDER BY $order";
+
 
             $this->lastQuery = $_q . ((is_array($where)) ? ' ' . json_encode($where) : '') . ' limit=' . $limit.' page='.$this->page;
             try {
