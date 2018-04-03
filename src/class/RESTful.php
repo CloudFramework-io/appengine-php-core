@@ -224,12 +224,29 @@ if (!defined("_RESTfull_CLASS_")) {
          * @return bool
          */
         function validatePostData($model,$codelibbase='error-form-params',$data=null,&$dictionaries=[]) {
+
             if(null===$data) $data = &$this->formParams;
-            return($this->checkFormParamsFromModel($model,true,$codelibbase,$data,$dictionaries));
+            if(!($ret = $this->checkFormParamsFromModel($model,true,$codelibbase,$data,$dictionaries))) return;
+
+            if(is_array($model)) foreach ($model as $field=>$props) {
+                if(array_key_exists('validation',$props) && strpos($props['validation'],'internal')!==false && array_key_exists($field,$data)) {
+                    $this->setErrorFromCodelib($codelibbase.'-'.$field,$field.' is internal and can not be rewritten');
+                    return false;
+                }
+            }
+            return $ret;
         }
         function validatePutData($model,$codelibbase='error-form-params',$data=null,&$dictionaries=[]) {
             if(null===$data) $data = &$this->formParams;
-            return($this->checkFormParamsFromModel($model,false,$codelibbase,$data,$dictionaries));
+            if(!($ret = $this->checkFormParamsFromModel($model,false,$codelibbase,$data,$dictionaries))) return;
+
+            if(is_array($model)) foreach ($model as $field=>$props) {
+                if(array_key_exists('validation',$props) && strpos($props['validation'],'internal')!==false && array_key_exists($field,$data)) {
+                    $this->setErrorFromCodelib($codelibbase.'-'.$field,$field.' is internal and can not be rewritten');
+                    return false;
+                }
+            }
+            return $ret;
         }
         function checkFormParamsFromModel(&$model, $all=true, $codelibbase='', &$data=null, &$dictionaries=[])
         {

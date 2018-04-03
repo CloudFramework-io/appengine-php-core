@@ -28,6 +28,7 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
                     return false;
                 }
 
+                //region: excludeifexist:
                 // $excludeif controls the exintence of the field depends on others fields
                 $excludeif = [];
                 if (isset($value['validation']) && strpos($value['validation'], 'excludeifexist:') !== false) {
@@ -54,11 +55,13 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
                     // If the field does not exist but there are exclude fields and there is not error.. continue to next field
                     if(!$this->error && strlen(trim($excludeif[0])) && !key_exists($key,$data)) continue;
                 }
+                //endregion
 
                 // Transform values and check if we have an empty value
                 if(!$this->error && isset($value['validation'])) {
 
                     // Transform values based on defaultvalue, forcevalue, tolowercase, touppercase,trim
+                    if(!array_key_exists($key,$data)) $data[$key] = null;
                     $data[$key] = $this->transformValue($data[$key],$value['validation']);
 
                     if( null===$data[$key] || (is_string($data[$key]) && !strlen($data[$key])) ||  (is_array($data[$key]) && !count($data[$key]))) {
@@ -74,6 +77,7 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
                     }
 
                 }
+
 
                 // Let's valid types and recursive contents..
                 if(!$this->error) {
@@ -160,6 +164,7 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
                 case "phone": return is_string($data);
                 case "zip": return is_string($data);
                 case "keyname": return is_string($data);
+                case "key": return is_string($data);
                 case "date": return $this->validateDate($data);
                 case "datetime": return $this->validateDateTime($data);
                 case "datetimeiso": return $this->validateDateTimeISO($data);
