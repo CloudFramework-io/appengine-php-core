@@ -223,7 +223,7 @@ if (!defined("_RESTfull_CLASS_")) {
          * @param null $data
          * @return bool
          */
-        function validatePostData($model,$codelibbase='error-form-params',$data=null,&$dictionaries=[]) {
+        function validatePostData($model,$codelibbase='error-form-params',&$data=null,&$dictionaries=[]) {
 
             if(null===$data) $data = &$this->formParams;
             if(!($ret = $this->checkFormParamsFromModel($model,true,$codelibbase,$data,$dictionaries))) return;
@@ -236,7 +236,7 @@ if (!defined("_RESTfull_CLASS_")) {
             }
             return $ret;
         }
-        function validatePutData($model,$codelibbase='error-form-params',$data=null,&$dictionaries=[]) {
+        function validatePutData($model,$codelibbase='error-form-params',&$data=null,&$dictionaries=[]) {
             if(null===$data) $data = &$this->formParams;
             if(!($ret = $this->checkFormParamsFromModel($model,false,$codelibbase,$data,$dictionaries))) return;
 

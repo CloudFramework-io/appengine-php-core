@@ -2064,6 +2064,9 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
         /* @var $dsToken DataStore */
         private $dsToken = null;
 
+        var $error = false;
+        var $errorMsg = [];
+
         function __construct(Core &$core)
         {
             $this->core = $core;
@@ -2552,6 +2555,149 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             if(!$pref) $pref = rand();
             return(base64_encode(md5(uniqid($pref))));
         }
+
+        /**
+         * It generates a JSON WEB TOKEN based on a private key
+         * based on https://github.com/firebase/php-jwt
+         * to generate privateKey ../scripts/jwtRS256.sh
+         * @return string|null with a length of 32 chars or null. if null check $this->error, $this->>errorMsg
+         */
+        public function jwt_encode($payload,$privateKey, $keyId = null, $head = null, $algorithm='SHA256')
+        {
+            if(!is_string($privateKey) || strlen($privateKey)< 10) return($this->addError('Wrong private key'));
+
+            $header = array('typ' => 'JWT', 'alg' => $algorithm);
+            if ($keyId !== null) {
+                $header['kid'] = $keyId;
+            }
+            if ( isset($head) && is_array($head) ) {
+                $header = array_merge($head, $header);
+            }
+
+            //region create $signing_input
+            $segments = array();
+            $segments[] = $this->urlsafeB64Encode($this->jsonEncode($header));
+            $segments[] = $this->urlsafeB64Encode($this->jsonEncode($payload));
+            $signing_input = implode('.', $segments);
+            if($this->error) return;
+            //endregion
+
+            //region create $signature signing with the privateKey
+            $signature = '';
+            $success = openssl_sign($signing_input, $signature, $privateKey, $algorithm);
+            if(!$success) {
+                return($this->addError(['error'=>true,'errorMsg'=>'OpenSSL unable to sign data']));
+            }
+            //endregion
+
+            //region retur the signature
+            $segments[] = $this->urlsafeB64Encode($signature);
+            if($this->error) return;
+            return implode('.', $segments);
+            //endregion
+        }
+
+        /**
+         * It decode a JSON WEB TOKEN based on a public key
+         * based on https://github.com/firebase/php-jwt
+         * to generate publicKey ../scripts/jwtRS256.sh
+         * @return string with a length of 32 chars
+         */
+        public function jwt_decode($jwt,$publicKey,$keyId=null,$algorithm='SHA256')
+        {
+            if(!is_string($publicKey) || strlen($publicKey)< 10) return($this->addError('Wrong public key'));
+
+            $tks = explode('.', $jwt);
+            if (count($tks) != 3) {
+                return($this->addError('Wrong number of segments in $token'));
+            }
+
+            list($headb64, $bodyb64, $cryptob64) = $tks;
+
+            if (null === ($header = $this->jsonDecode($this->urlsafeB64Decode($headb64)))) {
+                return($this->addError('Invalid header encoding'));
+            }
+            if (null === $payload = $this->jsonDecode($this->urlsafeB64Decode($bodyb64))) {
+                return($this->addError('Invalid claims encoding'));
+            }
+            if (false === ($sig = $this->urlsafeB64Decode($cryptob64))) {
+                return($this->addError('Invalid signature encoding'));
+            }
+            if (!array_key_exists('alg',$header) || $header['alg']!='SHA256') {
+                return($this->addError('Empty algorithm in header or value != SHA256'));
+            }
+            if (array_key_exists('kid',$header) && $header['kid']!=$keyId) {
+                return($this->addError('KeyId present in header and does not match with $keyId'));
+            }
+
+            //region create $signature signing with the privateKey
+            $success = openssl_verify("$headb64.$bodyb64",$sig, $publicKey, $algorithm);
+            if($success!==1) {
+                return($this->addError(['error'=>true,'errorMsg'=>'OpenSSL verification failed. '.openssl_error_string()]));
+            }
+            //endregion
+            return($payload);
+        }
+
+        public function urlsafeB64Encode($input) {
+            return str_replace('=', '', strtr(base64_encode($input), '+/', '-_'));
+        }
+
+        public function urlsafeB64Decode($input)
+        {
+            $remainder = strlen($input) % 4;
+            if ($remainder) {
+                $padlen = 4 - $remainder;
+                $input .= str_repeat('=', $padlen);
+            }
+            return base64_decode(strtr($input, '-_', '+/'));
+        }
+
+        public function jsonEncode($input)
+        {
+            $json = json_encode($input);
+            if (function_exists('json_last_error') && $errno = json_last_error()) {
+                $this->addError(['json_encode error',$errno]);
+            } elseif ($json === 'null' && $input !== null) {
+                $this->addError('Null result with non-null input');
+            }
+            return $json;
+        }
+
+        public function jsonDecode($input)
+        {
+            if (version_compare(PHP_VERSION, '5.4.0', '>=') && !(defined('JSON_C_VERSION') && PHP_INT_SIZE > 4)) {
+                /** In PHP >=5.4.0, json_decode() accepts an options parameter, that allows you
+                 * to specify that large ints (like Steam Transaction IDs) should be treated as
+                 * strings, rather than the PHP default behaviour of converting them to floats.
+                 */
+                $arr = json_decode($input, true, 512, JSON_BIGINT_AS_STRING);
+            } else {
+                /** Not all servers will support that, however, so for older versions we must
+                 * manually detect large ints in the JSON string and quote them (thus converting
+                 *them to strings) before decoding, hence the preg_replace() call.
+                 */
+                $max_int_length = strlen((string) PHP_INT_MAX) - 1;
+                $json_without_bigints = preg_replace('/:\s*(-?\d{'.$max_int_length.',})/', ': "$1"', $input);
+                $arr = json_decode($json_without_bigints,true);
+            }
+
+            if (function_exists('json_last_error') && $errno = json_last_error()) {
+                $this->addError(['json_encode error',$errno]);
+            } elseif ($arr === null && $input !== 'null') {
+                $this->addError('Null result with non-null input');
+            }
+            return $arr;
+        }
+
+        function addError($value)
+        {
+            $this->error = true;
+            $this->errorMsg[] = $value;
+        }
+
+
+
     }
 
     /**

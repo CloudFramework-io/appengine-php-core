@@ -391,6 +391,10 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                 $this->setError($this->entity_name.': error validating Data in Model.: {'.$dv->field.'}. '.$dv->errorMsg);
             }
 
+            // recover Ids
+            if(array_key_exists('KeyId',$data)) $entity['KeyId'] = $data['KeyId'];
+            if(array_key_exists('KeyName',$data)) $entity['KeyName'] = $data['KeyName'];
+
             return ($entity);
         }
 

@@ -221,13 +221,15 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
          */
         public function validateDateTime($data)
         {
-            if($data =='now' || (strlen($data)>=15 && strlen($data)<=17)) {
+            if($data =='now' || (strlen($data)>=15)) {
                 try {
                     $value_time = new DateTime($data);
                     return true;
                 } catch (Exception $e) {
                     // Is not a valida Date
                 }
+            } else {
+                _printe($data,strlen($data));
             }
             return false;
         }
@@ -239,7 +241,7 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
          */
         public function validateDateTimeISO($data)
         {
-            if($data =='now' || (strlen($data)>=23 && strlen($data)<=25)) {
+            if($data =='now' || (strlen($data)>=23)) {
                 try {
                     $value_time = new DateTime($data);
                     return true;
