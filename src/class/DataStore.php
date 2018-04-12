@@ -327,11 +327,11 @@ if (!defined ("_DATASTORE_CLASS_") ) {
          * @param array $dictionaries
          * @return array
          */
-        function getEntityTemplate() {
+        function getEntityTemplate($transform_keys=true) {
             $entity = $entity = array_flip(array_keys($this->schema['props']['__model']));
             foreach ($entity as $key=>$foo) {
                 $entity[$key] = null;
-                if(in_array($this->schema['props']['__model'][$key]['type'],['key','keyname'])) {
+                if($transform_keys && in_array($this->schema['props']['__model'][$key]['type'],['key','keyname'])) {
                     if($this->schema['props']['__model'][$key]['type']=='key') $entity['KeyId'] = null;
                     else $entity['KeyName'] = null;
                     unset($entity[$key]);
