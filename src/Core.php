@@ -3891,7 +3891,9 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                 if(!$rtwig->error) {
                     $path = $this->core->system->app_path;
                     if($path[strlen($path)-1] != '/') $path.='/';
-                    $rtwig->addFileTemplate($template,$path . 'templates/' . $template);
+                    $template_path = $path . 'templates/';
+                    if($this->core->config->get('core.path.templates')) $template_path = $this->core->config->get('core.path.templates').'/';
+                    $rtwig->addFileTemplate($template,$template_path . $template);
                     $rtwig->setTwig($template);
                     echo $rtwig->render();
                 } else {
@@ -3899,7 +3901,9 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                 }
             } else {
                 try {
-                    include $this->core->system->app_path . '/templates/' . $template;
+                    $template_path = $this->core->system->app_path . '/templates/';
+                    if($this->core->config->get('core.path.templates')) $template_path = $this->core->config->get('core.path.templates').'/';
+                    include  $template_path. $template;
                 } catch (Exception $e) {
                     $this->addError(error_get_last());
                     $this->addError($e->getMessage());
