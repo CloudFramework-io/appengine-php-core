@@ -3532,6 +3532,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
 
         }
 
+
         function getHeader($str)
         {
             $str = strtoupper($str);

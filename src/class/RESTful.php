@@ -358,6 +358,16 @@ if (!defined("_RESTfull_CLASS_")) {
             }
         }
 
+        /**
+         * Returns the info of the header Authorization if it exists, otherwise null
+         * @return null|string
+         */
+        function getHeaderAuthorization()
+        {
+            $str = 'AUTHORIZATION';
+            return ((isset($_SERVER['HTTP_' . $str])) ? $_SERVER['HTTP_' . $str] : null);
+        }
+
         function getRequestHeader($str)
         {
             $str = strtoupper($str);
