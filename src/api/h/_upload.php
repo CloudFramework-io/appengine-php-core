@@ -5,6 +5,7 @@ class API extends RESTful
     private $buckets;
     function main()
     {
+
         $this->sendCorsHeaders('GET,POST');
         if(!$this->checkMethod('GET,POST')) return;
 
@@ -13,7 +14,7 @@ class API extends RESTful
         if($this->buckets->error) return($this->setErrorFromCodelib('system-error',$this->buckets->errorMsg));
 
         // Call endpoints
-        if(!$this->useFunction('ENDPOINT_'.$this->params[0]))  return($this->setErrorFromCodelib('params-error'));
+        if(!$this->useFunction('ENDPOINT_'.$this->params[0]))  return($this->setErrorFromCodelib('params-error','use [POST]/_upload/uploadUrl'));
 
     }
 
@@ -25,17 +26,17 @@ class API extends RESTful
         // To pass info using session
         $this->core->session->init();
 
-        $public = ($this->formParams['public'])?true:false;
-        $ssl = ($this->formParams['ssl'])?true:false;
-        $apply_hash_to_filenames = ($this->formParams['apply_hash_to_filenames'])?true:false;
-        $allowed_content_types = ($this->formParams['allowed_content_types'])?:'';
-        $allowed_extensions = ($this->formParams['allowed_extensions'])?:'';
+        $public = (isset($this->formParams['public']) && $this->formParams['public'])?true:false;
+        $ssl = (isset($this->formParams['ssl']) && $this->formParams['ssl'])?true:false;
+        $apply_hash_to_filenames = (isset($this->formParams['apply_hash_to_filenames']) && $this->formParams['apply_hash_to_filenames'])?true:false;
+        $allowed_content_types = (isset($this->formParams['allowed_content_types']) && $this->formParams['allowed_content_types'])?$this->formParams['allowed_content_types']:'';
+        $allowed_extensions = (isset($this->formParams['allowed_extensions']) && $this->formParams['allowed_extensions'])?$this->formParams['allowed_extensions']:'';
 
         $upload_properties = ['public'=>$public,'ssl'=>$ssl,'apply_hash_to_filenames'=>$apply_hash_to_filenames,'allowed_content_types'=>$allowed_content_types,'allowed_extensions'=>$allowed_extensions];
         $this->core->session->set('_uploadProperties',$upload_properties);
 
         // The return URL once the files have been sent to process those files
-        $retUrl = $this->core->system->url['host_base_url'].'/h/api/_upload/manageFiles';
+        $retUrl = str_replace('uploadUrl','manageFiles',$this->core->system->url['host_url']);
 
         // Gather uploadUrl
         $ret = array_merge(['uploadUrl' => $this->buckets->getUploadUrl($retUrl)],$this->buckets->vars,['uploadProperties'=>$upload_properties]);
