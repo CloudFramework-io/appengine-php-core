@@ -25,8 +25,7 @@ if (!defined ("_Buckets_CLASS_") ) {
             if(strlen($bucket)) $this->bucket = $bucket;
             else $this->bucket = $this->core->config->get('bucketUploadPath');
             if(!$this->bucket) return($this->addError('Missing bucketUploadPath config var or $bucket in the constructor'));
-
-            if(!is_dir($this->bucket)) return($this->addError('I can not find bucket: '+$this->bucket));
+            if(!is_dir($this->bucket)) return($this->addError('I can not find bucket: '.$this->bucket));
 
             $this->vars['upload_max_filesize'] = ini_get('upload_max_filesize');
             $this->vars['max_file_uploads'] = ini_get('max_file_uploads');
