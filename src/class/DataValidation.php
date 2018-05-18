@@ -152,7 +152,7 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
             switch (strtolower($type)) {
                 case "string": return is_string($data);
                 case "integer": if(strval(intval($data))===strval($data)) $data=intval($data);return is_integer($data);
-                case "float": if(strval(floatval($data))===strval($data)) $data=floatval($data);return is_float($data);
+                case "float": if(floatval($data)!=0 || $data==="0") $data=floatval($data);return is_float($data);
                 case "bit": if(strval(intval($data))===strval($data)) $data=intval($data);return ($data==0 || $data==1);
                 case "model": return is_array($data) && !empty($data);
                 case "json": if(is_array($data)) $data = json_encode($data);return is_string($data) && is_array(json_decode($data,true));
