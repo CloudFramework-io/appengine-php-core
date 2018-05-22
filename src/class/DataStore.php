@@ -347,6 +347,7 @@ if (!defined ("_DATASTORE_CLASS_") ) {
          */
         function getCheckedRecordWithMapData($data, $all=true, &$dictionaries=[]) {
             $entity = array_flip(array_keys($this->schema['props']['__model']));
+            if(!is_array($data)) $data = [];
 
             // If there is not mapdata.. Use the model fields to mapdata
             if(!isset($this->schema['data']['mapData']) || !count($this->schema['data']['mapData'])) {

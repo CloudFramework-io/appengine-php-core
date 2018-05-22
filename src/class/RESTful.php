@@ -236,6 +236,7 @@ if (!defined("_RESTfull_CLASS_")) {
             }
             return $ret;
         }
+
         function validatePutData($model,$codelibbase='error-form-params',&$data=null,&$dictionaries=[]) {
             if(null===$data) $data = &$this->formParams;
             if(!($ret = $this->checkFormParamsFromModel($model,false,$codelibbase,$data,$dictionaries))) return;
@@ -248,6 +249,7 @@ if (!defined("_RESTfull_CLASS_")) {
             }
             return $ret;
         }
+
         function checkFormParamsFromModel(&$model, $all=true, $codelibbase='', &$data=null, &$dictionaries=[])
         {
             if(!is_array($model)) {
@@ -264,23 +266,37 @@ if (!defined("_RESTfull_CLASS_")) {
                 unset($model['_params']);
             }
 
-            /* @var $dv DataValidation */
-            $dv = $this->core->loadClass('DataValidation');
-            if(!$dv->validateModel($model,$data,$dictionaries,$all)) {
-                if($dv->typeError=='field') {
-                    if (strlen($codelibbase))
-                        $this->setErrorFromCodelib($codelibbase . '-' . $dv->field, $dv->errorMsg,400,$codelibbase . '-' . $dv->field);
-                    else
-                        $this->setError($dv->field . ': ' . $dv->errorMsg,400);
-                } else {
-                    if (strlen($codelibbase))
-                        $this->setError($this->getCodeLib($codelibbase) . '-' . $dv->field.': '. $dv->errorMsg,503);
-                    else
-                        $this->setError($dv->field . ': ' . $dv->errorMsg,503);
+            //region validate there are not internal fields
+            foreach ($data as $key=>$datum) {
+                if(in_array($key,$model) && isset($model[$key]['validation']) && stripos($model[$key]['validation'],'internal')!==false)
+                    return($this->setErrorFromCodelib('params-error',$key . ': not allowed in form validation' ));
+                elseif ($key=='KeyName' || $key=='KeyId') {
+                    return($this->setErrorFromCodelib('params-error',$key . ': not allowed in form validation'));
                 }
-                if(count($dv->errorFields))
-                    $this->core->errors->add($dv->errorFields);
             }
+            //endregion
+
+            //region validate there are not internal fields
+            if(!$this->error) {
+                /* @var $dv DataValidation */
+                $dv = $this->core->loadClass('DataValidation');
+                if (!$dv->validateModel($model, $data, $dictionaries, $all)) {
+                    if ($dv->typeError == 'field') {
+                        if (strlen($codelibbase))
+                            $this->setErrorFromCodelib($codelibbase . '-' . $dv->field, $dv->errorMsg, 400, $codelibbase . '-' . $dv->field);
+                        else
+                            $this->setError($dv->field . ': ' . $dv->errorMsg, 400);
+                    } else {
+                        if (strlen($codelibbase))
+                            $this->setError($this->getCodeLib($codelibbase) . '-' . $dv->field . ': ' . $dv->errorMsg, 503);
+                        else
+                            $this->setError($dv->field . ': ' . $dv->errorMsg, 503);
+                    }
+                    if (count($dv->errorFields))
+                        $this->core->errors->add($dv->errorFields);
+                }
+            }
+            //endregion
 
             if(!$this->error && count($params)) {
                 if(!$dv->validateModel($params,$this->params,$dictionaries,$all)) {

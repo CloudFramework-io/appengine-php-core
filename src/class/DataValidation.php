@@ -45,7 +45,7 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
                                     break;
                                 }
                             } else {
-                                if (!key_exists($excludefield,$data)) {
+                                if (!key_exists($excludefield,$data) && stripos($value['validation'],'allownull')===false) {
                                     $this->setError('This field is mandatory because is missing other field in \'excludeifexist:' . $excludefield . '\'');
                                     break;
                                 }
