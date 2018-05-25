@@ -88,7 +88,7 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
                         $this->validateModel($value['fields'],$data[$key],$dictionaries,$all,$extrakey.$key.'-');
                     }
                     elseif(isset($value['validation']) && !$this->validContent($extrakey.$key,$value['validation'],$data[$key]))
-                        $this->setError('Wrong content in '.$extrakey.$key);
+                        $this->setError('Wrong content in field {'.$extrakey.$key.'} with validation {'.$value['validation'].'}');
                 }
 
                 if($this->error) {

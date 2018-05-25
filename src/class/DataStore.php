@@ -495,7 +495,7 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                     $fieldname = $key;
 
                     // In the WHERE Conditions we have to transform date formats into date objects.
-                    if (in_array($this->schema['props'][$key][1],['date','datetime','datetimeiso'])) {
+                    if (array_key_exists($key,$this->schema['props']) && in_array($this->schema['props'][$key][1],['date','datetime','datetimeiso'])) {
                         $transformDate = new DateTime($value);
                         $where[$key.$idkey] = $transformDate;
                     }
