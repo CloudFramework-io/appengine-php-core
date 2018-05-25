@@ -154,6 +154,9 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                                         json_decode($value); // Let's see if we receive a valid JSON
                                         if (json_last_error() !== JSON_ERROR_NONE) $value = json_encode($value, JSON_PRETTY_PRINT);
                                     }
+                                } elseif($this->schema['props'][$i][1] == 'zip') {
+
+                                    $value = utf8_encode(gzcompress($value));
                                 }
                             } else {
                                 if($this->schema['props'][$i][1] == 'json') {
@@ -162,6 +165,9 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                                     } elseif (!strlen($value)) {
                                         $value = '{}';
                                     } 
+                                } elseif($this->schema['props'][$i][1] == 'zip') {
+                                    return($this->setError($this->entity_name.': '.$this->schema['props'][$i][0].' has received a no string value'));
+
                                 }
                             }
 
@@ -188,7 +194,7 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                         }
 
                     } else {
-                        $this->setError($this->entity_name.': Structure of the data does not match with schema');
+                        return($this->setError($this->entity_name.': Structure of the data does not match with schema'));
                     }
                 }
             }
@@ -215,6 +221,8 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                                 $row[$key] = $value->getLatitude() . ',' . $value->getLongitude();
                             elseif ($key == 'JSON' || $this->schema['props'][$key][1]=='json')
                                 $row[$key] = json_decode($value, true);
+                            elseif ($this->schema['props'][$key][1]=='zip')
+                                $row[$key] =  (mb_detect_encoding($value)=="UTF-8")?gzuncompress(utf8_decode($value)):$value;
                             elseif($value instanceof DateTime) {
                                 if($this->schema['props'][$key][1]=='date')
                                     $row[$key] = $value->format('Y:m:d');
@@ -525,6 +533,8 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                                         $record->{$key} = $value->getLatitude().','.$value->getLongitude();
                                     elseif($key=='JSON' || $this->schema['props'][$key][1]=='json')
                                         $record->{$key} = json_decode($value,true);
+                                    elseif($this->schema['props'][$key][1]=='zip')
+                                        $record->{$key} = (mb_detect_encoding($value)=="UTF-8")?gzuncompress(utf8_decode($value)):$value;
                                     elseif ($this->schema['props'][$key][1] == 'date') $record->{$key} = $value->format('Y-m-d');
                                     elseif ($this->schema['props'][$key][1] == 'datetime') $record->{$key} = $value->format('Y-m-d H:i:s e');
                                     elseif ($this->schema['props'][$key][1] == 'datetimeiso') $record->{$key} = $value->format('c');
@@ -564,6 +574,10 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                                             $record->{$key} = $value->getLatitude().','.$value->getLongitude();
                                         elseif($key=='JSON' || $this->schema['props'][$key][1]=='json')
                                             $record->{$key} = json_decode($value,true);
+                                        elseif($this->schema['props'][$key][1]=='zip') {
+                                            $value = (mb_detect_encoding($value)=="UTF-8")?gzuncompress(utf8_decode($value)):$value;
+                                            $record->{$key} =  $value;
+                                        }
                                         elseif ($this->schema['props'][$key][1] == 'date') $record->{$key} = $value->format('Y-m-d');
                                         elseif ($this->schema['props'][$key][1] == 'datetime') $record->{$key} = $value->format('Y-m-d H:i:s e');
                                         elseif ($this->schema['props'][$key][1] == 'datetimeiso') $record->{$key} = $value->format('c');
@@ -736,6 +750,8 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                             $record->{$key} = $value->getLatitude().','.$value->getLongitude();
                         elseif($key=='JSON'  || $this->schema['props'][$key][1]=='json')
                             $record->{$key} = json_decode($value,true);
+                        elseif($this->schema['props'][$key][1]=='zip')
+                            $record->{$key} = gzuncompress(utf8_decode($value));
                         elseif ($this->schema['props'][$key][1] == 'date') $record->{$key} = $value->format('Y-m-d');
                         elseif ($this->schema['props'][$key][1] == 'datetime') $record->{$key} = $value->format('Y-m-d H:i:s e');
                         elseif ($this->schema['props'][$key][1] == 'datetimeiso') $record->{$key} = $value->format('c');
