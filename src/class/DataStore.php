@@ -175,7 +175,6 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                         }
                     }
 
-
                     //Complete info in the rest of inf
                     if(!$this->error)
                     if (count($record)) {
@@ -225,9 +224,9 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                                 $row[$key] =  (mb_detect_encoding($value)=="UTF-8")?gzuncompress(utf8_decode($value)):$value;
                             elseif($value instanceof DateTime) {
                                 if($this->schema['props'][$key][1]=='date')
-                                    $row[$key] = $value->format('Y:m:d');
+                                    $row[$key] = $value->format('Y-m-d');
                                 elseif($this->schema['props'][$key][1]=='datetime')
-                                    $row[$key] = $value->format('Y:m:d H:i:s e');
+                                    $row[$key] = $value->format('Y-m-d H:i:s e');
                                 elseif($this->schema['props'][$key][1]=='datetimeiso')
                                     $row[$key] = $value->format('c');
                             }
