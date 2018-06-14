@@ -8,7 +8,7 @@ if (!defined ("_Google_CLASS_") ) {
 
     class Google
     {
-        private $core;
+        var $core;
         var $error = false;
         var $errorMsg = [];
         var $client;
