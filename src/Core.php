@@ -3596,14 +3596,19 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
 
         }
 
+        /**
+         * Process the model received in models
+         * @param $models array
+         */
         public function processModels($models) {
-            if(array_key_exists('DataBaseTables',$models) && _array($models['DataBaseTables']))
+            if(array_key_exists('DataBaseTables',$models) && is_array($models['DataBaseTables']))
                 foreach ($models['DataBaseTables'] as $model=>$dataBaseTable) {
                     $this->models['db:'.$model] = ['type'=>'db','data'=>$dataBaseTable];
                 }
-            foreach ($models['DataStoreEntities'] as $model=>$dsEntity) {
+            if(array_key_exists('DataStoreEntities',$models) && is_array($models['DataStoreEntities']))
+                foreach ($models['DataStoreEntities'] as $model=>$dsEntity) {
                 $this->models['ds:'.$model] = ['type'=>'ds','data'=>$dsEntity];
-            }
+                }
         }
 
         /**
