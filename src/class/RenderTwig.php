@@ -286,6 +286,7 @@ if (!defined ("_RenderTwig_CLASS_") ) {
         }
 
         function render($data=[]) {
+            $ret = null;
             if(!strlen($this->index) || !is_object($this->twig)) return false;
             else {
                 $this->core->__p->add('RenderTwig->render: ', $this->index, 'note');
