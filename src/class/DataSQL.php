@@ -678,6 +678,30 @@ class DataSQL
 
     }
 
+    /**
+     * Return the json form model to be used in validations in front-end
+     * @return mixed|null
+     */
+    public function getFormModelWithMapData() {
+        $fields = [];
+        foreach ($this->entity_schema['model'] as $key=>$attr) {
+            $field = ['type'=> $attr[0]];
+            $field['validation'] = (isset($attr[1]))?$attr[1]:null;
 
+            if(strpos($field['validation'],'hidden')!==false)
+                continue;
+            $fields[] = $field;
+        }
+        return ($fields);
+    }
+
+    /**
+     * Return the json schema based on the table in the database
+     * @return mixed|null
+     */
+    public function getSimpleModelFromTable() {
+        if(!$this->core->model->dbInit()) return;
+        return($this->core->model->db->getSimpleModelFromTable($this->entity_name));
+    }
 
 }
