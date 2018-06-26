@@ -1865,7 +1865,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                                 if (strtolower($_SERVER['HTTP_HOST']) == strtolower(trim($inddomain)))
                                     $ret = true;
                             } else {
-                                if (stripos($_SERVER['HTTP_HOST'], trim($inddomain)) !== false)
+                                if (isset($_SERVER['HTTP_HOST']) && stripos($_SERVER['HTTP_HOST'], trim($inddomain)) !== false)
                                     $ret = true;
                             }
                         }
@@ -3935,6 +3935,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
         /** @var array $argv Keep the arguments passed to the logic if it runs as a script  */
         public $argv = null;
         var $tests;
+        var $cache = null;
 
         /**
          * Scripts constructor.
@@ -3954,6 +3955,13 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
         function sendTerminal($info) {
             if(is_string($info)) echo $info."\n";
             else print_r($info);
+        }
+
+        function prompt($title,$default=null) {
+            if($default) $title.="[{$default}] ";
+            $ret = readline($title);
+            if(!$ret) $ret=$default;
+            return $ret;
         }
 
     }
