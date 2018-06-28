@@ -115,7 +115,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
         /** @var CoreModel $model Object to control DataModels */
         public $model;
 
-        var $_version = '20180127';
+        var $_version = '20180628';
         var $data = null;
 
 
@@ -2018,7 +2018,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                     break;
                 case "coreversion":
                     if($this->core->_version!= $vars) {
-                        die("config var 'CoreVersion' is '{$vars}' and the current cloudframework version is {$this->core->_version}. Please update the framework");
+                        die("config var 'CoreVersion' is '{$vars}' and the current cloudframework version is {$this->core->_version}. Please update the framework. composer.phar update");
                     }
                     break;
                 default:

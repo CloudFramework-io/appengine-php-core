@@ -627,6 +627,7 @@ if (!defined ("_MYSQLI_CLASS_") ) {
             if($_where == '%') $_where = '1=1';
 
             if(strlen($_where)) $tables[$table]['selectWhere'] = $_where;
+            else $tables[$table]['selectWhere']='';
 
 
             $tables[$table]['init'] = 1;
@@ -636,16 +637,17 @@ if (!defined ("_MYSQLI_CLASS_") ) {
 
                     $field = $allFields[$j];
 
-                    if(!isset($fieldTypes) || !$fieldTypes[$field]['type']) {
+                    if(!isset($fieldTypes) || !isset($fieldTypes[$field]['type']) || !$fieldTypes[$field]['type']) {
                         if(!isset($fieldTypes)) $fieldTypes = [];
                         $this->setError("Wrong data array. $field does not exist in table {$table}: ".implode(',',array_keys($fieldTypes)));
                         return(false);
                     }
 
-                    $sep = ((strlen($tables[$table]['insertFields']))?",":"");
-                    $and = ((strlen($tables[$table]['selectWhere']))?" AND ":"");
+                    $sep = (isset($tables[$table]['insertFields']) && (strlen($tables[$table]['insertFields']))?",":"");
+                    $and = (isset($tables[$table]['selectWhere']) && (strlen($tables[$table]['selectWhere']))?" AND ":"");
 
 
+                    if(!isset($tables[$table]['updateFields'])) $tables[$table]['updateFields']='';
                     if(strlen($data[$field]) && $data[$field] !=='NULL')
                         $tables[$table]['updateFields'] .= $sep.$field."=".(($fieldTypes[$field]['isNum'])?"%s":"'%s'");
                     else {
@@ -653,7 +655,10 @@ if (!defined ("_MYSQLI_CLASS_") ) {
                         $tables[$table]['updateFields'] .= $sep.$field."=%s";
                     }
 
+                    if(!isset($tables[$table]['insertFields'])) $tables[$table]['insertFields']='';
                     $tables[$table]['insertFields'] .= $sep.$field;
+
+                    if(!isset($tables[$table]['insertPercents'])) $tables[$table]['insertPercents']='';
                     $tables[$table]['insertPercents'] .= $sep.(($fieldTypes[$field]['isNum'])?"%s":(($data[$field] === 'NULL')?"%s":"'%s'"));
 
                     if($fieldTypes[$field]['isKey']) {

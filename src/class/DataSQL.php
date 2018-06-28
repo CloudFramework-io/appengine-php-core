@@ -660,7 +660,12 @@ class DataSQL
 
         $dataValidated = [];
         foreach ($schema_to_validate as $field=>$value) {
-            if((isset($data[$field]) || $all) && isset($value['validation']) && stripos($value['validation'],'internal')===false) $dataValidated[$field] = $data[$field];
+            if((isset($data[$field]) || $all) && isset($value['validation']) && stripos($value['validation'],'internal')===false) {
+                if(isset($data[$field]))
+                    $dataValidated[$field] = $data[$field];
+                else
+                    $dataValidated[$field] = null;
+            }
 
         }
         if(!count($dataValidated)) return($this->addError('getCheckedArrayToInsert: We did not found fields to validate into the data'));
