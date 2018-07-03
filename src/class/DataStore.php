@@ -105,6 +105,8 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                     $schema_key = null;
                     $schema_keyname = null;
 
+                    if (!is_array($row)) $this->setError('Wrong data structure');
+
                     // Loading info from Data. $i can be numbers 0..n or indexes.
                     foreach ($row as $i => $value) {
 

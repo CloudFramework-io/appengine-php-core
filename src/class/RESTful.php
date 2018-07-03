@@ -320,8 +320,12 @@ if (!defined("_RESTfull_CLASS_")) {
          */
         function checkMandatoryParam($pos, $msg = '', $validation = [], $code=null)
         {
-            $this->params[$pos] = trim($this->params[$pos]); // TRIM
-            $error = strlen($this->params[$pos])==0;         // If empty error
+            if(!isset($this->params[$pos])) {
+                $error=true;
+            } else {
+                $this->params[$pos] = trim($this->params[$pos]); // TRIM
+                $error = strlen($this->params[$pos])==0;         // If empty error
+            }
 
             // Validation by array values
             if (!$error &&  (is_array($validation) && count($validation) && !in_array($this->params[$pos], $validation)) )  $error = true;
