@@ -3014,6 +3014,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
         public $responseHeaders;
         public $error = false;
         public $errorMsg = [];
+        public $options = null;
         private $curl = [];
         var $rawResult = '';
         var $automaticHeaders = true; // Add automatically the following headers if exist on config: X-CLOUDFRAMEWORK-SECURITY, X-SERVER-KEY, X-SERVER-KEY, X-DS-TOKEN,X-EXTRA-INFO
@@ -3300,6 +3301,8 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                 if(is_array(json_decode($data,true))) $options['http']['content'] = $data;
             }
 
+            // Save in the class the last options sent
+            $this->options = ['route'=>$route,'options'=>$options];
             // Context creation
             $context = stream_context_create($options);
 
