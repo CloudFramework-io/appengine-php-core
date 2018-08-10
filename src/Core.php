@@ -2424,7 +2424,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
         }
 
         /**
-         * Delete phically a token taking the $token key name.
+         * Update the token data.
          * @param $token
          * @return array|bool|void If the deletion is right it return the array with the recored deleted
          */
