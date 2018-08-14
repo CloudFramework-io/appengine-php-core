@@ -114,13 +114,17 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
 
             if(strpos($options,'forcevalue:')!==false) {
                 $data = $this->extractOptionValue('forcevalue:',$options);
+                //if deault is "null"
+                if($data=="null") $data=null;
             }elseif(strpos($options,'defaultvalue:')!==false && !strlen($data)) {
                 $data = $this->extractOptionValue('defaultvalue:',$options);
+                //if deault is "null"
+                if($data=="null") $data=null;
             }
 
-            if( strpos($options,'tolowercase')!==false) (is_array($data))?$data = array_map('strtolower',$data):$data = strtolower($data);
-            if( strpos($options,'touppercase')!==false) (is_array($data))?$data = array_map('strtoupper',$data):$data = strtoupper($data);
-            if( strpos($options,'trim')!==false) (is_array($data))?$data = array_map('trim',$data):$data = trim($data);
+            if( strpos($options,'tolowercase')!==false && strlen($data)) (is_array($data))?$data = array_map('strtolower',$data):$data = strtolower($data);
+            if( strpos($options,'touppercase')!==false && strlen($data)) (is_array($data))?$data = array_map('strtoupper',$data):$data = strtoupper($data);
+            if( strpos($options,'trim')!==false && strlen($data)) (is_array($data))?$data = array_map('trim',$data):$data = trim($data);
             if( strpos($options,'regex_delete:')!==false) {
                 $regex = $this->extractOptionValue("regex_delete:",$options);
                 if(strlen($regex)) {
