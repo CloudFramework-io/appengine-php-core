@@ -3604,6 +3604,9 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
          * @param $models array
          */
         public function processModels($models) {
+            // $models has to be an array
+            if(!is_array($models) || !$models) return;
+
             if(array_key_exists('DataBaseTables',$models) && is_array($models['DataBaseTables']))
                 foreach ($models['DataBaseTables'] as $model=>$dataBaseTable) {
                     $this->models['db:'.$model] = ['type'=>'db','data'=>$dataBaseTable];
