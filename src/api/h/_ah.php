@@ -2,7 +2,7 @@
 // https://cloud.google.com/appengine/docs/standard/php/mail/sending-receiving-with-mail-api
 // It requires in app.yaml
 /*
- inbound_services:
+inbound_services:
 - mail
 - mail_bounce
 handlers:
@@ -13,8 +13,17 @@ handlers:
   script: vendor/cloudframework-io/appengine-php-core/src/dispatcher.php
   login: admin
  */
-if($this->config->get('_ah')) {
-    include_once $this->config->get('_ah');
+$_include = '';
+$_email = file_get_contents('php://input');
+$_ah = $this->config->get('_ah');
+if($_email && is_array($_ah)) foreach ($_ah as $_emailfrom=>$_include_file) {
+    if(strpos($_email,$_emailfrom)!== false) {
+        $_include = $_include_file;
+        break;
+    }
+}
+if($_include) {
+        include_once $_include;
 } else {
     class API extends RESTful
     {
