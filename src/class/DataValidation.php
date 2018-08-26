@@ -155,6 +155,7 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
 
             switch (strtolower($type)) {
                 case "string": return is_string($data);
+                case "txt": return is_string($data);
                 case "integer": if(strval(intval($data))===strval($data)) $data=intval($data);return is_integer($data);
                 case "float": if(floatval($data)!=0 || $data==="0") $data=floatval($data);return is_float($data);
                 case "bit": if(strval(intval($data))===strval($data)) $data=intval($data);return ($data==0 || $data==1);
