@@ -170,9 +170,11 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                                 } elseif($this->schema['props'][$i][1] == 'zip') {
                                     return($this->setError($this->entity_name.': '.$this->schema['props'][$i][0].' has received a no string value'));
 
+                                } elseif($this->schema['props'][$i][1] == 'txt') {
+                                    return($this->setError($this->entity_name.': '.$this->schema['props'][$i][0].' has received a no string value'));
+
                                 }
                             }
-
                             $record[$this->schema['props'][$i][0]] = $value;
                         }
                     }
@@ -224,6 +226,8 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                                 $row[$key] = json_decode($value, true);
                             elseif ($this->schema['props'][$key][1]=='zip')
                                 $row[$key] =  (mb_detect_encoding($value)=="UTF-8")?gzuncompress(utf8_decode($value)):$value;
+                            elseif ($this->schema['props'][$key][1]=='txt')
+                                $row[$key] =  $value;
                             elseif($value instanceof DateTime) {
                                 if($this->schema['props'][$key][1]=='date')
                                     $row[$key] = $value->format('Y-m-d');
@@ -313,6 +317,9 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                             $ret->addString($key, false);
                             break;
                         case "zip":
+                            $ret->addString($key, false);
+                            break;
+                        case "txt":
                             $ret->addString($key, false);
                             break;
                         default:
@@ -536,6 +543,8 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                                         $record->{$key} = json_decode($value,true);
                                     elseif($this->schema['props'][$key][1]=='zip')
                                         $record->{$key} = (mb_detect_encoding($value)=="UTF-8")?gzuncompress(utf8_decode($value)):$value;
+                                    elseif($this->schema['props'][$key][1]=='txt')
+                                        $record->{$key} = $value;
                                     elseif ($this->schema['props'][$key][1] == 'date') $record->{$key} = $value->format('Y-m-d');
                                     elseif ($this->schema['props'][$key][1] == 'datetime') $record->{$key} = $value->format('Y-m-d H:i:s e');
                                     elseif ($this->schema['props'][$key][1] == 'datetimeiso') $record->{$key} = $value->format('c');
@@ -577,6 +586,9 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                                             $record->{$key} = json_decode($value,true);
                                         elseif($this->schema['props'][$key][1]=='zip') {
                                             $value = (mb_detect_encoding($value)=="UTF-8")?gzuncompress(utf8_decode($value)):$value;
+                                            $record->{$key} =  $value;
+                                        }
+                                        elseif($this->schema['props'][$key][1]=='txt') {
                                             $record->{$key} =  $value;
                                         }
                                         elseif ($this->schema['props'][$key][1] == 'date') $record->{$key} = $value->format('Y-m-d');
@@ -753,6 +765,8 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                             $record->{$key} = json_decode($value,true);
                         elseif($this->schema['props'][$key][1]=='zip')
                             $record->{$key} = gzuncompress(utf8_decode($value));
+                        elseif($this->schema['props'][$key][1]=='zip')
+                            $record->{$key} = $value;
                         elseif ($this->schema['props'][$key][1] == 'date') $record->{$key} = $value->format('Y-m-d');
                         elseif ($this->schema['props'][$key][1] == 'datetime') $record->{$key} = $value->format('Y-m-d H:i:s e');
                         elseif ($this->schema['props'][$key][1] == 'datetimeiso') $record->{$key} = $value->format('c');
