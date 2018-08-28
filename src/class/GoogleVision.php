@@ -2,7 +2,7 @@
 require_once __DIR__.'/Google.php';
 class GoogleVision extends Google
 {
-    function analyze($gcsurl) {
+    function analyze($gcsurl,$options=[]) {
 
         if($this->error) return;
 
@@ -14,40 +14,54 @@ class GoogleVision extends Google
 
         $features = [];
 
-        $feature = new Google_Service_Vision_Feature();
-        $feature->setType('FACE_DETECTION');
-        $feature->setMaxResults(100);
-        $features[] = $feature;
+        if(!$options || in_array('FACE_DETECTION',$options)) {
+            $feature = new Google_Service_Vision_Feature();
+            $feature->setType('FACE_DETECTION');
+            $feature->setMaxResults(100);
+            $features[] = $feature;
+        }
 
-        $feature = new Google_Service_Vision_Feature();
-        $feature->setType('LANDMARK_DETECTION');
-        $feature->setMaxResults(100);
-        $features[] = $feature;
+        if(!$options || in_array('LANDMARK_DETECTION',$options)) {
+            $feature = new Google_Service_Vision_Feature();
+            $feature->setType('LANDMARK_DETECTION');
+            $feature->setMaxResults(100);
+            $features[] = $feature;
+        }
 
-        $feature = new Google_Service_Vision_Feature();
-        $feature->setType('LOGO_DETECTION');
-        $feature->setMaxResults(100);
-        $features[] = $feature;
+        if(!$options || in_array('LOGO_DETECTION',$options)) {
+            $feature = new Google_Service_Vision_Feature();
+            $feature->setType('LOGO_DETECTION');
+            $feature->setMaxResults(100);
+            $features[] = $feature;
+        }
 
-        $feature = new Google_Service_Vision_Feature();
-        $feature->setType('LABEL_DETECTION');
-        $feature->setMaxResults(100);
-        $features[] = $feature;
+        if(!$options || in_array('LABEL_DETECTION',$options)) {
+            $feature = new Google_Service_Vision_Feature();
+            $feature->setType('LABEL_DETECTION');
+            $feature->setMaxResults(100);
+            $features[] = $feature;
+        }
 
-        $feature = new Google_Service_Vision_Feature();
-        $feature->setType('TEXT_DETECTION');
-        $feature->setMaxResults(100);
-        $features[] = $feature;
+        if(!$options || in_array('TEXT_DETECTION',$options)) {
+            $feature = new Google_Service_Vision_Feature();
+            $feature->setType('TEXT_DETECTION');
+            $feature->setMaxResults(200);
+            $features[] = $feature;
+        }
 
-        $feature = new Google_Service_Vision_Feature();
-        $feature->setType('SAFE_SEARCH_DETECTION');
-        $feature->setMaxResults(100);
-        $features[] = $feature;
+        if(!$options || in_array('SAFE_SEARCH_DETECTION',$options)) {
+            $feature = new Google_Service_Vision_Feature();
+            $feature->setType('SAFE_SEARCH_DETECTION');
+            $feature->setMaxResults(100);
+            $features[] = $feature;
+        }
 
-        $feature = new Google_Service_Vision_Feature();
-        $feature->setType('IMAGE_PROPERTIES');
-        $feature->setMaxResults(100);
-        $features[] = $feature;
+        if(!$options || in_array('IMAGE_PROPERTIES',$options)) {
+            $feature = new Google_Service_Vision_Feature();
+            $feature->setType('IMAGE_PROPERTIES');
+            $feature->setMaxResults(100);
+            $features[] = $feature;
+        }
 
 
         $src = new Google_Service_Vision_ImageSource();
@@ -136,9 +150,9 @@ class GoogleVision extends Google
 
     }
 
-    function check() {
+    function check($image='gs://cloudframework-public/api-vision/face.jpg') {
 
-        return($this->analyze('gs://cloudframework-public/api-vision/face.jpg'));
+        return($this->analyze($image));
 
     }
 }
