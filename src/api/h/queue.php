@@ -43,6 +43,7 @@ class API extends RESTful
             // In a task the url has to start with /
             $options = array('method' => $this->method);
             foreach ($headers as $key => $value2) if (strpos($key, 'CONTENT_') === false) {
+                if(!isset($options['header'])) $options['header']='';
                 $options['header'] .= $key . ': ' . $value2 . "\r\n";
             }
             $value['options'] = $options;
