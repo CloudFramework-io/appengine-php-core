@@ -713,8 +713,8 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                 return (json_decode($_REQUEST['cloudframework_queued_fingerprint'], true));
             }
 
-            $ret['user_agent'] = $_SERVER['HTTP_USER_AGENT'];
-            $ret['host'] = $_SERVER['HTTP_HOST'];
+            $ret['user_agent'] = (isset($_SERVER['HTTP_USER_AGENT']))?$_SERVER['HTTP_USER_AGENT']:'unknown';
+            $ret['host'] = (isset($_SERVER['HTTP_HOST']))?$_SERVER['HTTP_HOST']:null;
             $ret['software'] = $_SERVER['SERVER_SOFTWARE'];
             if ($extra == 'geodata') {
                 $ret['geoData'] = $this->core->getGeoData();
@@ -725,7 +725,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             $ret['ip'] = $this->ip;
             $ret['http_referer'] = (array_key_exists('HTTP_REFERER',$_SERVER))?$_SERVER['HTTP_REFERER']:'unknown';
             $ret['time'] = date('Ymdhis');
-            $ret['uri'] = $_SERVER['REQUEST_URI'];
+            $ret['uri'] = (isset($_SERVER['REQUEST_URI']))?$_SERVER['REQUEST_URI']:null;
             return ($ret);
         }
 
