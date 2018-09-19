@@ -3212,6 +3212,11 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             return $this->call($route, $data, 'PUT', $extra_headers, $send_in_json);
         }
 
+        function patch($route, $data = null, $extra_headers = null, $send_in_json = false)
+        {
+            return $this->call($route, $data, 'PATCH', $extra_headers, $send_in_json);
+        }
+
         function delete($route, $extra_headers = null)
         {
             return $this->call($route, null, 'DELETE', $extra_headers);
