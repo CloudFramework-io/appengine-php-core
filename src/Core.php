@@ -806,7 +806,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
          * @param $title
          */
         function sendToSysLog($title,$syslog_type=null) {
-            if(null==$syslog_type=null) $syslog_type = $this->syslog_type;
+            if(null==$syslog_type) $syslog_type = $this->syslog_type;
             syslog($syslog_type, $title. json_encode($this->data,JSON_FORCE_OBJECT));
         }
 
