@@ -668,7 +668,7 @@ class DataSQL
             }
 
         }
-        if(!count($dataValidated)) return($this->addError('getCheckedArrayToInsert: We did not found fields to validate into the data'));
+        if(!count($dataValidated)) return($this->addError('getValidatedArrayFromData: We did not found fields to validate into the data'));
 
         /* @var $dv DataValidation */
         $dv = $this->core->loadClass('DataValidation');
