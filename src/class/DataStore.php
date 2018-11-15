@@ -653,6 +653,34 @@ if (!defined ("_DATASTORE_CLASS_") ) {
             return $ret;
         }
 
+        function fetchOneByKey($key)
+        {
+            $keyType = 'key';
+
+            if((is_array($this->schema) && strpos(json_encode($this->schema),'keyname' )!==false) || preg_match('/[^0-9]/',$key )) {
+                $keyType='keyname';
+            }
+            // Are keys or names
+            $ret = [];
+            try {
+                if($keyType=='key') {
+                    $data = $this->store->fetchById($key);
+                } else {
+                    // DOES NOT SUPPORT keys with ',' as values.
+                    $key = preg_replace('/(\'|")/','',$key);
+                    $data = $this->store->fetchByName($key);
+                }
+                $ret = $this->transformEntity($data);
+            } catch (Exception $e) {
+                $this->setError($e->getMessage());
+                $this->addError('query');
+
+            }
+
+            $this->lastQuery = $this->store->str_last_query;
+            return $ret;
+        }
+
         function fetchCount($where = null,$distinct='__key__')
         {
             $hash = sha1(json_encode($where).$distinct);
@@ -756,28 +784,32 @@ if (!defined ("_DATASTORE_CLASS_") ) {
         private function transformEntities(&$data) {
             $ret = [];
             foreach ($data as $record) {
-                // GeoData Transformation
-                foreach ($record->getData() as $key=>$value) {
-                    if (!is_null($value)) {
-                        if($value instanceof Geopoint)
-                            $record->{$key} = $value->getLatitude().','.$value->getLongitude();
-                        elseif($key=='JSON'  || $this->schema['props'][$key][1]=='json')
-                            $record->{$key} = json_decode($value,true);
-                        elseif($this->schema['props'][$key][1]=='zip')
-                            $record->{$key} = gzuncompress(utf8_decode($value));
-                        elseif($this->schema['props'][$key][1]=='zip')
-                            $record->{$key} = $value;
-                        elseif ($this->schema['props'][$key][1] == 'date') $record->{$key} = $value->format('Y-m-d');
-                        elseif ($this->schema['props'][$key][1] == 'datetime') $record->{$key} = $value->format('Y-m-d H:i:s e');
-                        elseif ($this->schema['props'][$key][1] == 'datetimeiso') $record->{$key} = $value->format('c');
-                    }
-                }
-
-                $subret = (null !== $record->getKeyId())?['KeyId' => $record->getKeyId()]:['KeyName' => $record->getKeyName()];
-                $ret[] = array_merge($subret, $record->getData());
+                $ret[] = $this->transformEntity($record);
             }
             return $ret;
 
+        }
+
+        private function transformEntity(&$record) {
+            // GeoData Transformation
+            foreach ($record->getData() as $key=>$value) {
+                if (!is_null($value)) {
+                    if($value instanceof Geopoint)
+                        $record->{$key} = $value->getLatitude().','.$value->getLongitude();
+                    elseif($key=='JSON'  || $this->schema['props'][$key][1]=='json')
+                        $record->{$key} = json_decode($value,true);
+                    elseif($this->schema['props'][$key][1]=='zip')
+                        $record->{$key} = gzuncompress(utf8_decode($value));
+                    elseif($this->schema['props'][$key][1]=='zip')
+                        $record->{$key} = $value;
+                    elseif ($this->schema['props'][$key][1] == 'date') $record->{$key} = $value->format('Y-m-d');
+                    elseif ($this->schema['props'][$key][1] == 'datetime') $record->{$key} = $value->format('Y-m-d H:i:s e');
+                    elseif ($this->schema['props'][$key][1] == 'datetimeiso') $record->{$key} = $value->format('c');
+                }
+            }
+
+            $subret = (null !== $record->getKeyId())?['KeyId' => $record->getKeyId()]:['KeyName' => $record->getKeyName()];
+            return array_merge($subret, $record->getData());
         }
 
         function setError($value)
