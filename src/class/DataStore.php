@@ -660,8 +660,7 @@ if (!defined ("_DATASTORE_CLASS_") ) {
             if((is_array($this->schema) && strpos(json_encode($this->schema),'keyname' )!==false) || preg_match('/[^0-9]/',$key )) {
                 $keyType='keyname';
             }
-            // Are keys or names
-            $ret = [];
+            $ret = false;
             try {
                 if($keyType=='key') {
                     $data = $this->store->fetchById($key);
@@ -670,7 +669,9 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                     $key = preg_replace('/(\'|")/','',$key);
                     $data = $this->store->fetchByName($key);
                 }
-                $ret = $this->transformEntity($data);
+                if($data) {
+                    $ret = $this->transformEntity($data);
+                }
             } catch (Exception $e) {
                 $this->setError($e->getMessage());
                 $this->addError('query');
