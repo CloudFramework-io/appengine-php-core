@@ -428,7 +428,7 @@ if (!defined("_RESTfull_CLASS_")) {
 
                     break;
                 default:
-                    header("Content-Type: text/html");
+                    header("Content-Type: " . $this->contentTypeReturn);
                     break;
             }
 
