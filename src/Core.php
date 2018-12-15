@@ -3569,6 +3569,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
     {
         var $error = false;
         var $errorMsg = null;
+        var $errorCode = null;
         /** @var CloudSQL $db  */
         var $db = null;
 
@@ -3635,7 +3636,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             }
 
             // Let's find it and return
-            if(!isset($this->models[$model])) return($this->addError("Model $model does not exist"));
+            if(!isset($this->models[$model])) return($this->addError("Model $model does not exist",404));
             switch ($this->models[$model]['type']) {
                 case "db":
                     list($type,$table) = explode(':',$model,2);
@@ -3803,8 +3804,9 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             if(is_object($this->db)) $this->db->close();
         }
 
-        private function addError($msg) {
+        private function addError($msg,$code=0) {
             $this->error = true;
+            $this->errorCode = $code;
             $this->errorMsg[] = $msg;
         }
 
