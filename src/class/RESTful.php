@@ -270,9 +270,6 @@ if (!defined("_RESTfull_CLASS_")) {
             foreach ($data as $key=>$datum) {
                 if(in_array($key,$model) && isset($model[$key]['validation']) && stripos($model[$key]['validation'],'internal')!==false)
                     return($this->setErrorFromCodelib('params-error',$key . ': not allowed in form validation' ));
-                elseif ($key=='KeyName' || $key=='KeyId') {
-                    return($this->setErrorFromCodelib('params-error',$key . ': not allowed in form validation'));
-                }
             }
             //endregion
 
