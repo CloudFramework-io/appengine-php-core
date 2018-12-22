@@ -51,7 +51,7 @@ if (!defined("_RESTfull_CLASS_")) {
             $this->core->__p->add("RESTFull: ", __FILE__, 'note');
 
             // $this->requestHeaders = apache_request_headers();
-            $this->method = (strlen($_SERVER['REQUEST_METHOD'])) ? $_SERVER['REQUEST_METHOD'] : 'GET';
+            $this->method = (isset($_SERVER['REQUEST_METHOD']) && strlen($_SERVER['REQUEST_METHOD'])) ? $_SERVER['REQUEST_METHOD'] : 'GET';
             if ($this->method == 'GET') {
                 $this->formParams = &$_GET;
                 if (isset($_GET['_raw_input_']) && strlen($_GET['_raw_input_'])) $this->formParams = (count($this->formParams)) ? array_merge($this->formParams, json_decode($_GET['_raw_input_'], true)) : json_decode($_GET['_raw_input_'], true);
@@ -101,14 +101,14 @@ if (!defined("_RESTfull_CLASS_")) {
 
 
             // URL splits
-            $this->url = $_SERVER['REQUEST_URI'];
+            $this->url = (isset($_SERVER['REQUEST_URI']))?$_SERVER['REQUEST_URI']:'';
             $this->urlParams = '';
-            if (strpos($_SERVER['REQUEST_URI'], '?') !== false)
+            if (isset($_SERVER['REQUEST_URI']) && strpos($_SERVER['REQUEST_URI'], '?') !== false)
                 list($this->url, $this->urlParams) = explode('?', $_SERVER['REQUEST_URI'], 2);
 
             // API URL Split. If $this->core->system->url['parts_base_url'] take it out
             $url = $this->url;
-            list($foo, $url) = explode($this->core->system->url['parts_base_url'] . '/', $this->url, 2);
+            if($this->url) list($foo, $url) = explode($this->core->system->url['parts_base_url'] . '/', $this->url, 2);
             $this->service = $url;
             $this->serviceParam = '';
             $this->params = [];

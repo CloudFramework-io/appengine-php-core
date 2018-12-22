@@ -53,14 +53,14 @@ if (!defined ("_DATASTORE_CLASS_") ) {
         var $last_cursor;
         var $time_zone = 'UTC';
         var $cache = null;
-        var $cacheTotals = null;
+        var $cache_data = null;
         var $namespace = 'default';
 
         function __construct(Core &$core, $params)
         {
             
             $this->core = $core;
-            $this->cache = new CoreCache('CF_DATASTORE');
+
 
             $entity = $params[0];
             $namespace = (isset($params[1]))?$params[1]:null;
@@ -205,7 +205,7 @@ if (!defined ("_DATASTORE_CLASS_") ) {
             // Bulk insertion
             if(!$this->error && count($entities)) try {
 
-                $this->deleteCache(); // Delete Cache for next queries..
+                $this->resetCache(); // Delete Cache for next queries..
                 // The limit for bulk inserting is 500 records.
                 $entities = (array_chunk($entities,500));
                 foreach ($entities as &$entity) {
@@ -682,29 +682,69 @@ if (!defined ("_DATASTORE_CLASS_") ) {
             return $ret;
         }
 
-        function fetchCount($where = null,$distinct='__key__')
-        {
-            $hash = sha1(json_encode($where).$distinct);
+        /**
+         * Assign cache $result based on $key
+         * @param $key
+         * @param $result
+         */
+        function setCache($key, $result) {
+            if($this->cache === null ) $this->initCache();
+            $this->cache_data[$key] = gzcompress(serialize($result));
+            $this->cache->set($this->entity_name.'_'.$this->namespace,$this->cache_data);
+        }
 
-            // Read from cache
-            if(null === $this->cacheTotals)
-                $this->cacheTotals = $this->cache->get($this->entity_name.'_'.$this->namespace.'_totals');
+        /**
+         * Return a cache key previously set
+         * @param $key
+         * @return mixed|null
+         */
+        function getCache($key) {
+            if($this->cache === null ) $this->initCache();
 
-            if(!is_array($this->cacheTotals)) $this->cacheTotals = [];
-
-            if(isset($this->cacheTotals[$hash])) {
-                return($this->cacheTotals[$hash]);
+            if(isset($this->cache_data[$key])) {
+                return(unserialize(gzuncompress($this->cache_data[$key])));
             } else {
-                $data = $this->fetchAll($distinct,$where);
-                $this->cacheTotals[$hash] = count($data);
-                $this->cache->set($this->entity_name.'_'.$this->namespace.'_totals',$this->cacheTotals);
-                return($this->cacheTotals[$hash]);
+                return null;
             }
         }
 
-        function deleteCache() {
-            $this->cache->delete($this->entity_name.'_'.$this->namespace.'_totals');
-            $this->cacheTotals = [];
+        /**
+         * Reset the cache.
+         * @param $key
+         * @param $result
+         */
+        function resetCache() {
+            if($this->cache === null ) $this->initCache();
+            $this->cache_data = [];
+            $this->cache->set($this->entity_name.'_'.$this->namespace,$this->cache_data);
+        }
+
+        /**
+         * Init cache of the object
+         */
+        function initCache() {
+            if($this->cache === null ) $this->cache = new CoreCache('CF_DATASTORE');
+            $this->cache_data = $this->cache->get($this->entity_name.'_'.$this->namespace);
+            if(!is_array($this->cache_data)) $this->cache_data = [];
+        }
+
+        /**
+         * Returns the number of records of the entity based on a condition.
+         * Uses cache to return results
+         * @param null $where
+         * @param string $distinct
+         * @return int|mixed|null
+         */
+        function fetchCount($where = null, $distinct='__key__')
+        {
+            $hash = sha1(json_encode($where).$distinct);
+            $total = $this->getCache('total_'.$hash);
+            if($total === null) {
+                $data = $this->fetchAll($distinct,$where);
+                $total = count($data);
+                $this->setCache('total_'.$hash,$total);
+            }
+            return $total;
         }
 
         function delete($where){
@@ -728,7 +768,7 @@ if (!defined ("_DATASTORE_CLASS_") ) {
             $data = $this->store->fetchAll($_q, $where);
             if(!count($data)) return [];
             if($this->store->delete($data)) {
-                $this->deleteCache();
+                $this->resetCache();
                 return($this->transformEntities($data));
             } else {
                 return false;
@@ -754,7 +794,7 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                 }
                 if(!count($data)) return [];
                 if($this->store->delete($data)) {
-                    $this->deleteCache();
+                    $this->resetCache();
                     return($this->transformEntities($data));
                 } else {
                     return false;

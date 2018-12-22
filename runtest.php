@@ -8,7 +8,11 @@ $core = new Core($rootPath);
 // Check test exist
 if(true) {
     system('clear');
-    list($script,$params) = explode('?',str_replace('..','',$argv[1]),2);
+    $script=$argv[1];
+    $params='';
+    if(isset($argv[1]) && strpos($argv[1],'?'))
+        list($script,$params) = explode('?',str_replace('..','',$argv[1]),2);
+
     $script = explode('/',$script);
     $path = ($script[0][0]=='_')?__DIR__:$core->system->app_path;
 
