@@ -116,7 +116,7 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
                 $data = $this->extractOptionValue('forcevalue:',$options);
                 //if deault is "null"
                 if($data=="null") $data=null;
-            }elseif(strpos($options,'defaultvalue:')!==false && !strlen($data)) {
+            } elseif(strpos($options,'defaultvalue:')!==false && !strlen($data) && !is_bool($data) ) {
                 $data = $this->extractOptionValue('defaultvalue:',$options);
                 //if deault is "null"
                 if($data=="null") $data=null;
