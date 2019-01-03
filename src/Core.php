@@ -3647,6 +3647,22 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                 case "ds":
                     list($type,$entity) = explode(':',$model,2);
                     if(empty($this->core->config->get('DataStoreSpaceName'))) return($this->addError('Missing DataStoreSpaceName config var'));
+                    if(!isset($this->models[$model]['data'])) return($this->addError($model. 'Does not have data'));
+
+                    if(isset($this->models[$model]['data']['extends'])) {
+                        // look for the model
+                        $model_extended = 'ds:'.$this->models[$model]['data']['extends'];
+                        if(!isset($this->models[$model_extended])) return($this->addError("Model extended $model_extended from model: $model does not exist",404));
+
+                        //Merge variables with the extended object.
+                        if(isset($this->models[$model]['data']['interface'])) foreach ($this->models[$model]['data']['interface'] as $object=>$data) {
+                                $this->models[$model_extended]['data']['interface'][$object] = $data;
+                        }
+                        $this->models[$model]['data'] = array_merge(['extended_from'=>$entity],array_merge($this->models[$model_extended]['data'],array_merge($this->models[$model]['data'],$this->models[$model_extended]['data'])));
+                        $entity = $this->models[$model]['data']['extends'];
+                    }
+                    if(isset($this->models[$model]['data']['entity'])) $entity = $this->models[$model]['data']['entity'];
+
                     if(!is_object($object = $this->core->loadClass('DataStore',[$entity,$this->core->config->get('DataStoreSpaceName'),$this->models[$model]['data']]))) return;
                     return($object);
                     break;
