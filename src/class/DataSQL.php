@@ -258,6 +258,11 @@ class DataSQL
         }
 
         // --- FIELDS
+        $distinct = '';
+        if(is_string($fields) && strpos($fields,'DISTINCT ')===0) {
+            $fields = str_replace('DISTINCT ','',$fields);
+            $distinct = 'DISTINCT ';
+        }
         $sqlFields = $this->getQuerySQLFields($fields);
 
         // virtual fields
@@ -266,10 +271,9 @@ class DataSQL
                 $sqlFields.=",{$value} as {$field}";
             }
 
-
         // --- QUERY
         $from = $this->getQuerySQLFroms();
-        $SQL = "SELECT {$sqlFields} FROM {$from}";
+        $SQL = "SELECT {$distinct}{$sqlFields} FROM {$from}";
         if($where) $SQL.=" WHERE {$where}";
 
         // --- GROUP BY
