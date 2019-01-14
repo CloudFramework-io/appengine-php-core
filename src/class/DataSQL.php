@@ -483,6 +483,12 @@ class DataSQL
                 case "__notnull__":
                     $where.="{$this->entity_name}.{$key} IS NOT NULL";
                     break;
+                case "__empty__":
+                    $where.="{$this->entity_name}.{$key} = ''";
+                    break;
+                case "__noempty__":
+                    $where.="{$this->entity_name}.{$key} != ''";
+                    break;
                 default:
                     // IN
                     if(is_array($value)) {
