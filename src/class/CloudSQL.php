@@ -1038,7 +1038,7 @@ if (!defined ("_MYSQLI_CLASS_") ) {
             $table = $this->getModelFromTable($table);
             if(isset($table['model']['fields'])) foreach ($table['model']['fields'] as $field=>$values) {
                 $fields['model'][$field][0] = $values['type'];
-                $fields['model'][$field][1] = (preg_match('/(varchar|varbinary|char)/',$values['type']))?'string':((preg_match('/(timestamp|datetime)/',$values['type']))?'datetime':((preg_match('/(date)/',$values['type']))?'date':'integer'));
+                $fields['model'][$field][1] = (preg_match('/(varchar|varbinary|char|json)/',$values['type']))?'string':((preg_match('/(timestamp|datetime)/',$values['type']))?'datetime':((preg_match('/(date)/',$values['type']))?'date':'integer'));
 
                 if($values['key']) $fields['model'][$field][1].='|isKey';
                 if($values['null']===false) $fields['model'][$field][1].='|mandatory';
