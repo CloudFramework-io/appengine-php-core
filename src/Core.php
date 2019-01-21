@@ -3640,6 +3640,11 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             switch ($this->models[$model]['type']) {
                 case "db":
                     list($type,$table) = explode(':',$model,2);
+
+                    // rewrite name of the table
+                    if(isset($this->models[$model]['data']['interface']['object'])) $table = $this->models[$model]['data']['interface']['object'];
+
+                    // Object creation
                     if(!is_object($object = $this->core->loadClass('DataSQL',[$table,$this->models[$model]['data']]))) return;
                     return($object);
                     break;
