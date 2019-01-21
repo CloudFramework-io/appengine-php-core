@@ -700,12 +700,18 @@ class DataSQL
     public function getFormModelWithMapData() {
         $fields = [];
         foreach ($this->entity_schema['model'] as $key=>$attr) {
-            $field = ['type'=> $attr[0]];
+
+            $type = $attr[0];
+            //db: types conversions
+            if(strpos($type,'int')===0) $type = "integer";
+            elseif(strpos($type,'var')===0) $type = "string";
+
+            $field = ['type'=> $type,'db_type'=>$attr[0]];
             $field['validation'] = (isset($attr[1]))?$attr[1]:null;
 
             if(strpos($field['validation'],'hidden')!==false)
                 continue;
-            $fields[] = $field;
+            $fields[$key] = $field;
         }
         return ($fields);
     }
