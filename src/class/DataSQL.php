@@ -705,10 +705,14 @@ class DataSQL
             //db: types conversions
             if(strpos($type,'int')===0) $type = "integer";
             elseif(strpos($type,'var')===0) $type = "string";
+            elseif(strpos($type,'bit')===0) {
+                $type = "integer";
+                if(!isset($attr[1])) $attr[1] = '';
+                $attr[1] = "values:0,1|".$attr[1];
+            }
 
             $field = ['type'=> $type,'db_type'=>$attr[0]];
             $field['validation'] = (isset($attr[1]))?$attr[1]:null;
-
             if(strpos($field['validation'],'hidden')!==false)
                 continue;
             $fields[$key] = $field;
