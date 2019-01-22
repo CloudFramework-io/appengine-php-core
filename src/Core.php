@@ -3637,10 +3637,23 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
 
             // Let's find it and return
             if(!isset($this->models[$model])) return($this->addError("Model $model does not exist",404));
+            if(!isset($this->models[$model]['data'])) return($this->addError($model. 'Does not have data',503));
+
             switch ($this->models[$model]['type']) {
                 case "db":
                     list($type,$table) = explode(':',$model,2);
 
+                    if(isset($this->models[$model]['data']['extends'])) {
+                        $model_extended = 'db:'.$this->models[$model]['data']['extends'];
+                        if(!isset($this->models[$model_extended])) return($this->addError("Model extended $model_extended from model: $model does not exist",404));
+
+                        //Merge variables with the extended object.
+                        if(isset($this->models[$model]['data']['interface'])) foreach ($this->models[$model]['data']['interface'] as $object=>$data) {
+                            $this->models[$model_extended]['data']['interface'][$object] = $data;
+                        }
+                        $this->models[$model]['data'] = array_merge(['extended_from'=>$table],array_merge($this->models[$model_extended]['data'],array_merge($this->models[$model]['data'],$this->models[$model_extended]['data'])));
+
+                    }
                     // rewrite name of the table
                     if(isset($this->models[$model]['data']['interface']['object'])) $table = $this->models[$model]['data']['interface']['object'];
 
@@ -3652,7 +3665,6 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                 case "ds":
                     list($type,$entity) = explode(':',$model,2);
                     if(empty($this->core->config->get('DataStoreSpaceName'))) return($this->addError('Missing DataStoreSpaceName config var'));
-                    if(!isset($this->models[$model]['data'])) return($this->addError($model. 'Does not have data'));
 
                     if(isset($this->models[$model]['data']['extends'])) {
                         // look for the model
