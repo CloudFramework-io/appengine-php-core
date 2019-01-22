@@ -81,8 +81,9 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
 
                 // Let's valid types and recursive contents..
                 if(!$this->error) {
-                    if(!$this->validType($extrakey.$key,$value['type'],$data[$key]))
+                    if(!$this->validType($extrakey.$key,$value['type'],$data[$key])) {
                         $this->setError(((is_string($data[$key]) && !strlen($data[$key]))?'Empty':'Wrong').' data received for field {'.$extrakey.$key.'} with type {'.$value['type'].'} value=['.json_encode($data[$key]).']');
+                    }
                     elseif($value['type']=='model') {
                         // Recursive CALL
                         $this->validateModel($value['fields'],$data[$key],$dictionaries,$all,$extrakey.$key.'-');
