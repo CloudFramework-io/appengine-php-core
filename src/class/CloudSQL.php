@@ -1009,10 +1009,10 @@ if (!defined ("_MYSQLI_CLASS_") ) {
                 }
                 if(count($indexes))
                     foreach($indexes as $index=>$indexValues) {
-                        if(count($indexValues['unique'])>1)
+                        if(isset($indexValues['unique']) && count($indexValues['unique'])>1)
                             foreach($indexValues['unique'] as $i=>$indexField)
                                 $tmp['Fields'][$indexField]['unique'] = $index;
-                        elseif(count($indexValues['index'])>1)
+                        elseif(isset($indexValues['index']) && count($indexValues['index'])>1)
                             foreach($indexValues['index'] as $i=>$indexField)
                                 $tmp['Fields'][$indexField]['index'] = $index;
                     }
@@ -1026,7 +1026,7 @@ if (!defined ("_MYSQLI_CLASS_") ) {
                     , 'explain' => $tmp['explain']
                     , 'indexes' => $tmp['index']
                     , 'SQL' => $tmp['SQL']['Create Table']
-                    , 'TRIGGERS' => $tmp['TRIGGERS']
+                    , 'TRIGGERS' => (isset($tmp['TRIGGERS']))?$tmp['TRIGGERS']:null
                     //, 'indexes' => $tmp['index']
                 ]);
             } else
@@ -1050,7 +1050,7 @@ if (!defined ("_MYSQLI_CLASS_") ) {
                 if(strpos($values['type'],'varbinary')!==false)
                     $fields['model'][$field][1].='|maxlength='.preg_replace('/[^0-9]/','',explode('varbinary',$values['type'],2)[1]);
 
-                if($values['index']) $fields['model'][$field][1].='|isIndex';
+                if(isset($values['index']) && $values['index']) $fields['model'][$field][1].='|isIndex';
                 if(strlen($values['default'])) $fields['model'][$field][1].='|defaultvalue='.$values['default'];
                 $fields['model'][$field][1].='|description='.$values['description'];
 
@@ -1058,6 +1058,46 @@ if (!defined ("_MYSQLI_CLASS_") ) {
                 $fields['mapping'][$field] = ['field'=>$field
                     ,'type'=>(preg_match('/(varchar|varbinary|char)/',$values['type']))?'string':((preg_match('/(timestamp|datetime)/',$values['type']))?'datetime':((preg_match('/(date)/',$values['type']))?'date':'integer'))
                     ,'validation'=>$fields['model'][$field][1]];
+            }
+            return $fields;
+        }
+
+        function getInterfaceModelFromTable($table) {
+
+            $fields = [
+                'model'=>[]
+                ,'interface'=>['object'=>$table,'name'=>$table,'plural'=>$table
+                    ,'security'=>null
+                    ,'fields'=>[]
+                    ,'filters'=>[]
+                    ,'views'=>['default'=>['name'=>'Default View','all_fields'=>true,'sort'=>null,'server_limit'=>1000,'fields'=>[]]]
+                    ,'insert_fields'=>null
+                    ,'update_fields'=>null
+                    ,'display_fields'=>null
+                ]
+            ];
+            $table = $this->getModelFromTable($table);
+            if(isset($table['model']['fields'])) foreach ($table['model']['fields'] as $field=>$values) {
+                $fields['model'][$field][0] = $values['type'];
+                $fields['model'][$field][1] = (preg_match('/(varchar|varbinary|char|json)/',$values['type']))?'string':((preg_match('/(timestamp|datetime)/',$values['type']))?'datetime':((preg_match('/(date)/',$values['type']))?'date':'integer'));
+
+                if(isset($values['key']) && $values['key']) $fields['model'][$field][1].='|isKey';
+                if(isset($values['null']) && $values['null']===false) $fields['model'][$field][1].='|mandatory';
+                else $fields['model'][$field][1].='|allowNull';
+
+                if(strpos($values['type'],'varchar')!==false)
+                    $fields['model'][$field][1].='|maxlength='.preg_replace('/[^0-9]/','',explode('varchar',$values['type'],2)[1]);
+                if(strpos($values['type'],'varbinary')!==false)
+                    $fields['model'][$field][1].='|maxlength='.preg_replace('/[^0-9]/','',explode('varbinary',$values['type'],2)[1]);
+
+                if(isset($values['index']) && $values['index']) $fields['model'][$field][1].='|isIndex';
+                if(isset($values['default']) && strlen($values['default'])) $fields['model'][$field][1].='|defaultvalue='.$values['default'];
+                $fields['model'][$field][1].='|description='.$values['description'];
+
+                // Mapping
+                $fields['interface']['fields'][$field] = ['name'=>$field];
+                $fields['interface']['views']['default']['fields'][] = ['field'=>$field];
+
             }
             return $fields;
         }
