@@ -199,8 +199,14 @@ if (!defined("_RESTfull_CLASS_")) {
 
         }
 
+        /**
+         * Check if it is received mandatory params
+         * @param array $keys with format: [key1,kye2,..] or [[key1,msg,[allowed,values],min_length],[]]
+         * @return bool|void
+         */
         function checkMandatoryFormParams($keys)
         {
+            if(!$keys) return;
 
             if (!is_array($keys) && strlen($keys)) $keys = array($keys);
             foreach ($keys as $i=>$item) if(!is_array($item)) $keys[$i] = array($item);
