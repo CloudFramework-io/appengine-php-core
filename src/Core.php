@@ -170,6 +170,12 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             }
         }
 
+        /**
+         * Return an object of the Class $class. If this object has been previously called class
+         * @param $class
+         * @param null $params
+         * @return mixed|null
+         */
         function loadClass($class, $params = null)
         {
 
@@ -3620,6 +3626,10 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             if(array_key_exists('DataStoreEntities',$models) && is_array($models['DataStoreEntities']))
                 foreach ($models['DataStoreEntities'] as $model=>$dsEntity) {
                 $this->models['ds:'.$model] = ['type'=>'ds','data'=>$dsEntity];
+                }
+            if(array_key_exists('JSONTables',$models) && is_array($models['JSONTables']))
+                foreach ($models['JSONTables'] as $model=>$dsEntity) {
+                    $this->models['json:'.$model] = ['type'=>'json','data'=>$dsEntity];
                 }
         }
 

@@ -564,11 +564,11 @@ class DataSQL
 
         $ret =  $this->getSQLSelectFields($fields);
 
-        foreach ($this->joins as $join) {
+        foreach ($this->joins as $i=>$join) {
 
             /** @var DataSQL $object */
             $object = $join[1];
-            $ret.=','.$object->getQuerySQLFields();
+            $ret.=','.str_replace($object->entity_name.'.',"_j{$i}.",$object->getQuerySQLFields());
 
         }
 
@@ -577,11 +577,13 @@ class DataSQL
 
     function getQuerySQLFroms() {
         $from = $this->entity_name;
-        foreach ($this->joins as $join) {
+        foreach ($this->joins as $i=>$join) {
             /** @var DataSQL $object */
             $object = $join[1];
-            $from.=" {$join[0]} JOIN {$object->entity_name} ON ($join[2])";
+            $from.=" {$join[0]}  JOIN {$object->entity_name} _j{$i} ON ({$this->entity_name}.{$join[2]} = _j{$i}.{$join[3]})";
         }
+
+
         return $from;
     }
 
@@ -602,10 +604,12 @@ class DataSQL
     /**
      * @param $type Could be inner or left
      * @param DataSQL $object
-     * @param $on
+     * @param $first_field string field of the local object to join with
+     * @param $join_field string field of the join object to match
+     * @param $extraon string any other extra condition
      */
-    function join ($type, DataSQL &$object, $on) {
-        $this->joins[] = [$type,$object,$on];
+    function join ($type, DataSQL &$object, $first_field, $join_field,$extraon=null) {
+        $this->joins[] = [$type,$object, $first_field, $join_field,$extraon];
     }
 
     /**

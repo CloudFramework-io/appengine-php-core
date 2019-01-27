@@ -47,6 +47,7 @@ if (!defined ("_MYSQLI_CLASS_") ) {
         var $rawResults;                                // Holds raw 'arrayed' results
         var $arrayedResult;                        // Holds an array of the result
 
+        /** @var mysqli*/
         var $_db;
         var $_dbserver;        // MySQL Hostname
         var $_dbuser;        // MySQL Username
