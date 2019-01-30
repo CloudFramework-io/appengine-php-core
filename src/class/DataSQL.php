@@ -115,7 +115,18 @@ class DataSQL
                 $fields = $this->getFields();
         }
         if(!$this->use_mapping || !count($this->mapping)) {
-            return $this->entity_name.'.'.implode(','.$this->entity_name.'.',$fields);
+            $ret='';
+            foreach ($fields as $i=>$field) {
+                if($ret) $ret.=',';
+                if(strpos($field,'(')!==false) {
+                    $ret.=str_replace('(','('.$this->entity_name.'.',$field);
+                } else {
+                    $ret.=$this->entity_name.'.'.$field;
+                }
+
+            }
+            return $ret;
+            //$this->entity_name.'.'.implode(','.$this->entity_name.'.',$fields);
         }
         else {
             $ret = '';
@@ -230,6 +241,7 @@ class DataSQL
      */
     function addQueryWhere($keysWhere) {
         if(empty($keysWhere) ) return($this->addError('setQueryWhere($keysWhere) $keyWhere can not be empty'));
+        if(!is_array($keysWhere)) return($this->addError('setQueryWhere($keysWhere) $keyWhere is not an array'));
         $this->queryWhere = array_merge($this->queryWhere ,$keysWhere);
     }
 
@@ -274,7 +286,9 @@ class DataSQL
         // --- QUERY
         $from = $this->getQuerySQLFroms();
         $SQL = "SELECT {$distinct}{$sqlFields} FROM {$from}";
-        if($where) $SQL.=" WHERE {$where}";
+        if($where) {
+            $SQL.=" WHERE {$where}";
+        }
 
         // --- GROUP BY
         if($this->groupBy) {
