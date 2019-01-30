@@ -65,7 +65,10 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
         }
     }
 
-    register_shutdown_function( "__fatal_handler" );
+    // Temporal comment register_shutdown_function for Unix no Mac development envinronments.
+    // 20190129
+    // TODO: Analyze behaviour
+    // register_shutdown_function( "__fatal_handler" );
 
     /**
      * Print a group of mixed vars passed as arguments
