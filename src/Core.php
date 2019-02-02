@@ -65,10 +65,11 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
         }
     }
 
-    // Temporal comment register_shutdown_function for Unix no Mac development envinronments.
-    // 20190129
-    // TODO: Analyze behaviour
-    // register_shutdown_function( "__fatal_handler" );
+    // Rewrite register_shutdown_function for production or development darwing server
+     $development = (array_key_exists('SERVER_SOFTWARE',$_SERVER) && stripos($_SERVER['SERVER_SOFTWARE'], 'Development') !== false || isset($_SERVER['PWD']));
+     if(!$development || strpos(php_uname(),'Darwin')!==false) {
+         register_shutdown_function( "__fatal_handler" );
+     }
 
     /**
      * Print a group of mixed vars passed as arguments
@@ -118,7 +119,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
         /** @var CoreModel $model Object to control DataModels */
         public $model;
 
-        var $_version = '20180829';
+        var $_version = '20190202';
         var $data = null;
 
 

@@ -766,7 +766,7 @@ if (!defined("_RESTfull_CLASS_")) {
         }
 
         /**
-         * Excute a method if $method is defined.
+         * Execute a method if $method is defined.
          * @param string $method name of the method
          * @return bool
          */
