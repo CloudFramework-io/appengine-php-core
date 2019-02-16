@@ -121,7 +121,14 @@ class DataSQL
                 if(strpos($field,'(')!==false) {
                     $ret.=str_replace('(','('.$this->entity_name.'.',$field);
                 } else {
-                    $ret.=$this->entity_name.'.'.$field;
+                    //JSON workaround https://bugs.php.net/bug.php?id=70384
+                    if(isset($this->entity_schema['model'][$field][0]) && $this->entity_schema['model'][$field][0]=='json') {
+                        $ret.='CAST('.$this->entity_name.'.'.$field.' as CHAR) as '.$field;
+                    } else {
+                        $ret.=$this->entity_name.'.'.$field;
+                    }
+
+
                 }
 
             }
@@ -173,7 +180,6 @@ class DataSQL
         // Fields to returned
         $sqlFields = $this->getQuerySQLFields($fields);
         $from = $this->getQuerySQLFroms();
-
 
         // Query
         $SQL = "SELECT {$sqlFields} FROM {$from} WHERE {$where}";

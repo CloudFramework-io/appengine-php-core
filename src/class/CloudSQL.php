@@ -199,15 +199,21 @@ if (!defined ("_MYSQLI_CLASS_") ) {
             } else {
                 $ret=array();
                 if($this->_debug) _print($_q);
-                if( ($this->_lastRes = $this->_db->query($_q)) ) {
-                    $this->_affectedRows = $this->_db->affected_rows;
-
-                    while ($fila = $this->_lastRes->fetch_assoc( )) { $ret[] = $fila; }
-                    if(is_object($this->_lastRes))
-                        $this->_lastRes->close();
-                    $this->_lastRes = false;
-                } else {
-                    $this->setError('Query Error [$q]: ' . $this->_db->error);
+                try {
+                    if( ($this->_lastRes = $this->_db->query($_q)) ) {
+                        $this->_affectedRows = $this->_db->affected_rows;
+                        while ($fila = $this->_lastRes->fetch_assoc( )) {
+                            $ret[] = $fila;
+                        }
+                        if(is_object($this->_lastRes))
+                            $this->_lastRes->close();
+                        $this->_lastRes = false;
+                    } else {
+                        $this->setError('Query Error [$q]: ' . $this->_db->error);
+                    }
+                } catch (Exception $e) {
+                    $this->setError('Query Error [$q]: ' . $e->getMessage());
+                    return(false);
                 }
                 $this->core->__p->add('getDataFromQuery ','','endnote');
                 return($ret);
