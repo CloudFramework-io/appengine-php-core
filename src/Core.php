@@ -4024,5 +4024,9 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             return $ret;
         }
 
+        function setErrorFromCodelib($code,$msg) {
+            $this->sendTerminal([$code=>$msg]);
+        }
+
     }
 }
