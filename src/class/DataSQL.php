@@ -124,11 +124,11 @@ class DataSQL
                     //JSON workaround https://bugs.php.net/bug.php?id=70384
                     if(isset($this->entity_schema['model'][$field][0]) && $this->entity_schema['model'][$field][0]=='json') {
                         $ret.='CAST('.$this->entity_name.'.'.$field.' as CHAR) as '.$field;
-                    } else {
+                    }elseif(isset($this->entity_schema['model'][$field][0])) {
                         $ret.=$this->entity_name.'.'.$field;
+                    }else{
+                        $ret.=$field;
                     }
-
-
                 }
 
             }
