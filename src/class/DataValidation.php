@@ -13,14 +13,23 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
         var $error=false;
         var $errorFields = [];
 
-        public function validateModel (array &$model,array &$data,array &$dictionaries=[],$all=true,$extrakey='') {
+        /**
+         * Validate the content of $data based on $model
+         * @param array $model
+         * @param array $data
+         * @param array $dictionaries
+         * @param bool $all
+         * @param string $extrakey
+         * @return bool
+         */
+        public function validateModel (array &$model, array &$data, array &$dictionaries=[], $all=true, $extrakey='') {
 
             $error = '';
             foreach ($model as $key=>$value) {
                 //  because $all==true  Ignore those fields that does not exist in $data and are optional or internal
                 if($all && !key_exists($key,$data) && isset($value['validation']) && (strpos($value['validation'], 'optional') !== false || strpos($value['validation'], 'internal') !== false)) continue;
                 // because $all==false Ignore those fields that does not exist in $data and they are not mandatory
-                if(!$all && !key_exists($key,$data) && (!isset($value['validation']) || strpos($value['validation'], 'mandatory') === false)) continue;
+                if(!$all && !key_exists($key,$data)) continue;
 
                 // Does type field exist?.. If not return false and break the loop
                 if(!isset($value['type'])) {
