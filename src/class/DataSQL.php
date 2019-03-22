@@ -583,6 +583,7 @@ class DataSQL
         if($fields && is_string($fields)) $fields = explode(',',$fields);
 
         $ret =  $this->getSQLSelectFields($fields);
+        if($ret=='*') $ret=$this->entity_name.'.*';
 
         foreach ($this->joins as $i=>$join) {
 
