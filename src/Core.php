@@ -3661,6 +3661,11 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                         $model_extended = 'db:'.$this->models[$model]['data']['extends'];
                         if(!isset($this->models[$model_extended])) return($this->addError("Model extended $model_extended from model: $model does not exist",404));
 
+                        // Rewrite model if it is defined
+                        if(isset($this->models[$model]['data']['model'])) {
+                            $this->models[$model_extended]['data']['model'] =  $this->models[$model]['data']['model'];
+                        }
+
                         //Merge variables with the extended object.
                         if(isset($this->models[$model]['data']['interface'])) foreach ($this->models[$model]['data']['interface'] as $object=>$data) {
                             $this->models[$model_extended]['data']['interface'][$object] = $data;
@@ -3684,6 +3689,11 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                         // look for the model
                         $model_extended = 'ds:'.$this->models[$model]['data']['extends'];
                         if(!isset($this->models[$model_extended])) return($this->addError("Model extended $model_extended from model: $model does not exist",404));
+
+                        // Rewrite model if it is defined
+                        if(isset($this->models[$model]['data']['model'])) {
+                            $this->models[$model_extended]['data']['model'] =  $this->models[$model]['data']['model'];
+                        }
 
                         //Merge variables with the extended object.
                         if(isset($this->models[$model]['data']['interface'])) foreach ($this->models[$model]['data']['interface'] as $object=>$data) {
