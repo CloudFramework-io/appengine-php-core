@@ -579,7 +579,7 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                             foreach ($data as $record) {
                                 // GeoData Transformation
                                 foreach ($record->getData() as $key=>$value){
-                                    if(!is_null($value)) {
+                                    if(!is_null($value) && isset($this->schema['props'][$key])) {
                                         if($value instanceof Geopoint)
                                             $record->{$key} = $value->getLatitude().','.$value->getLongitude();
                                         elseif($key=='JSON' || $this->schema['props'][$key][1]=='json')
