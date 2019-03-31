@@ -163,11 +163,14 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
 
             if(!is_bool($data) && !is_array($data) && is_string($data) && !strlen($data)) return false;
 
+            // database conversion types
+            $type = preg_replace('/\(.*/','',$type);
+
             switch (strtolower($type)) {
-                case "string": return is_string($data);
-                case "txt": return is_string($data);
+                case "varbinary": case "varchar": case "char": case "string": return is_string($data);
+                case "text": case "txt": return is_string($data);
                 case "integer": if(strval(intval($data))===strval($data)) $data=intval($data);return is_integer($data);
-                case "float": if(floatval($data)!=0 || $data==="0") $data=floatval($data);return is_float($data);
+                case "decimal": case "float": if(floatval($data)!=0 || $data==="0") $data=floatval($data);return is_float($data);
                 case "bit": if(strval(intval($data))===strval($data)) $data=intval($data);return ($data==0 || $data==1);
                 case "model": return is_array($data) && !empty($data);
                 case "json": if(is_array($data)) $data = json_encode($data);return is_string($data) && is_array(json_decode($data,true));
