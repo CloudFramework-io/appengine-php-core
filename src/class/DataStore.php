@@ -548,6 +548,8 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                                     elseif ($this->schema['props'][$key][1] == 'date') $record->{$key} = $value->format('Y-m-d');
                                     elseif ($this->schema['props'][$key][1] == 'datetime') $record->{$key} = $value->format('Y-m-d H:i:s e');
                                     elseif ($this->schema['props'][$key][1] == 'datetimeiso') $record->{$key} = $value->format('c');
+                                    elseif ($this->schema['props'][$key][1] == 'integer') $record->{$key} = intval($value);
+                                    elseif ($this->schema['props'][$key][1] == 'float') $record->{$key} = floatval($value);
                                 }
                             }
 
@@ -594,6 +596,8 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                                         elseif ($this->schema['props'][$key][1] == 'date') $record->{$key} = $value->format('Y-m-d');
                                         elseif ($this->schema['props'][$key][1] == 'datetime') $record->{$key} = $value->format('Y-m-d H:i:s e');
                                         elseif ($this->schema['props'][$key][1] == 'datetimeiso') $record->{$key} = $value->format('c');
+                                        elseif ($this->schema['props'][$key][1] == 'integer') $record->{$key} = intval($value);
+                                        elseif ($this->schema['props'][$key][1] == 'float') $record->{$key} = floatval($value);
                                     }
                                 }
 
@@ -846,6 +850,8 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                     elseif ($this->schema['props'][$key][1] == 'date') $record->{$key} = $value->format('Y-m-d');
                     elseif ($this->schema['props'][$key][1] == 'datetime') $record->{$key} = $value->format('Y-m-d H:i:s e');
                     elseif ($this->schema['props'][$key][1] == 'datetimeiso') $record->{$key} = $value->format('c');
+                    elseif ($this->schema['props'][$key][1] == 'integer') $record->{$key} = intval($value);
+                    elseif ($this->schema['props'][$key][1] == 'float') $record->{$key} = floatval($value);
                 }
             }
 
