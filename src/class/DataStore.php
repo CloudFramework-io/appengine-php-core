@@ -236,6 +236,10 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                                 elseif($this->schema['props'][$key][1]=='datetimeiso')
                                     $row[$key] = $value->format('c');
                             }
+                            elseif ($this->schema['props'][$key][1] == 'integer')
+                                $row[$key] = intval($value);
+                            elseif ($this->schema['props'][$key][1] == 'float') $row[$key] =
+                                floatval($value);
 
 
                         }
