@@ -202,11 +202,13 @@ if (!defined ("_MYSQLI_CLASS_") ) {
                 try {
                     if( ($this->_lastRes = $this->_db->query($_q)) ) {
                         $this->_affectedRows = $this->_db->affected_rows;
-                        while ($fila = $this->_lastRes->fetch_assoc( )) {
-                            $ret[] = $fila;
-                        }
-                        if(is_object($this->_lastRes))
+                        if(is_object($this->_lastRes)){
+                            while ($fila = $this->_lastRes->fetch_assoc( )) {
+                                $ret[] = $fila;
+                            }
+
                             $this->_lastRes->close();
+                        }
                         $this->_lastRes = false;
                     } else {
                         $this->setError('Query Error [$q]: ' . $this->_db->error);
