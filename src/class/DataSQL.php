@@ -185,7 +185,7 @@ class DataSQL
         $SQL = "SELECT {$sqlFields} FROM {$from} WHERE {$where}";
         if(!$sqlFields) return($this->addError('No fields to select found: '.json_encode($fields)));
 
-        return $this->core->model->dbQuery($this->entity_name.' fetch by querys: '.json_encode($keysWhere),$SQL,$params);
+        return $this->core->model->dbQuery($this->entity_name.' fetch by querys: '.json_encode($keysWhere),$SQL,$params,$this->entity_schema['model']);
 
     }
 
@@ -315,7 +315,7 @@ class DataSQL
 
         if(!$sqlFields) return($this->addError('No fields to select found: '.json_encode($fields)));
 
-        $ret= $this->core->model->dbQuery($this->entity_name.' fetch by querys: '.json_encode($keysWhere),$SQL,$params);
+        $ret= $this->core->model->dbQuery($this->entity_name.' fetch by querys: '.json_encode($keysWhere),$SQL,$params,$this->entity_schema['model']);
         if($this->core->model->error) $this->addError($this->core->model->errorMsg);
         return($ret);
     }

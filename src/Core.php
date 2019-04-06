@@ -3733,9 +3733,10 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
          * Excute the query and return the result if there is no errors
          * @param $SQL
          * @param $params
+         * @param $types type format of the fields. Example: ['id':'int(10)']
          * @return array|void
          */
-        public function dbQuery($title, $SQL, $params=[]) {
+        public function dbQuery($title, $SQL, $params=[],$types=null) {
 
             if(!is_string($SQL)) return($this->addError('Wrong $SQL method parameter in: dbQuery($title, $SQL, $params=[]) '));
             // Verify we have the object created
@@ -3745,7 +3746,30 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             $this->core->logs->add($title,'dbQuery');
             $ret = $this->db->getDataFromQuery($SQL,$params);
             if($this->db->error()) return($this->addError($this->db->getError()));
-            else return $ret;
+            else {
+
+                // If there is no type defined return as is
+                if(!$types || !is_array($types)) return $ret;
+                // else cast it
+                else {
+                    $number_types = [];
+                    foreach ($types as $field=>$type) {
+                        if(is_array($type)) $type=$type[0];
+                        if(strpos($type,'int')===0 || strpos($type,'bit')===0 ) $number_types[$field] = 'int';
+                        else if(strpos($type,'number')===0 || strpos($type,'decimal')===0 || strpos($type,'float')===0) $number_types[$field] = 'float';
+                    };
+
+                    if($number_types)
+                        foreach ($ret as $i=>$row) {
+                            foreach ($row as $field=>$value) if(isset($number_types[$field]) && strlen($value)) {
+                                if($number_types[$field]=='int') $value=intval($value);
+                                elseif($number_types[$field]=='float') $value=floatval($value);
+                                $ret[$i][$field] = $value;
+                            }
+                        }
+                    return $ret;
+                }
+            }
 
         }
 
