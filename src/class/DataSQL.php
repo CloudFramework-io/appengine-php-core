@@ -545,11 +545,25 @@ class DataSQL
                             }elseif(strpos($value,'<')===0) {
                                 $op='<';
                                 $value = str_replace('<','',$value);
+                            }elseif(strpos($value,'!=')===0) {
+                                $op='!=';
+                                $value = str_replace('!=','',$value);
                             }
                             $where.="{$this->entity_name}.{$key} {$op} %s";
                         }
                         else {
-                            if(strpos($value,'%')!==false) $op = 'like';
+                            if(strpos($value,'%')!==false) {
+                                if(strpos($value,'!=')===0) {
+                                    $op = 'not like';
+                                    $value = str_replace('!=', '', $value);
+                                } else {
+                                    $op = 'like';
+                                }
+                            } elseif(strpos($value,'!=')===0) {
+                                $op='!=';
+                                $value = str_replace('!=','',$value);
+                            }
+
                             $where.="{$this->entity_name}.{$key} {$op} '%s'";
                         }
                         $params[] = $value;
