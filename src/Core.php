@@ -3207,6 +3207,17 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             return $ret;
         }
 
+        function delete_json_decode($route, $extra_headers = null)
+        {
+            $this->rawResult = $this->delete($route, $extra_headers);
+            $ret = json_decode($this->rawResult, true);
+            if (JSON_ERROR_NONE === json_last_error()) $this->rawResult = '';
+            else {
+                $ret = ['error'=>$this->rawResult];
+            }
+            return $ret;
+        }
+
         function get($route, $data = null, $extra_headers = null, $send_in_json = false)
         {
             return $this->call($route, $data, 'GET', $extra_headers, $send_in_json);
