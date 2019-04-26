@@ -245,9 +245,10 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
                     return true;
                 } catch (Exception $e) {
                     // Is not a valida Date
+                    $this->errorFields[] = [$e.$this->errorMsg];
                 }
             } else {
-                _printe($data,strlen($data));
+                $this->errorFields[] = 'DateTime field is not "now" o it does not have 15 characters';
             }
             return false;
         }
