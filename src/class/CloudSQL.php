@@ -92,11 +92,12 @@ if (!defined ("_MYSQLI_CLASS_") ) {
             if(!strlen($this->_dbserver.$this->_dbsocket)) $this->_dbserver='127.0.0.1';
             if(!strlen($this->_dbdatabase)) $this->_dbdatabase='mysql';
 
+            /*
             set_error_handler(create_function(
                 '$errno, $errstr, $errfile, $errline',
                 'throw new CloudSQLError($errno, $errstr, $errfile, $errline);'
             ),E_WARNING);
-
+            */
         }
 
         function loadCoreConfigVars() {
