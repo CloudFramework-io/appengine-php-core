@@ -677,6 +677,7 @@ class DataSQL
     function addError($value)
     {
         $this->error = true;
+        if(!is_array($this->errorMsg)) $this->errorMsg = [$this->errorMsg];
         $this->errorMsg[] = $value;
         $this->core->errors->add(['DataSQL'=>$value]);
     }
