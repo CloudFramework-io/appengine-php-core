@@ -943,7 +943,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
          */
         function activateCacheFile($path, $spacename = '')
         {
-            if ($_SESSION['Core_CacheFile_' . $path] || is_dir($path) || @mkdir($path)) {
+            if ((isset($_SESSION) && $_SESSION['Core_CacheFile_' . $path]) || is_dir($path) || @mkdir($path)) {
                 $this->type = 'CacheInDirectory';
                 $this->dir = $path;
                 if (strlen($spacename)) $spacename = '_' . $spacename;
@@ -951,7 +951,8 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                 $this->init();
 
                 // Save in session to improve the performance for buckets because is_dir has a high cost.
-                $_SESSION['Core_CacheFile_' . $path] = true;
+                if(isset($_SESSION))
+                    $_SESSION['Core_CacheFile_' . $path] = true;
                 return true;
             } else {
                 $this->addError($path . ' does not exist and can not be created');
