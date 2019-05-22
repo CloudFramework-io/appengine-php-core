@@ -135,6 +135,7 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                                 // date & datetime values
                                 if ($this->schema['props'][$i][1] == 'date' || $this->schema['props'][$i][1] == 'datetime' || $this->schema['props'][$i][1] == 'datetimeiso') {
                                     if(strlen($value)) {
+                                        // Fix the problem when value is returned as microtime
                                         try {
                                             $value_time = new DateTime($value);
                                             $value = $value_time;
@@ -2342,7 +2343,7 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                 $obj_key_value = $obj_val->mutableKeyValue();
                 $this->createMapper()->configureGoogleKey($obj_key_value, $mix_value);
                 $this->applyNamespace($obj_key_value);
-            } elseif ($mix_value instanceof \DateTime) {
+            } elseif ($mix_value instanceof \DateTimeInterface) {
                 $obj_val->setTimestampMicrosecondsValue($mix_value->format('Uu'));
             } elseif (method_exists($mix_value, '__toString')) {
                 $obj_val->setStringValue($mix_value->__toString());
@@ -2708,10 +2709,10 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                     $obj_val->setIntegerValue((int)$mix_value);
                     break;
                 case Schema::PROPERTY_DATETIME:
-                    if($mix_value instanceof \DateTime) {
+                    if($mix_value instanceof \DateTimeInterface) {
                         $obj_dtm = $mix_value;
                     } else {
-                        $obj_dtm = new \DateTime($mix_value);
+                        $obj_dtm = new \DateTimeImmutable($mix_value);
                     }
                     $obj_val->setTimestampMicrosecondsValue($obj_dtm->format('Uu'));
                     break;
