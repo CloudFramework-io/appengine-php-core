@@ -307,11 +307,11 @@ if (!defined ("_MYSQLI_CLASS_") ) {
                 unset($args);
 
 
-                if(count($params) != $n_percentsS) {
+                if(count($params) && count($params) != $n_percentsS) {
                     $this->setError("Number of %s ($n_percentsS) doesn't count match with number of arguments (".count($params)."). Query: $q -> ".print_r($params,true));
                     return(false);
                 } else {
-                    if($n_percentsS == 0 ) $qreturn = $q;
+                    if(!count($params) || $n_percentsS == 0 ) $qreturn = $q;
                     else {
                         $qreturn = $this->joinQueryValues($q, $params);
                     }
