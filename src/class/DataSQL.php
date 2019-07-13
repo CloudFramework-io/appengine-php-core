@@ -17,6 +17,7 @@ class DataSQL
     private $joins = [];
     private $queryFields = '';
     private $queryWhere = [];
+    private $extraWhere = '';
     private $virtualFields = [];
     private $groupBy = '';
     private $view = null;
@@ -236,6 +237,7 @@ class DataSQL
         $this->queryWhere = $keysWhere;
     }
 
+
     /**
      * Array with key=>value
      * Especial values:
@@ -249,6 +251,15 @@ class DataSQL
         if(empty($keysWhere) ) return($this->addError('setQueryWhere($keysWhere) $keyWhere can not be empty'));
         if(!is_array($keysWhere)) return($this->addError('setQueryWhere($keysWhere) $keyWhere is not an array'));
         $this->queryWhere = array_merge($this->queryWhere ,$keysWhere);
+    }
+
+    // Allows to add an extra where to be added in all calls
+    function setExtraWhere($extraWhere) {
+        $this->extraWhere = $extraWhere;
+    }
+
+    function getExtraWhere() {
+        return($this->extraWhere);
     }
 
     /**
@@ -292,6 +303,14 @@ class DataSQL
         // --- QUERY
         $from = $this->getQuerySQLFroms();
         $SQL = "SELECT {$distinct}{$sqlFields} FROM {$from}";
+
+        // add extraWhere to all calls
+        if($this->extraWhere) {
+            if($where) $where.=" AND ".$this->extraWhere;
+            else  $where=$this->extraWhere;
+        }
+
+        // add SQL where condition
         if($where) {
             $SQL.=" WHERE {$where}";
         }
