@@ -600,7 +600,7 @@ if (!defined ("_MYSQLI_CLASS_") ) {
             // Field Types of the table
             // Reading from cache
             if(!isset($this->_queryFieldTypes[$table])) {
-                $this->_queryFieldTypes[$table] = $this->core->cache->get('cloudFrameWork_show_colums_'.$table,3600);
+                $this->_queryFieldTypes[$table] = $this->core->cache->get('cloudFrameWork_show_colums_'.$this->_dbdatabase.'_'.$table,3600);
 
                 // If GET params _nocache or _reloadDBFields are passed the reload from DB the columns
                 if(!is_array($this->_queryFieldTypes[$table]) || isset($_GET['_nocache']) || isset($_GET['_reloadDBFields'])) {
@@ -941,7 +941,7 @@ if (!defined ("_MYSQLI_CLASS_") ) {
                     case 'update':
 
                         $_q = "UPDATE $key SET ".$tables[$table]['updateFields']." WHERE ".$tables[$table]['updateWhereFields'];
-                        if(!strlen($tables[$table]['updateWhereFields']) || !is_array($value['updateWhereValues']))  $this->setError("No UPDATE condition in $_q");
+                        if(!strlen($tables[$table]['updateWhereFields']) || !is_array($value['updateWhereValues']))  $this->setError("No UPDATE condition in $_q with fieldtypes: ".json_encode($fieldTypes).' IN TYPES '.json_encode($types));
                         else  $this->command($_q,array_merge($value['values'],$value['updateWhereValues']));
                         if($this->error()) return false;
 
@@ -1086,10 +1086,18 @@ if (!defined ("_MYSQLI_CLASS_") ) {
                     ,'display_fields'=>null
                 ]
             ];
+
+            //get the $table['model']['fields'] from the $table
             $table = $this->getModelFromTable($table);
+
+            //region assign $fields['model'] taking MYSQL field types from $table
             if(isset($table['model']['fields'])) foreach ($table['model']['fields'] as $field=>$values) {
                 $fields['model'][$field][0] = $values['type'];
-                $fields['model'][$field][1] = (preg_match('/(varchar|varbinary|char|json)/',$values['type']))?'string':((preg_match('/(timestamp|datetime)/',$values['type']))?'datetime':((preg_match('/(date)/',$values['type']))?'date':'integer'));
+                $fields['model'][$field][1] = (preg_match('/(varchar|varbinary|char|json)/',$values['type']))?'string':
+                    ((preg_match('/(timestamp|datetime)/',$values['type']))?'datetime':
+                        ((preg_match('/(date)/',$values['type']))?'date':
+                            ((preg_match('/(decimal)/',$values['type']))?'float':
+                                'integer')));
 
                 if(isset($values['key']) && $values['key']) $fields['model'][$field][1].='|isKey';
                 if(isset($values['null']) && $values['null']===false) $fields['model'][$field][1].='|mandatory';
@@ -1109,6 +1117,7 @@ if (!defined ("_MYSQLI_CLASS_") ) {
                 $fields['interface']['views']['default']['fields'][] = ['field'=>$field];
 
             }
+            //endregion
             return $fields;
         }
 
