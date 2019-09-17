@@ -905,6 +905,8 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
         var $lastHash = null;
         var $lastExpireTime = null;
         var $atom = null;
+        /** @var Core  */
+        var $core=null;
 
         /**
          * CoreCache constructor. If $type==CacheInDirectory a writable $path is required
@@ -930,9 +932,17 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             if (null !== $path) {
                 $this->activateCacheFile($path);
             }
+        }
 
-
-
+        /**
+         * Activate cache in memory
+         * @return bool
+         */
+        function activateMemory()
+        {
+            $this->cache = null;
+            $this->init();
+            return true;
         }
 
         /**
@@ -948,6 +958,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                 $this->dir = $path;
                 if (strlen($spacename)) $spacename = '_' . $spacename;
                 $this->setSpaceName(basename($path) . $spacename);
+                $this->cache = null;
                 $this->init();
 
                 // Save in session to improve the performance for buckets because is_dir has a high cost.
@@ -962,9 +973,21 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
         }
 
         /**
-         * DEPRECATED
+         * Activate cache in Datastore.. It requires Core Class
+         * @param Core $core Core class to facilitate errors
+         * @param string $spacename spacename where to store objecs
+         * @return bool
          */
-        function activeDirPath($path, $spacename = '') { return $this->activateCacheFile(); }
+        function activateDataStore(Core &$core, $spacename = '')
+        {
+            $this->core = $core;
+            $this->type = 'DataStore';
+            if($spacename) $this->spacename = $spacename;
+            $this->cache = null;
+            $this->init();
+            if($this->error) return false;
+            else return true;
+        }
 
         /**
          * Initialiated Cache Memory object.. If previously it has been called it just returns true.. if there is an error it returns false..
@@ -984,8 +1007,12 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                     $this->cache = false;
                     $this->log->add("init(). Failed because MemCache does not exist",'CoreCache');
                 }
-            } else
+            } elseif($this->type=='DataStore') {
+                $this->cache = new CoreCacheDataStore($this->core,$this->spacename);
+                if($this->cache->error) $this->addError(['CoreCacheDataStore'=>$this->cache->errorMsg]);
+            }  else {
                 $this->cache = new CoreCacheFile($this->dir);
+            }
 
             return(is_object($this->cache));
         }
@@ -1017,12 +1044,17 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             $info['_hash_'] = $hash;
             $info['_data_'] = gzcompress(serialize($object));
             $this->cache->set($this->spacename . '-' . $key, serialize($info));
+            // If exists a property error in the class checkit
+            if(isset($this->cache->error) && $this->cache->error) {
+                $this->error = true;
+                $this->errorMsg = $this->cache->errorMsg;
+            }
 
             if($this->debug)
                 $this->log->add("set({$key}). token: ".$this->spacename . '-' . $key.(($hash)?' with hash: '.$hash:''),'CoreCache');
 
             unset($info);
-            return true;
+            return ($this->error)?false:true;
         }
 
         /**
@@ -1238,6 +1270,76 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                 $ret = file_get_contents($this->dir . $path);
             if (false === $ret) return null;
             else return unserialize(gzuncompress($ret));
+        }
+    }
+
+    /**
+     * Class to manage Cache in DataStore
+     * @package Core
+     */
+    class CoreCacheDataStore
+    {
+
+        /** @var DataStore  */
+        var $ds = null;
+        /** @var Core */
+        var $core;
+        var $error = false;
+        var $errorMsg = [];
+        var $spacename = 'CloudFramework';
+
+        function __construct(Core &$core, $spacename)
+        {
+            $this->spacename = $spacename;
+            $this->core = $core;
+            $entity = 'CloudFrameworkCache';
+            $model = json_decode('{
+                                    "KeyName": ["keyname","index|minlength:4"],
+                                    "Fingerprint": ["json","internal"],
+                                    "DateUpdating": ["datetime","index|forcevalue:now"],
+                                    "Serialize": ["string"]
+                                  }',true);
+            $this->ds = $core->loadClass('DataStore',[$entity,$this->spacename,$model]);
+            if ($this->ds->error) return($this->addError($this->ds->errorMsg));
+
+        }
+
+        function set($path, $data)
+        {
+            $entity = ['KeyName'=>$path
+                ,'Fingerprint'=>$this->core->system->getRequestFingerPrint()
+                ,'DateUpdating'=>"now"
+                ,'Serialize'=>utf8_encode(gzcompress(serialize($data)))];
+
+            $ret = $this->ds->createEntities([$entity]);
+            if($this->ds->error) {
+                $this->errorMsg = ['DataStore'=>$this->ds->errorMsg];
+                $this->error = true;
+                return false;
+            }
+            return true;
+        }
+
+        function delete($path)
+        {
+            $this->ds->deleteByKeys([$path]);
+            if($this->ds->error) $this->addError($this->ds->errorMsg);
+            if($this->error) return false;
+            else return true;
+        }
+
+        function get($path)
+        {
+            $data = $this->ds->fetchOneByKey($path);
+            if($this->ds->error) return($this->addError($this->ds->errorMsg));
+            if(!$data) return null;
+            else return unserialize(gzuncompress(utf8_decode($data['Serialize'])));
+        }
+
+        function addError($value)
+        {
+            $this->error = true;
+            $this->errorMsg[] = $value;
         }
     }
 
