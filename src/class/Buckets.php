@@ -153,7 +153,7 @@ if (!defined ("_Buckets_CLASS_") ) {
                                 }
                                 stream_context_set_default($context);
 
-                                if(copy($value['tmp_name'],$dest)) {
+                                if(move_uploaded_file($value['tmp_name'],$dest)) {
                                     $this->uploadedFiles[$key][$i]['movedTo'] = $dest;
                                     if($public)
                                         $this->uploadedFiles[$key][$i]['publicUrl'] = $this->getPublicUrl($dest,$ssl);
