@@ -144,6 +144,8 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                                             $record = [];
                                             break;
                                         }
+                                    } else {
+                                        $value=null;
                                     }
                                 // geo values
                                 } elseif($this->schema['props'][$i][1] == 'geo') {
