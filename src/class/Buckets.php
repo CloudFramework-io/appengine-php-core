@@ -305,6 +305,11 @@ if (!defined ("_Buckets_CLASS_") ) {
             return($ret);
         }
 
+        /**
+         * Returns the URL to upload a file
+         * @param string $returnUrl is the url the system has to call once the file has been uploaded
+         * @return mixed
+         */
         function getUploadUrl($returnUrl=null) {
             if(!$returnUrl) $returnUrl = $this->vars['retUploadUrl'];
             else $this->vars['retUploadUrl'] = $returnUrl;
@@ -312,6 +317,46 @@ if (!defined ("_Buckets_CLASS_") ) {
             $upload_url = CloudStorageTools::createUploadUrl($returnUrl, $options);
             return($upload_url);
         }
+
+        /**
+         * Returns an url to download a gs_file using CFBlobDownload Technique
+         * @param $url
+         * @param $params array ['downloads'=>'number of downloads allowed, by default 1', 'spacename'=>'to store downloads files in Datastore', 'content-type' =>'content type of the file']
+         * @return string URL to download the file $params['donwloads'] times
+         */
+        function getCFBlobDownloadUrl($gs_file, $params,$blob_service = 'https://api.cloudframework.io/blobs') {
+
+            // check the file exists
+            if(!is_file($gs_file)) return($this->addError("{$gs_file} does not exist"));
+
+            // Get Hash from file_name and params
+            $hash = md5($gs_file.json_encode($params));
+            $url = $blob_service.'/'.$hash;
+
+            $cache = $params;
+
+            // downloads allowed
+            $cache['downloads'] = (isset($params['downloads']) && intval($params['downloads'])>0)?intval($params['downloads']):1;
+
+            //if we are going to use DataStore temporal files retrive spacename
+            $spacename = (isset($params['spacename']))?$params['spacename']:null;
+            if($spacename) {
+                $this->core->cache->activateDataStore($this->core,$spacename);
+                $url.='/ds/'.$spacename;
+            }
+
+            // adding $url
+            $cache['url'] = $gs_file;
+
+            // downloads allowed
+            $cache['content-type'] = (isset($params['content-type']))?$params['content-type']:'application/octet-stream';
+
+            $this->core->cache->set($hash,$cache);
+
+            return $url;
+
+        }
+
 
 
         function setError($msg,$code='') {
