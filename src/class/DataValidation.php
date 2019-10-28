@@ -142,12 +142,24 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
                     else $data = preg_replace("/$regex/",'',$data);
                 }
             }
+
+            //Convert a string into an array
             if( strpos($options,'toarray:')!==false && !is_array($data) && is_string($data)) {
                 $sep = $this->extractOptionValue('toarray:',$options);
                 if(strlen($data))
                     $data = explode($sep,$data);
                 else $data = [];
             }
+
+            //Convert an array into string
+            if( strpos($options,'tostring:')!==false && is_array($data) ) {
+                $sep = $this->extractOptionValue('tostring:',$options);
+                if(!$sep) $sep=',';
+                if(count($data))
+                    $data = implode($sep,$data);
+                else $data = "";
+            }
+
             return $data;
         }
 
@@ -190,6 +202,7 @@ if (!defined ("_DATAVALIDATION_CLASS_") ) {
                 case "boolean": if(!is_bool($data) && ($data=='true' || $data=='false')) $data = ($data == 'true');return is_bool($data);
                 case "array": return is_array($data);
                 case "list": return is_array($data);
+                case "array_to_string": if(is_array($data)) $data=implode(",",$data);return is_string($data);
                 default: return false;
             }
         }
