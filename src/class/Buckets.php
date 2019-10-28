@@ -263,13 +263,24 @@ if (!defined ("_Buckets_CLASS_") ) {
         }
 
         function isMkdir($path='')  {
+            if($path && is_string($path) && $path[0]!='/') return($this->addError('$path does not start with /'));
             $value = $this->bucket.$path;
             $ret = is_dir($value);
-            if(!$ret) try {
-                $ret = @mkdir($value);
+            if(!$ret && $path) try {
+                $elements = explode('/',$path);
+                //delete the first empty value of /path
+                array_shift($elements);
+                $value = $this->bucket;
+                $ret = false;
+                foreach ($elements as $element) {
+                    $value .= "/{$element}";
+                    if(!is_dir($value)) $ret = @mkdir($value);
+                }
+                $ret = true;
             } catch(Exception $e) {
                 $this->addError($e->getMessage());
                 $this->addError(error_get_last());
+                return false;
             }
             return $ret;
         }
