@@ -150,6 +150,18 @@ class DataSQL
     }
 
     /**
+     * Return one record based on a key
+     * @param $key can ba an string or number
+     * @param null $fields if null $fields = $this->getFields()
+     */
+    function fetchOneByKey($key, $fields=null) {
+        if(is_array($key)) return;
+        $ret = $this->fetchByKeys([$key],$fields);
+        if($ret) $ret= $ret[0];
+        return $ret;
+    }
+
+    /**
      * Return the tuplas with the $keyWhere including $fields
      * @param $keysWhere
      * @param null $fields if null $fields = $this->getFields()
@@ -263,7 +275,19 @@ class DataSQL
     }
 
     /**
-     * Return records from the db object
+     * Return [record_structure]
+     * @param array $keysWhere
+     * @param null $fields
+     * @return array|void
+     */
+    function fetchOne($keysWhere=[], $fields=null, $params=[]) {
+        $this->limit = 1;
+        $ret = $this->fetch($keysWhere, $fields, $params);
+        if($ret) $ret=$ret[0];
+        return($ret);
+    }
+    /**
+     * Return records [0..n][record_structure] from the db object
      * @param array $keysWhere
      * @param null $fields
      * @return array|void
@@ -594,7 +618,7 @@ class DataSQL
 
         }
 
-        // Search into Joins quieries
+        // Search into Joins queries
         foreach ($this->joins as $join) {
             /** @var DataSQL $object */
             $object = $join[1];
