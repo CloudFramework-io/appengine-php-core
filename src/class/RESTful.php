@@ -16,6 +16,7 @@ if (!defined("_RESTfull_CLASS_")) {
         var $codeLibError = [];
         var $ok = 200;
         var $errorMsg = [];
+        var $message = "";
         var $extra_headers = [];
         var $requestHeaders = array();
         var $method = '';
@@ -354,12 +355,13 @@ if (!defined("_RESTfull_CLASS_")) {
             return (!$this->error);
         }
 
-        function setError($value, $key = 400,$code=null)
+        function setError($value, $key = 400,$code=null,$message='')
         {
             $this->error = $key;
             $this->errorMsg[] = $value;
             $this->core->errors->add($value);
             $this->code = (null !== $code)? $code:$key;
+            $this->message = ($message)?$message:$this->code;
         }
 
         function addHeader($key, $value)
@@ -652,6 +654,8 @@ if (!defined("_RESTfull_CLASS_")) {
             $ret['success'] = ($this->error) ? false : true;
             $ret['status'] = $this->getReturnStatus();
             $ret['code'] = $this->getReturnCode();
+            if($this->message) $ret['message'] = $this->message;
+            
             if($this->core->is->terminal())
                 $ret['exec'] = '['.$_SERVER['PWD']. '] php '.implode(' ',$argv);
 
