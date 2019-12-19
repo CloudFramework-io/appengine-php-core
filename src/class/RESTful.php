@@ -194,7 +194,7 @@ if (!defined("_RESTfull_CLASS_")) {
                 if (!strlen($msg))
                     $msg = "{{$key}}" . ((!isset($this->formParams[$key])) ? ' form-param missing ' : ' form-params\' length is less than: ' . $min_length);
                 if(!$code) $code='form-params-error';
-                $this->setError($msg,400,$code);
+                $this->setError($msg,400,$code,$msg);
             }
             return ($this->error === 0);
 
