@@ -242,7 +242,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                     try {
                         if (strlen($pathfile)) {
                             @include_once $pathfile;
-
+                            $this->__p->add('Loaded $pathfile', __METHOD__);
                         }
 
                         // By default the ClassName will be called API.. if the include set $api_class var, we will use that class name
@@ -487,6 +487,12 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
 
         function end($spacename, $key, $ok = TRUE, $msg = FALSE)
         {
+
+            // Verify indexes
+            if(!isset($this->data['init'][$spacename][$key])) {
+                $this->data['init'][$spacename][$key] = [];
+            }
+
             $this->data['init'][$spacename][$key]['mem'] = round((memory_get_usage() - $this->data['init'][$spacename][$key]['mem']) / (1024 * 1024), 3) . ' Mb';
             $this->data['init'][$spacename][$key]['time'] = round(microtime(TRUE) - $this->data['init'][$spacename][$key]['time'], 3) . ' secs';
             $this->data['init'][$spacename][$key]['ok'] = $ok;
@@ -2466,10 +2472,11 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             $dschema = ['token' => ['keyname', 'index']];
             $dschema['dateInsert'] = ['datetime', 'index'];
             $dschema['JSONZIP'] = ['string'];
-            $dschema['fingerprint'] = ['string'];
+            $dschema['fingerprint'] = ['string','index'];
             $dschema['prefix'] = ['string', 'index'];
             $dschema['secondsToExpire'] = ['integer'];
             $dschema['status'] = ['integer','index'];
+            $dschema['ip'] = ['string','index'];
             $spacename = $this->core->config->get('DataStoreSpaceName');
             if (!strlen($spacename)) $spacename = "cloudframework";
             $this->dsToken = $this->core->loadClass('DataStore', ['CloudFrameWorkAuthTokens', $spacename, $dschema]);
@@ -2488,6 +2495,7 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
          */
         function getDSToken($token, $prefixStarts = '', $time = 0, $fingerprint_hash='',$use_fingerprint_security=true)
         {
+            $this->core->__p->add('getDSToken', $prefixStarts, 'note');
             $ret = null;
 
             // Check if token starts with $prefix
@@ -2497,7 +2505,6 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             }
             // Check if object has been created
             if (null === $this->dsToken) if(!$this->createDSToken()) return;
-
 
             $retToken = $this->dsToken->fetchByKeys($token);
             // Allow to rewrite the fingerprint it it is passed
@@ -2514,9 +2521,9 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             } elseif ($time > 0 && ((new DateTime())->getTimestamp()) - (new DateTime($retToken[0]['dateInsert']))->getTimestamp() >= $time) {
                 $this->core->errors->add(['getDSToken' => 'Token expired']);
             } elseif (isset($retToken[0]['JSONZIP'])) {
-                $ret = json_decode(gzuncompress(utf8_decode($retToken[0]['JSONZIP'])), true);
+                $ret = json_decode($this->uncompress($retToken[0]['JSONZIP']), true);
             }
-
+            $this->core->__p->add('getDSToken', '', 'endnote');
             return $ret;
         }
 
@@ -2548,10 +2555,10 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
 
             $retToken = $this->dsToken->fetchByKeys($token);
             if(count($retToken)) {
-                $retToken[0]['JSONZIP'] = utf8_encode(gzcompress(json_encode($data)));
+                $retToken[0]['JSONZIP'] = $this->compress(json_encode($data));
                 $ret = $this->dsToken->createEntities($retToken[0]);
                 if(count($ret)) {
-                    return(json_decode(gzuncompress(utf8_decode($ret[0]['JSONZIP'])), true));
+                    return(json_decode($this->uncompress($ret[0]['JSONZIP']), true));
                 }
             }
             return [];
@@ -2593,10 +2600,11 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
                 if (!strlen($fingerprint_hash)) $fingerprint_hash = $this->core->system->getRequestFingerPrint()['hash'];
                 $record['dateInsert'] = "now";
                 $record['fingerprint'] = $fingerprint_hash;
-                $record['JSONZIP'] = utf8_encode(gzcompress(json_encode($data)));
+                $record['JSONZIP'] = $this->compress(json_encode($data));
                 $record['prefix'] = $prefix;
                 $record['secondsToExpire'] = $time_expiration;
                 $record['status'] = 1;
+                $record['ip'] = $this->core->system->ip;
                 $record['token'] = $this->core->config->get('DataStoreSpaceName') . '__' . $prefix . '__' . sha1(json_encode($record) . date('Ymdhis'));
 
                 $retEntity = $this->dsToken->createEntities($record);
@@ -2608,6 +2616,15 @@ if (!defined("_ADNBP_CORE_CLASSES_")) {
             }
             return $ret;
 
+        }
+
+        function compress($data) {
+            if(!is_string($data)) return $data;
+            return base64_encode(gzcompress($data));
+        }
+
+        function uncompress($data) {
+            return gzuncompress(base64_decode($data));
         }
 
         function encrypt($text) {

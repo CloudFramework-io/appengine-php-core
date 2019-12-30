@@ -700,7 +700,7 @@ if (!defined("_RESTfull_CLASS_")) {
                     // Debug params
                     if (isset($this->formParams['__debug'])) {
                         if(!$this->core->is->terminal())
-                            $ret['__debug']['url'] = (($_SERVER['HTTPS'] == 'on') ? 'https://' : 'http://') . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
+                            $ret['__debug']['url'] = ((isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] == 'on') ? 'https://' : 'http://') . $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
                         $ret['__debug']['method'] = $this->method;
                         $ret['__debug']['ip'] = $this->core->system->ip;
                         $ret['__debug']['header'] = $this->getResponseHeader();

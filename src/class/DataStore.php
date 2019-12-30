@@ -38,7 +38,7 @@ if (!defined ("_DATASTORE_CLASS_") ) {
     class DataStore
     {
         var $error = false;
-        var $errorMsg = '';
+        var $errorMsg = [];
         var $store = null;
         var $entity_schema = null;
         var $entity_name = null;
@@ -58,15 +58,17 @@ if (!defined ("_DATASTORE_CLASS_") ) {
 
         function __construct(Core &$core, $params)
         {
-            
+
+            // Add Core
             $this->core = $core;
 
+            //Start measuring
+            $this->core->__p->add('DataStore new instance ', $params[0], 'note');
 
             $entity = $params[0];
             $namespace = (isset($params[1]))?$params[1]:null;
             $schema = (isset($params[2]))?$params[2]:null;
 
-            $this->core->__p->add('DataStore new instance ', '', 'note');
             $this->entity_name = $entity;
             $this->entity_schema = $this->getEntitySchema($entity, $schema);
             if(!$this->error) {
@@ -76,6 +78,8 @@ if (!defined ("_DATASTORE_CLASS_") ) {
                 }
                 $this->store = new Store($this->entity_schema, $this->entity_gw);
             }
+
+            //end measuring
             $this->core->__p->add('DataStore new instance ', '', 'endnote');
 
 
