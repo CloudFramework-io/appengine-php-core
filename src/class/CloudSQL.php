@@ -331,7 +331,14 @@ if (!defined ("_MYSQLI_CLASS_") ) {
             foreach ($values as $key => $value) {
                 $joins[] = $this->_db->real_escape_string($value);
             }
-            return(vsprintf($q, $joins));
+
+            // Execute replacements 1 by 1
+            if($joins)foreach ($joins as $join) {
+                $q = preg_replace('/%s/',$join,$q,1);
+            }
+
+            //return string with replacements
+            return($q);
         }
 
         function scapeValue($value) {
